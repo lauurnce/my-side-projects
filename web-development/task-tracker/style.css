@@ -1,0 +1,336 @@
+:root {
+  --night: #140c26;
+  --panel: #241640;
+  --panel-edge: #3d2a6b;
+  --gold: #ffcc33;
+  --gold-hot: #ff9f1c;
+  --mint: #6be675;
+  --ruby: #ff5c7a;
+  --ink: #efe6ff;
+  --muted: #9d8cc4;
+  --pixel: "Press Start 2P", monospace;
+  --text: "VT323", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--text);
+  font-size: 22px;
+  color: var(--ink);
+  background: radial-gradient(ellipse at top, #2b1457 0%, var(--night) 60%);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 50px 16px;
+}
+
+.sky {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 30% 70%, #ffe9a8 50%, transparent 51%),
+    radial-gradient(2px 2px at 55% 15%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 75% 55%, #c9b8ff 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 30%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 20% 90%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 65% 85%, #ffe9a8 50%, transparent 51%);
+  animation: twinkle 3s steps(2) infinite;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: var(--panel);
+  padding: 24px;
+  box-shadow:
+    0 0 0 4px var(--panel-edge),
+    0 0 0 8px var(--night),
+    0 0 0 12px var(--gold),
+    0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.hud {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-family: var(--pixel);
+  font-size: 22px;
+  color: var(--gold);
+  margin: 0;
+  text-shadow: 3px 3px 0 #8a4b00;
+  animation: bob 2s steps(4) infinite;
+}
+
+.subtitle {
+  font-family: var(--pixel);
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--muted);
+  margin: 10px 0 18px;
+  text-transform: uppercase;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+#levelText {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--gold);
+}
+
+.xp-bar {
+  height: 18px;
+  background: var(--night);
+  box-shadow: 0 0 0 3px var(--panel-edge);
+  padding: 3px;
+}
+
+.xp-fill {
+  height: 100%;
+  width: 0;
+  background: repeating-linear-gradient(90deg, var(--gold) 0 10px, var(--gold-hot) 10px 12px);
+  transition: width 0.5s steps(10);
+}
+
+.xp-text {
+  font-size: 18px;
+  color: var(--muted);
+  margin: 6px 0 0;
+  text-align: right;
+}
+
+.quest-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.prompt {
+  font-family: var(--pixel);
+  color: var(--gold);
+  animation: blink 1s steps(2) infinite;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  font-family: var(--text);
+  font-size: 22px;
+  color: var(--ink);
+  background: var(--night);
+  border: none;
+  box-shadow: 0 0 0 3px var(--panel-edge);
+  outline: none;
+}
+
+input:focus {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+input.shake {
+  animation: shake 0.3s steps(4);
+  box-shadow: 0 0 0 3px var(--ruby);
+}
+
+button {
+  font-family: var(--pixel);
+  cursor: pointer;
+  border: none;
+}
+
+#addButton {
+  padding: 12px 10px;
+  font-size: 10px;
+  color: var(--night);
+  background: var(--gold);
+  box-shadow: 0 4px 0 #8a4b00;
+  transition: background 0.15s;
+}
+
+#addButton:hover {
+  background: var(--gold-hot);
+}
+
+#addButton:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+#taskList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.quest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #2f1e55;
+  box-shadow: 0 0 0 3px var(--panel-edge);
+}
+
+.quest.fresh {
+  animation: drop-in 0.4s steps(5);
+}
+
+.quest.abandoning {
+  animation: vanish 0.4s steps(5) forwards;
+}
+
+.check {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--night);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.check:hover {
+  background: var(--panel-edge);
+}
+
+.quest-text {
+  flex: 1;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.quest.done {
+  background: #1f2e2a;
+  box-shadow: 0 0 0 3px #2f6b45;
+}
+
+.quest.done .quest-text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.quest.done .check {
+  color: var(--night);
+  background: var(--mint);
+  box-shadow: 0 0 0 2px var(--mint);
+}
+
+.reward {
+  font-family: var(--pixel);
+  font-size: 8px;
+  color: var(--mint);
+  display: none;
+}
+
+.quest.done .reward {
+  display: inline;
+}
+
+.abandon {
+  padding: 8px 6px;
+  font-size: 8px;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: 0 0 0 2px var(--ruby);
+  transition: background 0.15s;
+}
+
+.abandon:hover {
+  background: var(--ruby);
+  color: var(--night);
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  margin: 24px 0 8px;
+}
+
+.empty[hidden] {
+  display: none;
+}
+
+.reset {
+  display: block;
+  margin: 22px auto 0;
+  padding: 8px 12px;
+  font-size: 8px;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: 0 0 0 2px var(--panel-edge);
+}
+
+.reset:hover {
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--muted);
+}
+
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translate(-50%, 160px);
+  font-family: var(--pixel);
+  font-size: 14px;
+  color: var(--night);
+  background: var(--gold);
+  padding: 14px 18px;
+  box-shadow: 0 0 0 4px var(--night), 0 0 0 8px var(--gold);
+  transition: transform 0.3s steps(4);
+}
+
+.toast.show {
+  transform: translate(-50%, 0);
+}
+
+.toast.level-up {
+  background: var(--mint);
+  box-shadow: 0 0 0 4px var(--night), 0 0 0 8px var(--mint);
+}
+
+@keyframes twinkle {
+  50% { opacity: 0.4; }
+}
+
+@keyframes bob {
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@keyframes shake {
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@keyframes drop-in {
+  from { transform: translateY(-16px); opacity: 0; }
+}
+
+@keyframes vanish {
+  to { transform: scale(0.6) rotate(-4deg); opacity: 0; }
+}

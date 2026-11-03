@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Task Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sky"></div>
+  <div class="container">
+    <header class="hud">
+      <h1>⚔ My Tasks</h1>
+      <p class="subtitle">Quest Log</p>
+      <div class="stats">
+        <span id="levelText">LV 1</span>
+        <span id="questCount">0 active · 0 done</span>
+      </div>
+      <div class="xp-bar"><div id="xpFill" class="xp-fill"></div></div>
+      <p id="xpText" class="xp-text">0 / 100 XP</p>
+    </header>
+
+    <div class="quest-form">
+      <span class="prompt">&gt;</span>
+      <input type="text" id="taskInput" placeholder="Add a new task..." maxlength="60" autocomplete="off">
+      <button id="addButton">Add Task</button>
+    </div>
+
+    <ul id="taskList"></ul>
+    <p id="emptyState" class="empty">The tavern is quiet. No quests yet, adventurer.</p>
+
+    <button id="resetButton" class="reset">New Game</button>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
