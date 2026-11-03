@@ -4,7 +4,7 @@ A retro RPG take on the Mini Task Tracker exercise. Every task is a quest. Finis
 
 ## Run it
 
-Open `index.html` in a browser. Nothing to install.
+Open `PANES_index.html` in a browser. Nothing to install.
 
 ## Features
 
@@ -18,6 +18,6 @@ Open `index.html` in a browser. Nothing to install.
 
 ## Files
 
-- `index.html` structure
-- `style.css` pixel art styling and animations
-- `script.js` quest logic and saving
+- `PANES_index.html` structure
+- `PANES_style.css` pixel art styling and animations
+- `PANES_script.js` quest logic and saving
