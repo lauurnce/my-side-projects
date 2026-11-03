@@ -1,22 +1,31 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="My Side Projects" width="100%">
+</p>
+
 # My Side Projects
 
-Welcome to my central repository for all my side projects! This is a **Monorepo** structure, meaning all different projects live in their respective sub-directories but are tracked under this one single GitHub repository.
+This is where my side projects and school projects live when they do not need a repository of their own. Instead of scattering small builds across dozens of repos, everything is compiled here: one folder per project, each self-contained with its own dependencies and setup.
 
-## Directory Structure
+## What's inside
 
-- 📂 **web3**: Blockchain, Dapps, and smart contract projects.
-- 📂 **fintech**: Financial applications, trading bots, etc.
-- 📂 **ai-ml**: Artificial Intelligence and Machine Learning models or integrations.
-- 📂 **productivity**: Tools, planners (like RAWT), and personal apps.
-- 📂 **templates**: My own boilerplates for quickly spinning up new projects.
-- 📂 **_docs**: Global documentation, ideas, and system diagrams.
+- 📂 **web-development**: coursework for my Web Development subject, one folder per task
+- 📂 **web3**: blockchain, dapps, and smart contract experiments
+- 📂 **fintech**: financial apps and trading bots
+- 📂 **ai-ml**: machine learning models and integrations
+- 📂 **productivity**: tools, planners, and personal apps
+- 📂 **templates**: boilerplates for spinning up new projects fast
+- 📂 **_docs**: notes, ideas, and diagrams
 
-## How to Work on a Project
+Folders show up as projects land in them.
 
-To work on a specific project, open your terminal and change into its directory before running its scripts or installing its dependencies:
+## Working on a project
+
+Every project is isolated, so change into its folder before installing or running anything:
 
 ```bash
-cd productivity/rawt-v1
+cd web-development/<task>
 npm install
 npm run dev
 ```
+
+Static tasks have no install step. Open their `index.html` in a browser.
