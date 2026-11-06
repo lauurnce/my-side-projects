@@ -9,6 +9,7 @@ This is where my side projects and school projects live when they do not need a 
 ## What's inside
 
 - 📂 **web-development**: coursework for my Web Development subject, one folder per task
+- 📂 **stage0-reveal**: offline broadcast-style team reveal show and presentation timer for Stage 0, built as OBS browser sources
 - 📂 **web3**: blockchain, dapps, and smart contract experiments
 - 📂 **fintech**: financial apps and trading bots
 - 📂 **ai-ml**: machine learning models and integrations
