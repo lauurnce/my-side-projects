@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <header class="event-header">
+    <p class="eyebrow">Seminar Registration</p>
+    <h1>{{ event.name }}</h1>
+    <ul class="event-meta">
+      <li><span>Date</span> {{ event.date }}</li>
+      <li><span>Venue</span> {{ event.venue }}</li>
+    </ul>
+  </header>
   <main class="container">
     {% block content %}{% endblock %}
   </main>

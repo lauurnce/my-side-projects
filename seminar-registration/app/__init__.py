@@ -14,6 +14,16 @@ def create_app(test_config=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
 
+    @app.context_processor
+    def inject_event():
+        return {
+            "event": {
+                "name": app.config["EVENT_NAME"],
+                "date": app.config["EVENT_DATE"],
+                "venue": app.config["EVENT_VENUE"],
+            }
+        }
+
     from . import db, routes
 
     db.init_app(app)
