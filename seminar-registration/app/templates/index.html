@@ -7,10 +7,11 @@
            value="{{ values.get(name, '') }}" required
            {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
            {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
-           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}>
-
+           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+           aria-describedby="{{ name }}-error"
+           {% if errors.get(name) %}aria-invalid="true"{% endif %}>
     {% if hint %}<small class="hint">{{ hint }}</small>{% endif %}
-    <p class="error" id="{{ name }}-error" >{{ errors.get(name, '') }}</p>
+    <p class="error" id="{{ name }}-error" role="alert">{{ errors.get(name, '') }}</p>
   </div>
 {% endmacro %}
 
