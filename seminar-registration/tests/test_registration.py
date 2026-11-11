@@ -114,3 +114,11 @@ def test_typed_values_are_kept_on_error(client, valid_form):
     assert 'value="juan@example.com"' in html
     assert 'value="PUP"' in html
     assert 'value="123"' in html
+
+
+def test_attendee_code_increments(client, app, valid_form):
+    for i in range(3):
+        valid_form["email"] = f"person{i}@example.com"
+        client.post("/register", data=valid_form)
+    codes = [row["attendee_code"] for row in fetch_all(app)]
+    assert codes == ["SEM-2026-0001", "SEM-2026-0002", "SEM-2026-0003"]
