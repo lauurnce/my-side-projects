@@ -64,3 +64,12 @@ def test_bad_email_is_rejected(client, app, valid_form, email):
     assert response.status_code == 400
     assert "Enter a valid email address" in response.get_data(as_text=True)
     assert fetch_all(app) == []
+
+
+@pytest.mark.parametrize("phone", ["12345", "0917123456", "091712345678", "08171234567", "+63817123456", "abcdefghijk"])
+def test_bad_phone_is_rejected(client, app, valid_form, phone):
+    valid_form["contact_number"] = phone
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert "Enter a PH mobile number" in response.get_data(as_text=True)
+    assert fetch_all(app) == []
