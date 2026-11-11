@@ -20,3 +20,12 @@ cp .env.example .env
 ```
 
 Fill in `.env` (at minimum `SECRET_KEY`, `EVENT_NAME`, `EVENT_DATE`, `EVENT_VENUE`).
+
+## Running the app
+
+```bash
+flask --app app init-db
+flask --app app run
+```
+
+Open http://127.0.0.1:5000 to see the registration form.
