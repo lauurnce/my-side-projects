@@ -141,3 +141,15 @@ def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
     response = app.test_client().post("/register", data=valid_form)
     assert response.status_code == 400
     assert fetch_all(app) == []
+
+
+def test_post_with_csrf_token_is_accepted(tmp_path, valid_form):
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "csrf.db")})
+    with app.app_context():
+        init_db()
+    client = app.test_client()
+    client.get("/")
+    with client.session_transaction() as session:
+        token = session["_csrf_token"]
+    response = client.post("/register", data={**valid_form, "csrf_token": token})
+    assert response.status_code == 302
