@@ -1,8 +1,13 @@
 import secrets
+import sqlite3
 
 from flask import current_app
 
 from ..db import get_db
+
+
+class DuplicateEmailError(Exception):
+    """Raised when the email address is already registered."""
 
 
 def create_attendee(full_name, email, organization, contact_number):
@@ -16,15 +21,23 @@ def create_attendee(full_name, email, organization, contact_number):
     token = secrets.token_urlsafe(32)
     prefix = current_app.config["ATTENDEE_CODE_PREFIX"]
 
-    cur = db.execute(
-        "INSERT INTO attendees"
-        " (attendee_code, full_name, email, organization, contact_number, ticket_token)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (f"PENDING-{token}", full_name, email, organization, contact_number, token),
-    )
-    code = f"{prefix}-{cur.lastrowid:04d}"
-    db.execute("UPDATE attendees SET attendee_code = ? WHERE id = ?", (code, cur.lastrowid))
-    db.commit()
+    try:
+        cur = db.execute(
+            "INSERT INTO attendees"
+            " (attendee_code, full_name, email, organization, contact_number, ticket_token)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (f"PENDING-{token}", full_name, email, organization, contact_number, token),
+        )
+        code = f"{prefix}-{cur.lastrowid:04d}"
+        db.execute(
+            "UPDATE attendees SET attendee_code = ? WHERE id = ?", (code, cur.lastrowid)
+        )
+        db.commit()
+    except sqlite3.IntegrityError as exc:
+        db.rollback()
+        if "attendees.email" in str(exc):
+            raise DuplicateEmailError(email) from exc
+        raise
 
     return get_attendee_by_code(code)
 
