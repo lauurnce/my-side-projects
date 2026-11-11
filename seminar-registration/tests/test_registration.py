@@ -89,3 +89,10 @@ def test_fields_are_trimmed_and_email_lowercased(client, app, valid_form):
     assert row["full_name"] == "Juan Dela Cruz"
     assert row["email"] == "juan@example.com"
     assert row["organization"] == "PUP"
+
+
+def test_too_long_name_is_rejected(client, app, valid_form):
+    valid_form["full_name"] = "A" * 101
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert "at most 100 characters" in response.get_data(as_text=True)
