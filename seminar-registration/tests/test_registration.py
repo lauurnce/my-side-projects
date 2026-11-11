@@ -80,3 +80,12 @@ def test_phone_is_normalized(client, app, valid_form, phone):
     valid_form["contact_number"] = phone
     client.post("/register", data=valid_form)
     assert fetch_all(app)[0]["contact_number"] == "+639171234567"
+
+
+def test_fields_are_trimmed_and_email_lowercased(client, app, valid_form):
+    valid_form.update(full_name="  Juan   Dela Cruz ", email="  Juan@Example.COM ", organization=" PUP ")
+    client.post("/register", data=valid_form)
+    row = fetch_all(app)[0]
+    assert row["full_name"] == "Juan Dela Cruz"
+    assert row["email"] == "juan@example.com"
+    assert row["organization"] == "PUP"
