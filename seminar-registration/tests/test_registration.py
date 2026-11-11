@@ -105,3 +105,12 @@ def test_duplicate_email_is_rejected(client, app, valid_form):
     assert response.status_code == 400
     assert "already registered" in response.get_data(as_text=True)
     assert len(fetch_all(app)) == 1
+
+
+def test_typed_values_are_kept_on_error(client, valid_form):
+    valid_form["contact_number"] = "123"
+    html = client.post("/register", data=valid_form).get_data(as_text=True)
+    assert 'value="Juan Dela Cruz"' in html
+    assert 'value="juan@example.com"' in html
+    assert 'value="PUP"' in html
+    assert 'value="123"' in html
