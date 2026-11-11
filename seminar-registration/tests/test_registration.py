@@ -1,3 +1,5 @@
+import pytest
+
 from app.db import get_db
 
 
@@ -44,3 +46,12 @@ def test_confirmation_page_shows_summary(client, valid_form):
 
 def test_unknown_attendee_code_is_404(client):
     assert client.get("/registered/SEM-2026-9999").status_code == 404
+
+
+@pytest.mark.parametrize("missing", ["full_name", "email", "organization", "contact_number"])
+def test_missing_required_field_is_rejected(client, app, valid_form, missing):
+    valid_form[missing] = "   "
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert "is required." in response.get_data(as_text=True)
+    assert fetch_all(app) == []
