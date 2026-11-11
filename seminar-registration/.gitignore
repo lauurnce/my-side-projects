@@ -7,3 +7,9 @@ __pycache__/
 # Virtual environment
 venv/
 .venv/
+
+# Local config and data
+.env
+instance/
+*.db
+qrcodes/
