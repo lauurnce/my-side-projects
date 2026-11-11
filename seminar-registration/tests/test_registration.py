@@ -31,3 +31,12 @@ def test_valid_submission_saves_row(client, app, valid_form):
     assert row["email_status"] == "pending"
     assert row["checked_in"] == 0
     assert row["created_at"]
+
+
+def test_confirmation_page_shows_summary(client, valid_form):
+    response = client.post("/register", data=valid_form, follow_redirects=True)
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "SEM-2026-0001" in html
+    assert "Juan Dela Cruz" in html
+    assert "+639171234567" in html
