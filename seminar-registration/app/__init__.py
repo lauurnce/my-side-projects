@@ -13,4 +13,8 @@ def create_app(test_config=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
 
+    from . import routes
+
+    app.register_blueprint(routes.bp)
+
     return app
