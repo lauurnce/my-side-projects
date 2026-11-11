@@ -6,6 +6,8 @@ MAX_LENGTHS = {
     "organization": 150,
 }
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 LABELS = {
     "full_name": "Full name",
     "email": "Email address",
@@ -27,5 +29,10 @@ def validate_registration(form):
     for key, limit in MAX_LENGTHS.items():
         if key not in errors and len(data[key]) > limit:
             errors[key] = f"{LABELS[key]} must be at most {limit} characters."
+
+    if "email" not in errors:
+        data["email"] = data["email"].lower()
+        if not EMAIL_RE.match(data["email"]):
+            errors["email"] = "Enter a valid email address, like name@example.com."
 
     return data, errors
