@@ -122,3 +122,12 @@ def test_attendee_code_increments(client, app, valid_form):
         client.post("/register", data=valid_form)
     codes = [row["attendee_code"] for row in fetch_all(app)]
     assert codes == ["SEM-2026-0001", "SEM-2026-0002", "SEM-2026-0003"]
+
+
+def test_ticket_token_is_unique(client, app, valid_form):
+    for i in range(5):
+        valid_form["email"] = f"person{i}@example.com"
+        client.post("/register", data=valid_form)
+    tokens = [row["ticket_token"] for row in fetch_all(app)]
+    assert len(set(tokens)) == 5
+    assert all(len(token) >= 32 for token in tokens)
