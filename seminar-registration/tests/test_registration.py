@@ -40,3 +40,7 @@ def test_confirmation_page_shows_summary(client, valid_form):
     assert "SEM-2026-0001" in html
     assert "Juan Dela Cruz" in html
     assert "+639171234567" in html
+
+
+def test_unknown_attendee_code_is_404(client):
+    assert client.get("/registered/SEM-2026-9999").status_code == 404
