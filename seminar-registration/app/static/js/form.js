@@ -5,6 +5,7 @@
   if (!form) return;
 
   var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  var PHONE_RE = /^(?:09|\+639)\d{9}$/;
 
   var rules = {
     full_name: function (v) {
@@ -25,6 +26,9 @@
     },
     contact_number: function (v) {
       if (!v) return "Contact number is required.";
+      if (!PHONE_RE.test(v.replace(/[\s\-()]/g, ""))) {
+        return "Enter a PH mobile number: 09XXXXXXXXX or +639XXXXXXXXX.";
+      }
       return "";
     }
   };
