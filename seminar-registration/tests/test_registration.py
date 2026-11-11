@@ -13,3 +13,21 @@ def test_index_shows_event_details_and_form(client):
     assert "Main Hall" in html
     for name in ("full_name", "email", "organization", "contact_number"):
         assert f'name="{name}"' in html
+
+
+def test_valid_submission_saves_row(client, app, valid_form):
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/registered/SEM-2026-0001")
+
+    rows = fetch_all(app)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["full_name"] == "Juan Dela Cruz"
+    assert row["email"] == "juan@example.com"
+    assert row["organization"] == "PUP"
+    assert row["contact_number"] == "+639171234567"
+    assert row["qr_path"] is None
+    assert row["email_status"] == "pending"
+    assert row["checked_in"] == 0
+    assert row["created_at"]
