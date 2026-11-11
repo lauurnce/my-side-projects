@@ -23,6 +23,7 @@
     {{ field("full_name", "Full Name", autocomplete="name", placeholder="Juan Dela Cruz", maxlength=100) }}
     {{ field("email", "Email Address", type="email", autocomplete="email", placeholder="name@example.com", maxlength=254) }}
     {{ field("organization", "Organization", autocomplete="organization", placeholder="School or company", maxlength=150) }}
+    {{ field("contact_number", "Contact Number", type="tel", autocomplete="tel", placeholder="09171234567", hint="09XXXXXXXXX or +639XXXXXXXXX") }}
     <button type="submit" class="btn">Register</button>
   </form>
 </section>
