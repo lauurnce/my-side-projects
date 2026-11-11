@@ -9,3 +9,14 @@ A Flask web app for registering seminar attendees and issuing QR code tickets by
 - Duplicate email check and contact number normalization to +639XXXXXXXXX
 - Attendee codes in the format SEM-2026-0001
 - CSRF protection on form submissions
+
+## Setup
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+Fill in `.env` (at minimum `SECRET_KEY`, `EVENT_NAME`, `EVENT_DATE`, `EVENT_VENUE`).
