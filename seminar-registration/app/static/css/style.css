@@ -114,3 +114,8 @@ body {
 .summary { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1rem; margin: 1.25rem 0; }
 .summary dt { color: var(--muted); }
 .summary dd { margin: 0; word-break: break-word; }
+
+@media (max-width: 400px) {
+  .summary { grid-template-columns: 1fr; }
+  .summary dd { margin-bottom: 0.5rem; }
+}
