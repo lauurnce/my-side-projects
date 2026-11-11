@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% macro field(name, label, type="text", autocomplete="", placeholder="", maxlength=None, hint="") %}
+  <div class="field{% if errors.get(name) %} has-error{% endif %}">
+    <label for="{{ name }}">{{ label }}</label>
+    <input id="{{ name }}" name="{{ name }}" type="{{ type }}"
+           value="{{ values.get(name, '') }}" required
+           {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}>
+
+    {% if hint %}<small class="hint">{{ hint }}</small>{% endif %}
+    <p class="error" id="{{ name }}-error" >{{ errors.get(name, '') }}</p>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<section class="card">
+  <h2>Register</h2>
+  <p class="lead">Fill in your details. Your QR ticket will be sent to your email.</p>
+
+  <form id="registration-form" method="post" novalidate>
+    <button type="submit" class="btn">Register</button>
+  </form>
+</section>
+{% endblock %}
+
