@@ -96,3 +96,12 @@ def test_too_long_name_is_rejected(client, app, valid_form):
     response = client.post("/register", data=valid_form)
     assert response.status_code == 400
     assert "at most 100 characters" in response.get_data(as_text=True)
+
+
+def test_duplicate_email_is_rejected(client, app, valid_form):
+    client.post("/register", data=valid_form)
+    valid_form.update(full_name="Someone Else", email="JUAN@example.com")
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert "already registered" in response.get_data(as_text=True)
+    assert len(fetch_all(app)) == 1
