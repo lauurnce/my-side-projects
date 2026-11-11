@@ -10,6 +10,13 @@ class DuplicateEmailError(Exception):
     """Raised when the email address is already registered."""
 
 
+def email_exists(email):
+    row = get_db().execute(
+        "SELECT 1 FROM attendees WHERE email = ?", (email.lower(),)
+    ).fetchone()
+    return row is not None
+
+
 def create_attendee(full_name, email, organization, contact_number):
     """Insert a new attendee and return the saved row.
 
