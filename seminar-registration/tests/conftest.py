@@ -10,6 +10,9 @@ def app(tmp_path):
         "TESTING": True,
         "DATABASE": str(tmp_path / "test.db"),
         "CSRF_ENABLED": False,
+        "EVENT_NAME": "Test Seminar",
+        "EVENT_DATE": "November 30, 2026",
+        "EVENT_VENUE": "Main Hall",
     })
     with app.app_context():
         init_db()
