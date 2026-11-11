@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Registered: {{ attendee.attendee_code }}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <p class="success-badge">Registration complete</p>
+  <h2>You're in, {{ attendee.full_name }}!</h2>
+  <p class="lead">Keep your attendee code. Your QR ticket will be sent to <strong>{{ attendee.email }}</strong>.</p>
+
+  <p class="attendee-code">{{ attendee.attendee_code }}</p>
+
+  <dl class="summary">
+    <dt>Full Name</dt><dd>{{ attendee.full_name }}</dd>
+    <dt>Email Address</dt><dd>{{ attendee.email }}</dd>
+    <dt>Organization</dt><dd>{{ attendee.organization }}</dd>
+    <dt>Contact Number</dt><dd>{{ attendee.contact_number }}</dd>
+    <dt>Registered</dt><dd>{{ attendee.created_at }}</dd>
+  </dl>
+
+  <a class="btn btn-secondary" href="{{ url_for('main.index') }}">Register another person</a>
+</section>
+{% endblock %}
