@@ -73,3 +73,10 @@ def test_bad_phone_is_rejected(client, app, valid_form, phone):
     assert response.status_code == 400
     assert "Enter a PH mobile number" in response.get_data(as_text=True)
     assert fetch_all(app) == []
+
+
+@pytest.mark.parametrize("phone", ["09171234567", "+639171234567", " 0917 123 4567 ", "0917-123-4567"])
+def test_phone_is_normalized(client, app, valid_form, phone):
+    valid_form["contact_number"] = phone
+    client.post("/register", data=valid_form)
+    assert fetch_all(app)[0]["contact_number"] == "+639171234567"
