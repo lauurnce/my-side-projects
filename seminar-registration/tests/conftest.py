@@ -9,6 +9,7 @@ def app(tmp_path):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "test.db"),
+        "CSRF_ENABLED": False,
     })
     with app.app_context():
         init_db()
