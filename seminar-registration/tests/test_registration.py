@@ -55,3 +55,12 @@ def test_missing_required_field_is_rejected(client, app, valid_form, missing):
     assert response.status_code == 400
     assert "is required." in response.get_data(as_text=True)
     assert fetch_all(app) == []
+
+
+@pytest.mark.parametrize("email", ["juan", "juan@", "juan@example", "ju an@example.com"])
+def test_bad_email_is_rejected(client, app, valid_form, email):
+    valid_form["email"] = email
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert "Enter a valid email address" in response.get_data(as_text=True)
+    assert fetch_all(app) == []
