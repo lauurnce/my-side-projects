@@ -51,6 +51,14 @@
     return !message;
   }
 
+  Object.keys(rules).forEach(function (name) {
+    var input = form.elements[name];
+    input.addEventListener("blur", function () { check(input); });
+    input.addEventListener("input", function () {
+      if (input.closest(".field").classList.contains("has-error")) check(input);
+    });
+  });
+
   form.addEventListener("submit", function (event) {
     var firstBad = null;
     Object.keys(rules).forEach(function (name) {
