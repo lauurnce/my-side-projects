@@ -45,3 +45,16 @@ body {
 }
 .card h2 { margin-top: 0; }
 .lead { color: var(--muted); margin-top: -0.5rem; }
+
+/* Form */
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+.field input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.field input:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
