@@ -4,6 +4,8 @@
   var form = document.getElementById("registration-form");
   if (!form) return;
 
+  var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
   var rules = {
     full_name: function (v) {
       if (!v) return "Full name is required.";
@@ -13,6 +15,7 @@
     email: function (v) {
       if (!v) return "Email address is required.";
       if (v.length > 254) return "Email address must be at most 254 characters.";
+      if (!EMAIL_RE.test(v)) return "Enter a valid email address, like name@example.com.";
       return "";
     },
     organization: function (v) {
