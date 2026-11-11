@@ -1,6 +1,7 @@
 import pytest
 
-from app.db import get_db
+from app import create_app
+from app.db import get_db, init_db
 
 
 def fetch_all(app):
@@ -131,3 +132,12 @@ def test_ticket_token_is_unique(client, app, valid_form):
     tokens = [row["ticket_token"] for row in fetch_all(app)]
     assert len(set(tokens)) == 5
     assert all(len(token) >= 32 for token in tokens)
+
+
+def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "csrf.db")})
+    with app.app_context():
+        init_db()
+    response = app.test_client().post("/register", data=valid_form)
+    assert response.status_code == 400
+    assert fetch_all(app) == []
