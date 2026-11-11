@@ -7,6 +7,7 @@ MAX_LENGTHS = {
 }
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PH_MOBILE_RE = re.compile(r"^(?:09|\+639)\d{9}$")
 
 LABELS = {
     "full_name": "Full name",
@@ -14,6 +15,14 @@ LABELS = {
     "organization": "Organization",
     "contact_number": "Contact number",
 }
+
+
+def normalize_phone(raw):
+    """Return the number as +639XXXXXXXXX, or None if it is not a PH mobile number."""
+    cleaned = re.sub(r"[\s\-()]", "", raw or "")
+    if not PH_MOBILE_RE.match(cleaned):
+        return None
+    return "+63" + cleaned[1:] if cleaned.startswith("0") else cleaned
 
 
 def validate_registration(form):
@@ -34,5 +43,14 @@ def validate_registration(form):
         data["email"] = data["email"].lower()
         if not EMAIL_RE.match(data["email"]):
             errors["email"] = "Enter a valid email address, like name@example.com."
+
+    if "contact_number" not in errors:
+        phone = normalize_phone(data["contact_number"])
+        if phone is None:
+            errors["contact_number"] = (
+                "Enter a PH mobile number: 09XXXXXXXXX or +639XXXXXXXXX."
+            )
+        else:
+            data["contact_number"] = phone
 
     return data, errors
