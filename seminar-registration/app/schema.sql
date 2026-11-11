@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS attendees;
+
+CREATE TABLE attendees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attendee_code TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    organization TEXT NOT NULL,
+    contact_number TEXT NOT NULL,
+    ticket_token TEXT NOT NULL UNIQUE,
+    qr_path TEXT,
+    email_status TEXT NOT NULL DEFAULT 'pending',
+    email_sent_at TEXT,
+    checked_in INTEGER NOT NULL DEFAULT 0 CHECK (checked_in IN (0, 1)),
+    checked_in_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
