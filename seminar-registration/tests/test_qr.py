@@ -39,3 +39,12 @@ def test_qr_image_has_label_area_under_code(client, app, valid_form):
     register(client, valid_form)
     with Image.open(get_row(app)["qr_path"]) as image:
         assert image.height > image.width
+
+
+def test_two_registrations_give_different_files_and_tokens(client, app, valid_form):
+    register(client, valid_form, email="a@example.com")
+    register(client, valid_form, email="b@example.com")
+    first, second = get_row(app, "a@example.com"), get_row(app, "b@example.com")
+    assert first["ticket_token"] != second["ticket_token"]
+    assert first["qr_path"] != second["qr_path"]
+    assert os.path.isfile(first["qr_path"]) and os.path.isfile(second["qr_path"])
