@@ -1,4 +1,5 @@
 import smtplib
+from pathlib import Path
 
 import pytest
 
@@ -101,3 +102,13 @@ def test_plain_text_alternative_exists(client, valid_form, fake_smtp):
     assert "Hi Juan Dela Cruz" in text
     assert "SEM-2026-0001" in text
     assert "Show this QR code at the check-in desk." in text
+
+
+def test_qr_png_is_attached(client, app, valid_form, fake_smtp):
+    client.post("/register", data=valid_form)
+    attachments = list(sent_message(fake_smtp).iter_attachments())
+    assert len(attachments) == 1
+    attachment = attachments[0]
+    assert attachment.get_content_type() == "image/png"
+    assert attachment.get_filename() == "SEM-2026-0001.png"
+    assert attachment.get_content() == Path(get_row(app)["qr_path"]).read_bytes()
