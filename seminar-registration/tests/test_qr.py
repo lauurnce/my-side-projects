@@ -124,3 +124,15 @@ def test_registered_page_shows_qr_and_download_button(client, app, valid_form):
 def test_registered_page_hidden_from_other_browsers(app, valid_form):
     app.test_client().post("/register", data=valid_form)
     assert app.test_client().get("/registered/SEM-2026-0001").status_code == 404
+
+
+def test_regenerate_qr_rebuilds_all(app, client, valid_form):
+    register(client, valid_form, email="a@example.com")
+    register(client, valid_form, email="b@example.com")
+    paths = [get_row(app, e)["qr_path"] for e in ("a@example.com", "b@example.com")]
+    for path in paths:
+        os.remove(path)
+    result = app.test_cli_runner().invoke(args=["regenerate-qr"])
+    assert result.exit_code == 0
+    assert "2 QR code(s) rebuilt" in result.output
+    assert all(os.path.isfile(path) for path in paths)
