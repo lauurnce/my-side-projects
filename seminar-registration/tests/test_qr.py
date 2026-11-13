@@ -111,3 +111,11 @@ def test_qr_failure_is_logged(client, valid_form, monkeypatch, caplog):
     monkeypatch.setattr(registration, "generate_qr", broken_generate_qr)
     register(client, valid_form)
     assert "QR generation failed for SEM-2026-0001" in caplog.text
+
+
+def test_registered_page_shows_qr_and_download_button(client, app, valid_form):
+    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    token = get_row(app)["ticket_token"]
+    assert f'src="/ticket/{token}.png"' in html
+    assert f'href="/ticket/{token}.png?download=1"' in html
+    assert "Download ticket" in html
