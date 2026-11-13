@@ -30,11 +30,12 @@ def build_ticket_email(attendee):
 
 def send_message(message):
     config = current_app.config
+    password = config["SMTP_APP_PASSWORD"].replace(" ", "")  # Google shows it in groups of four
     with smtplib.SMTP_SSL(
         config["MAIL_SERVER"],
         config["MAIL_PORT"],
         timeout=config["MAIL_TIMEOUT"],
         context=ssl.create_default_context(),
     ) as smtp:
-        smtp.login(config["SMTP_USER"], config["SMTP_APP_PASSWORD"])
+        smtp.login(config["SMTP_USER"], password)
         smtp.send_message(message)
