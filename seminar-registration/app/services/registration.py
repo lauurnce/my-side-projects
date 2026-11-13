@@ -58,8 +58,15 @@ def save_qr_path(attendee_id, path):
 
 
 def attach_qr(attendee):
-    """Generate the ticket QR for a saved attendee and store its path."""
-    path = generate_qr(attendee)
+    """Generate the ticket QR for a saved attendee and store its path.
+
+    If generation fails the error is logged and the registration is kept.
+    """
+    try:
+        path = generate_qr(attendee)
+    except Exception:
+        current_app.logger.exception("QR generation failed for %s", attendee["attendee_code"])
+        return attendee
     save_qr_path(attendee["id"], path)
     return get_attendee_by_code(attendee["attendee_code"])
 
