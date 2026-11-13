@@ -1,3 +1,5 @@
+import os
+
 from flask import (
     Blueprint,
     abort,
@@ -11,6 +13,7 @@ from flask import (
 
 from .services.registration import (
     DuplicateEmailError,
+    attach_qr,
     create_attendee,
     email_exists,
     get_attendee_by_code,
@@ -61,6 +64,11 @@ def registered(code):
 @bp.get("/ticket/<token>.png")
 def ticket(token):
     attendee = get_attendee_by_token(token)
-    if attendee is None or not attendee["qr_path"]:
+    if attendee is None:
         abort(404)
-    return send_file(attendee["qr_path"], mimetype="image/png")
+    if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
+        attendee = attach_qr(attendee)
+    path = attendee["qr_path"]
+    if not path or not os.path.isfile(path):
+        abort(503, description="The ticket image is not available right now.")
+    return send_file(path, mimetype="image/png")
