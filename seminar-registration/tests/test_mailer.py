@@ -161,3 +161,14 @@ def test_mail_disabled_logs_instead_of_sending(client, app, valid_form, fake_smt
     assert fake_smtp.instances == []
     assert get_row(app)["email_status"] == "pending"
     assert "MAIL_ENABLED is off, not sending. To: juan@example.com" in caplog.text
+
+
+def test_resend_ticket_command_sends(client, app, valid_form, fake_smtp, monkeypatch):
+    fail_login(monkeypatch, fake_smtp)
+    client.post("/register", data=valid_form)
+    monkeypatch.undo()
+    monkeypatch.setattr(smtplib, "SMTP_SSL", fake_smtp)
+    result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
+    assert result.exit_code == 0, result.output
+    assert "Ticket for SEM-2026-0001 sent to juan@example.com" in result.output
+    assert get_row(app)["email_status"] == "sent"
