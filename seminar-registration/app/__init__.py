@@ -1,3 +1,4 @@
+import logging
 import os
 
 from flask import Flask
@@ -14,6 +15,7 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     os.makedirs(app.instance_path, exist_ok=True)
+    app.logger.setLevel(logging.INFO)
 
     @app.context_processor
     def inject_event():
