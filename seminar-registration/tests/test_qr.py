@@ -81,3 +81,11 @@ def test_ticket_download_is_sent_as_attachment(client, app, valid_form):
     disposition = response.headers["Content-Disposition"]
     assert disposition.startswith("attachment")
     assert "SEM-2026-0001.png" in disposition
+
+
+def test_ticket_route_rebuilds_missing_file(client, app, valid_form):
+    register(client, valid_form)
+    row = get_row(app)
+    os.remove(row["qr_path"])
+    assert client.get(f"/ticket/{row['ticket_token']}.png").status_code == 200
+    assert os.path.isfile(row["qr_path"])
