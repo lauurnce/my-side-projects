@@ -153,3 +153,11 @@ def test_registered_page_says_email_failed(client, valid_form, fake_smtp, monkey
     fail_login(monkeypatch, fake_smtp)
     html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
     assert "We couldn't email your ticket" in html
+
+
+def test_mail_disabled_logs_instead_of_sending(client, app, valid_form, fake_smtp, caplog):
+    app.config["MAIL_ENABLED"] = False
+    client.post("/register", data=valid_form)
+    assert fake_smtp.instances == []
+    assert get_row(app)["email_status"] == "pending"
+    assert "MAIL_ENABLED is off, not sending. To: juan@example.com" in caplog.text
