@@ -129,3 +129,9 @@ def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fak
     assert row is not None
     assert row["email_status"] == "failed"
     assert row["email_sent_at"] is None
+
+
+def test_smtp_error_is_logged(client, valid_form, fake_smtp, monkeypatch, caplog):
+    fail_login(monkeypatch, fake_smtp)
+    client.post("/register", data=valid_form)
+    assert "Ticket email failed for SEM-2026-0001" in caplog.text
