@@ -31,6 +31,12 @@ flask --app app run
 
 Open http://127.0.0.1:5000 to see the registration form.
 
+## QR tickets
+
+Each new registration gets a PNG ticket at `instance/qrcodes/<attendee_code>.png`.
+The QR code holds the check-in URL `{PUBLIC_BASE_URL}/checkin/<ticket_token>`.
+Set `PUBLIC_BASE_URL` to an address phones can reach (for example your LAN IP).
+
 ## Running tests
 
 ```bash
