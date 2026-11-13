@@ -71,6 +71,17 @@ def attach_qr(attendee):
     return get_attendee_by_code(attendee["attendee_code"])
 
 
+def regenerate_qr_codes():
+    """Rebuild ticket QR images for every attendee.
+
+    Returns the list of attendee codes that were rebuilt.
+    """
+    rows = get_db().execute("SELECT * FROM attendees ORDER BY id").fetchall()
+    for row in rows:
+        save_qr_path(row["id"], generate_qr(row))
+    return [row["attendee_code"] for row in rows]
+
+
 def get_attendee_by_code(code):
     return get_db().execute(
         "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
