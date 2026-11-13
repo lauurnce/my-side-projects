@@ -30,7 +30,7 @@ def test_valid_submission_saves_row(client, app, valid_form):
     assert row["email"] == "juan@example.com"
     assert row["organization"] == "PUP"
     assert row["contact_number"] == "+639171234567"
-    assert row["qr_path"] is None
+    assert row["qr_path"].endswith("SEM-2026-0001.png")
     assert row["email_status"] == "pending"
     assert row["checked_in"] == 0
     assert row["created_at"]

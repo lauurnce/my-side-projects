@@ -4,6 +4,7 @@ import sqlite3
 from flask import current_app
 
 from ..db import get_db
+from .qr import generate_qr
 
 
 class DuplicateEmailError(Exception):
@@ -46,13 +47,21 @@ def create_attendee(full_name, email, organization, contact_number):
             raise DuplicateEmailError(email) from exc
         raise
 
-    return get_attendee_by_code(code)
+    # On new entry: build the ticket QR right after the insert.
+    return attach_qr(get_attendee_by_code(code))
 
 
 def save_qr_path(attendee_id, path):
     db = get_db()
     db.execute("UPDATE attendees SET qr_path = ? WHERE id = ?", (path, attendee_id))
     db.commit()
+
+
+def attach_qr(attendee):
+    """Generate the ticket QR for a saved attendee and store its path."""
+    path = generate_qr(attendee)
+    save_qr_path(attendee["id"], path)
+    return get_attendee_by_code(attendee["attendee_code"])
 
 
 def get_attendee_by_code(code):
