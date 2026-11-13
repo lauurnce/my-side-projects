@@ -10,6 +10,8 @@ from .services.registration import regenerate_qr_codes
 def regenerate_qr_command(code):
     """Rebuild ticket QR images (run this after changing PUBLIC_BASE_URL)."""
     rebuilt = regenerate_qr_codes(code)
+    if code and not rebuilt:
+        raise click.ClickException(f"No attendee with code {code}.")
     for item in rebuilt:
         click.echo(f"Rebuilt {item}")
     click.echo(f"Done. {len(rebuilt)} QR code(s) rebuilt.")
