@@ -75,3 +75,9 @@ def get_attendee_by_code(code):
     return get_db().execute(
         "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
     ).fetchone()
+
+
+def get_attendee_by_token(token):
+    return get_db().execute(
+        "SELECT * FROM attendees WHERE ticket_token = ?", (token,)
+    ).fetchone()
