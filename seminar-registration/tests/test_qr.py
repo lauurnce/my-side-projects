@@ -19,7 +19,10 @@ def get_row(app, email="juan@example.com"):
 
 def decode_qr(path):
     cv2 = pytest.importorskip("cv2")
-    data, _points, _straight = cv2.QRCodeDetector().detectAndDecode(cv2.imread(path))
+    image = cv2.imread(path)
+    data, _points, _straight = cv2.QRCodeDetector().detectAndDecode(image)
+    if not data:  # the classic detector misses some valid codes; the Aruco one reads them
+        data, _points, _straight = cv2.QRCodeDetectorAruco().detectAndDecode(image)
     return data
 
 
