@@ -93,3 +93,11 @@ def test_html_has_event_details_and_check_in_line(client, valid_form, fake_smtp)
     for text in ("Hi Juan Dela Cruz", "Test Seminar", "November 30, 2026", "Main Hall",
                  "SEM-2026-0001", "Show this QR code at the check-in desk."):
         assert text in html
+
+
+def test_plain_text_alternative_exists(client, valid_form, fake_smtp):
+    client.post("/register", data=valid_form)
+    text = sent_message(fake_smtp).get_body(("plain",)).get_content()
+    assert "Hi Juan Dela Cruz" in text
+    assert "SEM-2026-0001" in text
+    assert "Show this QR code at the check-in desk." in text
