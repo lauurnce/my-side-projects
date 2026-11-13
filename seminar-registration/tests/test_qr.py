@@ -144,3 +144,16 @@ def test_regenerate_qr_uses_new_base_url(app, client, valid_form):
     app.test_cli_runner().invoke(args=["regenerate-qr"])
     row = get_row(app)
     assert decode_qr(row["qr_path"]) == f"http://192.168.1.5:5000/checkin/{row['ticket_token']}"
+
+
+def test_regenerate_qr_single_code(app, client, valid_form):
+    register(client, valid_form, email="a@example.com")
+    register(client, valid_form, email="b@example.com")
+    first, second = get_row(app, "a@example.com"), get_row(app, "b@example.com")
+    os.remove(first["qr_path"])
+    os.remove(second["qr_path"])
+    result = app.test_cli_runner().invoke(args=["regenerate-qr", "--code", "SEM-2026-0002"])
+    assert result.exit_code == 0
+    assert "Rebuilt SEM-2026-0002" in result.output
+    assert not os.path.isfile(first["qr_path"])
+    assert os.path.isfile(second["qr_path"])
