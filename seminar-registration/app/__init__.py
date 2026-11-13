@@ -9,6 +9,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
     app.config["DATABASE"] = os.path.join(app.instance_path, "seminar.db")
+    app.config["QR_DIR"] = os.path.join(app.instance_path, "qrcodes")
     if test_config:
         app.config.update(test_config)
 

@@ -18,3 +18,4 @@ class Config:
     EVENT_VENUE = os.environ.get("EVENT_VENUE", "TBA")
     ATTENDEE_CODE_PREFIX = "SEM-2026"
     DATABASE = None  # set in create_app (defaults to instance/seminar.db)
+    QR_DIR = None  # set in create_app (defaults to instance/qrcodes)
