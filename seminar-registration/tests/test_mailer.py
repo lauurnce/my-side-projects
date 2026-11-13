@@ -142,3 +142,8 @@ def test_missing_credentials_marks_failed(client, app, valid_form, fake_smtp):
     client.post("/register", data=valid_form)
     assert fake_smtp.instances == []
     assert get_row(app)["email_status"] == "failed"
+
+
+def test_registered_page_says_email_was_sent(client, valid_form, fake_smtp):
+    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    assert "We emailed your ticket to" in html
