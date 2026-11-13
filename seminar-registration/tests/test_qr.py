@@ -69,3 +69,7 @@ def test_ticket_route_returns_png(client, app, valid_form):
     assert response.status_code == 200
     assert response.mimetype == "image/png"
     assert response.data.startswith(b"\x89PNG")
+
+
+def test_ticket_route_unknown_token_is_404(client):
+    assert client.get("/ticket/not-a-real-token.png").status_code == 404
