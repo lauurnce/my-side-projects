@@ -10,6 +10,8 @@
 
   {% if attendee.email_status == 'sent' %}
     <p class="notice notice-success">We emailed your ticket to <strong>{{ attendee.email }}</strong>. Check your spam folder if you don't see it.</p>
+  {% elif attendee.email_status == 'failed' %}
+    <p class="notice notice-error" role="alert">We couldn't email your ticket to <strong>{{ attendee.email }}</strong> right now. Download it below and bring it to the event.</p>
   {% endif %}
 
   <p class="attendee-code">{{ attendee.attendee_code }}</p>
