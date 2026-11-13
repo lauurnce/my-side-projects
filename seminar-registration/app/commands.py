@@ -1,4 +1,5 @@
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
 from .services.registration import deliver_ticket, get_attendee_by_code, regenerate_qr_codes
@@ -25,6 +26,10 @@ def resend_ticket_command(code):
     attendee = get_attendee_by_code(code)
     if attendee is None:
         raise click.ClickException(f"No attendee with code {code}.")
+    if not current_app.config["MAIL_ENABLED"]:
+        deliver_ticket(attendee)
+        click.echo("MAIL_ENABLED is off, so the email was logged instead of sent.")
+        return
     attendee = deliver_ticket(attendee)
     if attendee["email_status"] != "sent":
         raise click.ClickException(f"Sending the ticket for {code} failed. Check the log above.")
