@@ -1,5 +1,7 @@
 import os
 
+from PIL import Image
+
 from app.db import get_db
 from app.services.qr import checkin_url
 
@@ -31,3 +33,9 @@ def test_qr_file_created_on_registration(client, app, valid_form):
     assert os.path.isfile(row["qr_path"])
     with open(row["qr_path"], "rb") as f:
         assert f.read(8) == b"\x89PNG\r\n\x1a\n"
+
+
+def test_qr_image_has_label_area_under_code(client, app, valid_form):
+    register(client, valid_form)
+    with Image.open(get_row(app)["qr_path"]) as image:
+        assert image.height > image.width
