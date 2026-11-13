@@ -46,6 +46,9 @@ flask --app app regenerate-qr --code SEM-2026-0001
 
 ## Running tests
 
+The QR decoding tests need OpenCV, which is only a development dependency:
+
 ```bash
+pip install -r requirements-dev.txt
 pytest
 ```
