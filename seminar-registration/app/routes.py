@@ -8,6 +8,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    session,
     url_for,
 )
 
@@ -24,6 +25,7 @@ from .validation import validate_registration
 bp = Blueprint("main", __name__)
 
 DUPLICATE_MSG = "This email is already registered. Check your inbox for your ticket."
+RECENT_CODES_KEY = "registered_codes"
 
 
 @bp.get("/health")
@@ -48,13 +50,18 @@ def register():
         except DuplicateEmailError:
             errors["email"] = DUPLICATE_MSG
         else:
-            return redirect(url_for("main.registered", code=attendee["attendee_code"]))
+            code = attendee["attendee_code"]
+            session[RECENT_CODES_KEY] = (session.get(RECENT_CODES_KEY, []) + [code])[-5:]
+            return redirect(url_for("main.registered", code=code))
 
     return render_template("index.html", values=data, errors=errors), 400
 
 
 @bp.get("/registered/<code>")
 def registered(code):
+    # The page shows the ticket QR, so only the browser that registered may see it.
+    if code not in session.get(RECENT_CODES_KEY, []):
+        abort(404)
     attendee = get_attendee_by_code(code)
     if attendee is None:
         abort(404)
