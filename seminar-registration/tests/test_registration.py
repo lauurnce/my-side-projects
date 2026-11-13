@@ -135,7 +135,11 @@ def test_ticket_token_is_unique(client, app, valid_form):
 
 
 def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
-    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "csrf.db")})
+    app = create_app({
+        "TESTING": True,
+        "DATABASE": str(tmp_path / "csrf.db"),
+        "QR_DIR": str(tmp_path / "qrcodes"),
+    })
     with app.app_context():
         init_db()
     response = app.test_client().post("/register", data=valid_form)
@@ -144,7 +148,11 @@ def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
 
 
 def test_post_with_csrf_token_is_accepted(tmp_path, valid_form):
-    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "csrf.db")})
+    app = create_app({
+        "TESTING": True,
+        "DATABASE": str(tmp_path / "csrf.db"),
+        "QR_DIR": str(tmp_path / "qrcodes"),
+    })
     with app.app_context():
         init_db()
     client = app.test_client()
