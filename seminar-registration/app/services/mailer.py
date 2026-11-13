@@ -7,6 +7,10 @@ from pathlib import Path
 from flask import current_app, render_template
 
 
+class MailConfigError(Exception):
+    """Raised when sending is enabled but the SMTP settings are incomplete."""
+
+
 def build_ticket_email(attendee):
     """Build the ticket email: plain text + HTML with an inline cid QR, plus the PNG attached."""
     config = current_app.config
@@ -30,12 +34,15 @@ def build_ticket_email(attendee):
 
 def send_message(message):
     config = current_app.config
+    user = config["SMTP_USER"]
     password = config["SMTP_APP_PASSWORD"].replace(" ", "")  # Google shows it in groups of four
+    if not user or not password:
+        raise MailConfigError("SMTP_USER and SMTP_APP_PASSWORD must be set to send email.")
     with smtplib.SMTP_SSL(
         config["MAIL_SERVER"],
         config["MAIL_PORT"],
         timeout=config["MAIL_TIMEOUT"],
         context=ssl.create_default_context(),
     ) as smtp:
-        smtp.login(config["SMTP_USER"], password)
+        smtp.login(user, password)
         smtp.send_message(message)
