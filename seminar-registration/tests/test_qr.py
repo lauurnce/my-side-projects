@@ -136,3 +136,11 @@ def test_regenerate_qr_rebuilds_all(app, client, valid_form):
     assert result.exit_code == 0
     assert "2 QR code(s) rebuilt" in result.output
     assert all(os.path.isfile(path) for path in paths)
+
+
+def test_regenerate_qr_uses_new_base_url(app, client, valid_form):
+    register(client, valid_form)
+    app.config["PUBLIC_BASE_URL"] = "http://192.168.1.5:5000"
+    app.test_cli_runner().invoke(args=["regenerate-qr"])
+    row = get_row(app)
+    assert decode_qr(row["qr_path"]) == f"http://192.168.1.5:5000/checkin/{row['ticket_token']}"
