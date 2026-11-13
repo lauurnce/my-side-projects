@@ -115,6 +115,18 @@ body {
 .summary dt { color: var(--muted); }
 .summary dd { margin: 0; word-break: break-word; }
 
+/* Ticket */
+.ticket { margin: 1.25rem 0 1rem; text-align: center; }
+.ticket img {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+.ticket figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+
 @media (max-width: 400px) {
   .summary { grid-template-columns: 1fr; }
   .summary dd { margin-bottom: 0.5rem; }
