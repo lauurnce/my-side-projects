@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import qrcode
 from flask import current_app
 from PIL import Image, ImageDraw, ImageFont
@@ -46,3 +48,18 @@ def add_label(image, text):
     y = image.height + LABEL_PADDING - top
     ImageDraw.Draw(canvas).text((x, y), text, fill="black", font=font)
     return canvas
+
+
+def qr_folder():
+    folder = Path(current_app.config["QR_DIR"])
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def generate_qr(attendee):
+    """Create the ticket PNG for an attendee and return its file path."""
+    image = build_qr_image(checkin_url(attendee["ticket_token"]))
+    image = add_label(image, attendee["attendee_code"])
+    path = qr_folder() / f"{attendee['attendee_code']}.png"
+    image.save(path, format="PNG")
+    return str(path)
