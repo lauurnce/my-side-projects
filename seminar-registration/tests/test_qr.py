@@ -1,5 +1,6 @@
 import os
 
+import pytest
 from PIL import Image
 
 from app.db import get_db
@@ -13,6 +14,12 @@ def register(client, form, **changes):
 def get_row(app, email="juan@example.com"):
     with app.app_context():
         return get_db().execute("SELECT * FROM attendees WHERE email = ?", (email,)).fetchone()
+
+
+def decode_qr(path):
+    cv2 = pytest.importorskip("cv2")
+    data, _points, _straight = cv2.QRCodeDetector().detectAndDecode(cv2.imread(path))
+    return data
 
 
 def test_checkin_url_uses_public_base_url(app):
@@ -48,3 +55,9 @@ def test_two_registrations_give_different_files_and_tokens(client, app, valid_fo
     assert first["ticket_token"] != second["ticket_token"]
     assert first["qr_path"] != second["qr_path"]
     assert os.path.isfile(first["qr_path"]) and os.path.isfile(second["qr_path"])
+
+
+def test_decoded_qr_is_exact_checkin_url(client, app, valid_form):
+    register(client, valid_form)
+    row = get_row(app)
+    assert decode_qr(row["qr_path"]) == f"http://localhost:5000/checkin/{row['ticket_token']}"
