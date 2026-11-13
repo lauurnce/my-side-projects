@@ -4,6 +4,7 @@ import pytest
 from PIL import Image
 
 from app.db import get_db
+from app.services import registration
 from app.services.qr import checkin_url
 
 
@@ -89,3 +90,15 @@ def test_ticket_route_rebuilds_missing_file(client, app, valid_form):
     os.remove(row["qr_path"])
     assert client.get(f"/ticket/{row['ticket_token']}.png").status_code == 200
     assert os.path.isfile(row["qr_path"])
+
+
+def test_qr_failure_keeps_registration(client, app, valid_form, monkeypatch):
+    def broken_generate_qr(_attendee):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(registration, "generate_qr", broken_generate_qr)
+    response = register(client, valid_form)
+    assert response.status_code == 302
+    row = get_row(app)
+    assert row is not None
+    assert row["qr_path"] is None
