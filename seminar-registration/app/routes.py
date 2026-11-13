@@ -71,4 +71,9 @@ def ticket(token):
     path = attendee["qr_path"]
     if not path or not os.path.isfile(path):
         abort(503, description="The ticket image is not available right now.")
-    return send_file(path, mimetype="image/png")
+    return send_file(
+        path,
+        mimetype="image/png",
+        as_attachment=request.args.get("download") == "1",
+        download_name=f"{attendee['attendee_code']}.png",
+    )
