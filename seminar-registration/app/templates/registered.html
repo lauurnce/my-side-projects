@@ -10,6 +10,12 @@
 
   <p class="attendee-code">{{ attendee.attendee_code }}</p>
 
+  <figure class="ticket">
+    <img src="{{ url_for('main.ticket', token=attendee.ticket_token) }}"
+         alt="QR ticket for {{ attendee.attendee_code }}" width="280">
+    <figcaption>Show this QR code at the entrance.</figcaption>
+  </figure>
+
   <dl class="summary">
     <dt>Full Name</dt><dd>{{ attendee.full_name }}</dd>
     <dt>Email Address</dt><dd>{{ attendee.email }}</dd>
