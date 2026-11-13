@@ -64,3 +64,11 @@ def test_connects_to_gmail_over_ssl_with_timeout(client, valid_form, fake_smtp):
     smtp = fake_smtp.instances[0]
     assert (smtp.host, smtp.port, smtp.timeout) == ("smtp.gmail.com", 465, 15)
     assert smtp.login_args == ("organizer@gmail.com", "abcdefghijklmnop")
+
+
+def test_subject_sender_and_recipient(client, valid_form, fake_smtp):
+    client.post("/register", data=valid_form)
+    message = sent_message(fake_smtp)
+    assert message["Subject"] == "Your ticket: Test Seminar"
+    assert message["To"] == "juan@example.com"
+    assert message["From"] == "Seminar Team <organizer@gmail.com>"
