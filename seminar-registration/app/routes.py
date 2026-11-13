@@ -1,10 +1,20 @@
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 
 from .services.registration import (
     DuplicateEmailError,
     create_attendee,
     email_exists,
     get_attendee_by_code,
+    get_attendee_by_token,
 )
 from .validation import validate_registration
 
@@ -46,3 +56,11 @@ def registered(code):
     if attendee is None:
         abort(404)
     return render_template("registered.html", attendee=attendee)
+
+
+@bp.get("/ticket/<token>.png")
+def ticket(token):
+    attendee = get_attendee_by_token(token)
+    if attendee is None or not attendee["qr_path"]:
+        abort(404)
+    return send_file(attendee["qr_path"], mimetype="image/png")
