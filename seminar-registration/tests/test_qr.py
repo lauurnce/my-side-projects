@@ -119,3 +119,8 @@ def test_registered_page_shows_qr_and_download_button(client, app, valid_form):
     assert f'src="/ticket/{token}.png"' in html
     assert f'href="/ticket/{token}.png?download=1"' in html
     assert "Download ticket" in html
+
+
+def test_registered_page_hidden_from_other_browsers(app, valid_form):
+    app.test_client().post("/register", data=valid_form)
+    assert app.test_client().get("/registered/SEM-2026-0001").status_code == 404
