@@ -73,3 +73,11 @@ def test_ticket_route_returns_png(client, app, valid_form):
 
 def test_ticket_route_unknown_token_is_404(client):
     assert client.get("/ticket/not-a-real-token.png").status_code == 404
+
+
+def test_ticket_download_is_sent_as_attachment(client, app, valid_form):
+    register(client, valid_form)
+    response = client.get(f"/ticket/{get_row(app)['ticket_token']}.png?download=1")
+    disposition = response.headers["Content-Disposition"]
+    assert disposition.startswith("attachment")
+    assert "SEM-2026-0001.png" in disposition
