@@ -160,3 +160,9 @@ def test_regenerate_qr_single_code(app, client, valid_form):
     assert "Rebuilt SEM-2026-0002" in result.output
     assert not os.path.isfile(first["qr_path"])
     assert os.path.isfile(second["qr_path"])
+
+
+def test_regenerate_qr_unknown_code_fails(app):
+    result = app.test_cli_runner().invoke(args=["regenerate-qr", "--code", "SEM-2026-9999"])
+    assert result.exit_code != 0
+    assert "No attendee with code SEM-2026-9999" in result.output
