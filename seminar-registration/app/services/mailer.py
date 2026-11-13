@@ -15,4 +15,5 @@ def build_ticket_email(attendee):
 
     context = {"attendee": attendee}
     message.set_content(render_template("email/ticket.txt", **context))
+    message.add_alternative(render_template("email/ticket.html", **context), subtype="html")
     return message
