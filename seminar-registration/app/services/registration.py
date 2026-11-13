@@ -1,6 +1,7 @@
 import os
 import secrets
 import sqlite3
+import time
 
 from flask import current_app
 
@@ -95,6 +96,7 @@ def deliver_ticket(attendee):
     if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
         attendee = attach_qr(attendee)
     code = attendee["attendee_code"]
+    started = time.perf_counter()
     try:
         sent = send_ticket_email(attendee)
     except Exception:
@@ -102,6 +104,9 @@ def deliver_ticket(attendee):
         save_email_status(attendee["id"], "failed")
     else:
         if sent:
+            current_app.logger.info(
+                "Ticket email for %s sent in %.2fs", code, time.perf_counter() - started
+            )
             save_email_status(attendee["id"], "sent")
     return get_attendee_by_code(code)
 
