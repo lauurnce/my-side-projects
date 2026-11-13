@@ -16,6 +16,9 @@
     <figcaption>Show this QR code at the entrance.</figcaption>
   </figure>
 
+  <a class="btn" href="{{ url_for('main.ticket', token=attendee.ticket_token, download=1) }}"
+     download="{{ attendee.attendee_code }}.png">Download ticket</a>
+
   <dl class="summary">
     <dt>Full Name</dt><dd>{{ attendee.full_name }}</dd>
     <dt>Email Address</dt><dd>{{ attendee.email }}</dd>
