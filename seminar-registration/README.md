@@ -37,6 +37,13 @@ Each new registration gets a PNG ticket at `instance/qrcodes/<attendee_code>.png
 The QR code holds the check-in URL `{PUBLIC_BASE_URL}/checkin/<ticket_token>`.
 Set `PUBLIC_BASE_URL` to an address phones can reach (for example your LAN IP).
 
+If you change `PUBLIC_BASE_URL`, rebuild the images:
+
+```bash
+flask --app app regenerate-qr
+flask --app app regenerate-qr --code SEM-2026-0001
+```
+
 ## Running tests
 
 ```bash
