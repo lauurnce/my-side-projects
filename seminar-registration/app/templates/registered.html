@@ -6,7 +6,11 @@
 <section class="card">
   <p class="success-badge">Registration complete</p>
   <h2>You're in, {{ attendee.full_name }}!</h2>
-  <p class="lead">Keep your attendee code. Your QR ticket will be sent to <strong>{{ attendee.email }}</strong>.</p>
+  <p class="lead">Keep your attendee code and the QR ticket below.</p>
+
+  {% if attendee.email_status == 'sent' %}
+    <p class="notice notice-success">We emailed your ticket to <strong>{{ attendee.email }}</strong>. Check your spam folder if you don't see it.</p>
+  {% endif %}
 
   <p class="attendee-code">{{ attendee.attendee_code }}</p>
 
