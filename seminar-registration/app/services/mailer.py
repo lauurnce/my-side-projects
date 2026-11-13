@@ -46,3 +46,18 @@ def send_message(message):
     ) as smtp:
         smtp.login(user, password)
         smtp.send_message(message)
+
+
+def send_ticket_email(attendee):
+    """Send the ticket email. Returns False when MAIL_ENABLED is off (the email is logged instead)."""
+    message = build_ticket_email(attendee)
+    if not current_app.config["MAIL_ENABLED"]:
+        current_app.logger.info(
+            "MAIL_ENABLED is off, not sending. To: %s | Subject: %s\n%s",
+            message["To"],
+            message["Subject"],
+            message.get_body(("plain",)).get_content(),
+        )
+        return False
+    send_message(message)
+    return True
