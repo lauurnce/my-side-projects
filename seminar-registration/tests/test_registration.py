@@ -139,6 +139,7 @@ def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
         "TESTING": True,
         "DATABASE": str(tmp_path / "csrf.db"),
         "QR_DIR": str(tmp_path / "qrcodes"),
+        "MAIL_ENABLED": False,
     })
     with app.app_context():
         init_db()
@@ -152,6 +153,7 @@ def test_post_with_csrf_token_is_accepted(tmp_path, valid_form):
         "TESTING": True,
         "DATABASE": str(tmp_path / "csrf.db"),
         "QR_DIR": str(tmp_path / "qrcodes"),
+        "MAIL_ENABLED": False,
     })
     with app.app_context():
         init_db()

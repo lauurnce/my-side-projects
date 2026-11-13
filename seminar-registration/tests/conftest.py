@@ -14,6 +14,7 @@ def app(tmp_path):
         "QR_DIR": str(tmp_path / "qrcodes"),
         "PUBLIC_BASE_URL": "http://localhost:5000",
         "CSRF_ENABLED": False,
+        "MAIL_ENABLED": False,
         "EVENT_NAME": "Test Seminar",
         "EVENT_DATE": "November 30, 2026",
         "EVENT_VENUE": "Main Hall",
