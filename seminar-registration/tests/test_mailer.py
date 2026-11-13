@@ -147,3 +147,9 @@ def test_missing_credentials_marks_failed(client, app, valid_form, fake_smtp):
 def test_registered_page_says_email_was_sent(client, valid_form, fake_smtp):
     html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
     assert "We emailed your ticket to" in html
+
+
+def test_registered_page_says_email_failed(client, valid_form, fake_smtp, monkeypatch):
+    fail_login(monkeypatch, fake_smtp)
+    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    assert "We couldn't email your ticket" in html
