@@ -71,6 +71,19 @@ def attach_qr(attendee):
     return get_attendee_by_code(attendee["attendee_code"])
 
 
+def save_email_status(attendee_id, status):
+    db = get_db()
+    if status == "sent":
+        db.execute(
+            "UPDATE attendees SET email_status = ?, email_sent_at = datetime('now', 'localtime')"
+            " WHERE id = ?",
+            (status, attendee_id),
+        )
+    else:
+        db.execute("UPDATE attendees SET email_status = ? WHERE id = ?", (status, attendee_id))
+    db.commit()
+
+
 def regenerate_qr_codes(code=None):
     """Rebuild ticket QR images for every attendee, or one attendee code.
 
