@@ -72,3 +72,16 @@ def test_subject_sender_and_recipient(client, valid_form, fake_smtp):
     assert message["Subject"] == "Your ticket: Test Seminar"
     assert message["To"] == "juan@example.com"
     assert message["From"] == "Seminar Team <organizer@gmail.com>"
+
+
+def test_html_shows_qr_inline_through_cid(client, valid_form, fake_smtp):
+    client.post("/register", data=valid_form)
+    message = sent_message(fake_smtp)
+    html_part = message.get_body(("html",))
+    html = html_part.get_content()
+    related = [part for part in message.walk() if part.get("Content-ID")]
+    assert len(related) == 1
+    cid = related[0]["Content-ID"].strip("<>")
+    assert f'src="cid:{cid}"' in html
+    assert related[0].get_content_type() == "image/png"
+    assert "data:image" not in html
