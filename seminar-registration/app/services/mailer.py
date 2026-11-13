@@ -1,3 +1,5 @@
+import smtplib
+import ssl
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from pathlib import Path
@@ -24,3 +26,15 @@ def build_ticket_email(attendee):
     html_part.add_related(png, maintype="image", subtype="png", cid=qr_cid, filename=f"{code}.png")
     message.add_attachment(png, maintype="image", subtype="png", filename=f"{code}.png")
     return message
+
+
+def send_message(message):
+    config = current_app.config
+    with smtplib.SMTP_SSL(
+        config["MAIL_SERVER"],
+        config["MAIL_PORT"],
+        timeout=config["MAIL_TIMEOUT"],
+        context=ssl.create_default_context(),
+    ) as smtp:
+        smtp.login(config["SMTP_USER"], config["SMTP_APP_PASSWORD"])
+        smtp.send_message(message)
