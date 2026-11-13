@@ -57,3 +57,10 @@ def test_email_sent_on_registration_marks_sent(client, app, valid_form, fake_smt
     row = get_row(app)
     assert row["email_status"] == "sent"
     assert row["email_sent_at"]
+
+
+def test_connects_to_gmail_over_ssl_with_timeout(client, valid_form, fake_smtp):
+    client.post("/register", data=valid_form)
+    smtp = fake_smtp.instances[0]
+    assert (smtp.host, smtp.port, smtp.timeout) == ("smtp.gmail.com", 465, 15)
+    assert smtp.login_args == ("organizer@gmail.com", "abcdefghijklmnop")
