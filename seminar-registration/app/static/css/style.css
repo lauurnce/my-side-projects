@@ -115,6 +115,11 @@ body {
 .summary dt { color: var(--muted); }
 .summary dd { margin: 0; word-break: break-word; }
 
+/* Email notice */
+.notice { border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; }
+.notice-success { background: #e3f4ea; color: var(--success); }
+.notice-error { background: var(--error-bg); color: var(--error); }
+
 /* Ticket */
 .ticket { margin: 1.25rem 0 1rem; text-align: center; }
 .ticket img {
