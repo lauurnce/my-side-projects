@@ -61,3 +61,11 @@ def test_decoded_qr_is_exact_checkin_url(client, app, valid_form):
     register(client, valid_form)
     row = get_row(app)
     assert decode_qr(row["qr_path"]) == f"http://localhost:5000/checkin/{row['ticket_token']}"
+
+
+def test_ticket_route_returns_png(client, app, valid_form):
+    register(client, valid_form)
+    response = client.get(f"/ticket/{get_row(app)['ticket_token']}.png")
+    assert response.status_code == 200
+    assert response.mimetype == "image/png"
+    assert response.data.startswith(b"\x89PNG")
