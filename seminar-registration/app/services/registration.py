@@ -1,3 +1,4 @@
+import os
 import secrets
 import sqlite3
 
@@ -91,6 +92,8 @@ def deliver_ticket(attendee):
     A failed email is logged and marked 'failed'; the registration is kept.
     With MAIL_ENABLED off the email is only logged and the status stays as it was.
     """
+    if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
+        attendee = attach_qr(attendee)
     code = attendee["attendee_code"]
     try:
         sent = send_ticket_email(attendee)
