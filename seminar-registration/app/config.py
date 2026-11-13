@@ -12,6 +12,9 @@ class Config:
     SMTP_USER = os.environ.get("SMTP_USER", "")
     SMTP_APP_PASSWORD = os.environ.get("SMTP_APP_PASSWORD", "")
     MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Seminar Registration")
+    MAIL_SERVER = "smtp.gmail.com"
+    MAIL_PORT = 465
+    MAIL_TIMEOUT = 15  # seconds
     STAFF_PIN = os.environ.get("STAFF_PIN", "")
     EVENT_NAME = os.environ.get("EVENT_NAME", "Seminar")
     EVENT_DATE = os.environ.get("EVENT_DATE", "TBA")
