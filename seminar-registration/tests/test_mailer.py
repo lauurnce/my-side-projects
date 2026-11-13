@@ -135,3 +135,10 @@ def test_smtp_error_is_logged(client, valid_form, fake_smtp, monkeypatch, caplog
     fail_login(monkeypatch, fake_smtp)
     client.post("/register", data=valid_form)
     assert "Ticket email failed for SEM-2026-0001" in caplog.text
+
+
+def test_missing_credentials_marks_failed(client, app, valid_form, fake_smtp):
+    app.config["SMTP_APP_PASSWORD"] = ""
+    client.post("/register", data=valid_form)
+    assert fake_smtp.instances == []
+    assert get_row(app)["email_status"] == "failed"
