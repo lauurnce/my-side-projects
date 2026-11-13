@@ -102,3 +102,12 @@ def test_qr_failure_keeps_registration(client, app, valid_form, monkeypatch):
     row = get_row(app)
     assert row is not None
     assert row["qr_path"] is None
+
+
+def test_qr_failure_is_logged(client, valid_form, monkeypatch, caplog):
+    def broken_generate_qr(_attendee):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(registration, "generate_qr", broken_generate_qr)
+    register(client, valid_form)
+    assert "QR generation failed for SEM-2026-0001" in caplog.text
