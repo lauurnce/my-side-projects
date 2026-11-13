@@ -49,6 +49,12 @@ def create_attendee(full_name, email, organization, contact_number):
     return get_attendee_by_code(code)
 
 
+def save_qr_path(attendee_id, path):
+    db = get_db()
+    db.execute("UPDATE attendees SET qr_path = ? WHERE id = ?", (path, attendee_id))
+    db.commit()
+
+
 def get_attendee_by_code(code):
     return get_db().execute(
         "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
