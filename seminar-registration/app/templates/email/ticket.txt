@@ -1,0 +1,10 @@
+Hi {{ attendee.full_name }},
+
+You're registered for {{ event.name }}.
+
+Date: {{ event.date }}
+Venue: {{ event.venue }}
+Attendee code: {{ attendee.attendee_code }}
+
+Your QR ticket is attached as {{ attendee.attendee_code }}.png.
+Show this QR code at the check-in desk.
