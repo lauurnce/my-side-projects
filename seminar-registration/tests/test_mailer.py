@@ -52,6 +52,13 @@ def sent_message(fake_smtp):
     return fake_smtp.instances[0].sent[0]
 
 
+def fail_login(monkeypatch, fake_smtp):
+    def login(self, user, password):
+        raise smtplib.SMTPAuthenticationError(535, b"Username and Password not accepted")
+
+    monkeypatch.setattr(fake_smtp, "login", login)
+
+
 def test_email_sent_on_registration_marks_sent(client, app, valid_form, fake_smtp):
     client.post("/register", data=valid_form)
     sent_message(fake_smtp)
@@ -112,3 +119,13 @@ def test_qr_png_is_attached(client, app, valid_form, fake_smtp):
     assert attachment.get_content_type() == "image/png"
     assert attachment.get_filename() == "SEM-2026-0001.png"
     assert attachment.get_content() == Path(get_row(app)["qr_path"]).read_bytes()
+
+
+def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fake_smtp, monkeypatch):
+    fail_login(monkeypatch, fake_smtp)
+    response = client.post("/register", data=valid_form)
+    assert response.status_code == 302
+    row = get_row(app)
+    assert row is not None
+    assert row["email_status"] == "failed"
+    assert row["email_sent_at"] is None
