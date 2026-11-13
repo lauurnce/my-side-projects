@@ -4,6 +4,7 @@ import sqlite3
 from flask import current_app
 
 from ..db import get_db
+from .mailer import send_ticket_email
 from .qr import generate_qr
 
 
@@ -47,8 +48,8 @@ def create_attendee(full_name, email, organization, contact_number):
             raise DuplicateEmailError(email) from exc
         raise
 
-    # On new entry: build the ticket QR right after the insert.
-    return attach_qr(get_attendee_by_code(code))
+    # On new entry: build the ticket QR right after the insert, then email it.
+    return deliver_ticket(attach_qr(get_attendee_by_code(code)))
 
 
 def save_qr_path(attendee_id, path):
@@ -82,6 +83,24 @@ def save_email_status(attendee_id, status):
     else:
         db.execute("UPDATE attendees SET email_status = ? WHERE id = ?", (status, attendee_id))
     db.commit()
+
+
+def deliver_ticket(attendee):
+    """Email the ticket and record email_status and email_sent_at.
+
+    A failed email is logged and marked 'failed'; the registration is kept.
+    With MAIL_ENABLED off the email is only logged and the status stays as it was.
+    """
+    code = attendee["attendee_code"]
+    try:
+        sent = send_ticket_email(attendee)
+    except Exception:
+        current_app.logger.exception("Ticket email failed for %s", code)
+        save_email_status(attendee["id"], "failed")
+    else:
+        if sent:
+            save_email_status(attendee["id"], "sent")
+    return get_attendee_by_code(code)
 
 
 def regenerate_qr_codes(code=None):
