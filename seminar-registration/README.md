@@ -58,6 +58,12 @@ the email went out.
 
 With `MAIL_ENABLED=false` the email is written to the log instead of being sent.
 
+To send a ticket again:
+
+```bash
+flask --app app resend-ticket --code SEM-2026-0001
+```
+
 ## Running tests
 
 The QR decoding tests need OpenCV, which is only a development dependency:
