@@ -181,3 +181,9 @@ def test_resend_ticket_command_reports_failure(client, app, valid_form, fake_smt
     assert result.exit_code != 0
     assert "failed" in result.output
     assert get_row(app)["email_status"] == "failed"
+
+
+def test_resend_ticket_command_unknown_code(app):
+    result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-9999"])
+    assert result.exit_code != 0
+    assert "No attendee with code SEM-2026-9999" in result.output
