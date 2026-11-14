@@ -10,6 +10,7 @@ A Flask web app for registering seminar attendees and issuing QR code tickets by
 - Attendee codes in the format SEM-2026-0001
 - CSRF protection on form submissions
 - QR code ticket generated for every new registration, with download button
+- Ticket emailed through Gmail SMTP with the QR shown inline and attached as a PNG
 
 ## Setup
 
