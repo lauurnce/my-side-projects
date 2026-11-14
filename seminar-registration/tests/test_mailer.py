@@ -187,3 +187,10 @@ def test_resend_ticket_command_unknown_code(app):
     result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-9999"])
     assert result.exit_code != 0
     assert "No attendee with code SEM-2026-9999" in result.output
+
+
+def test_resend_ticket_command_with_mail_disabled(client, app, valid_form):
+    client.post("/register", data=valid_form)
+    result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
+    assert result.exit_code == 0
+    assert "logged instead of sent" in result.output
