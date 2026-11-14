@@ -56,6 +56,8 @@ the email went out.
 2. In `.env`, set `MAIL_ENABLED=true`, `SMTP_USER` (the Gmail address), `SMTP_APP_PASSWORD`
    (the 16-character App Password), and `MAIL_FROM_NAME`.
 
+With `MAIL_ENABLED=false` the email is written to the log instead of being sent.
+
 ## Running tests
 
 The QR decoding tests need OpenCV, which is only a development dependency:
