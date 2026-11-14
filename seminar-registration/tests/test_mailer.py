@@ -172,3 +172,12 @@ def test_resend_ticket_command_sends(client, app, valid_form, fake_smtp, monkeyp
     assert result.exit_code == 0, result.output
     assert "Ticket for SEM-2026-0001 sent to juan@example.com" in result.output
     assert get_row(app)["email_status"] == "sent"
+
+
+def test_resend_ticket_command_reports_failure(client, app, valid_form, fake_smtp, monkeypatch):
+    client.post("/register", data=valid_form)
+    fail_login(monkeypatch, fake_smtp)
+    result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
+    assert result.exit_code != 0
+    assert "failed" in result.output
+    assert get_row(app)["email_status"] == "failed"
