@@ -45,6 +45,17 @@ flask --app app regenerate-qr
 flask --app app regenerate-qr --code SEM-2026-0001
 ```
 
+## Email delivery
+
+Tickets are sent through Gmail SMTP (`smtp.gmail.com:465`, SSL) right after the QR is generated.
+Sending is synchronous with a 15-second timeout, so the confirmation page can show whether
+the email went out.
+
+1. Turn on 2-Step Verification for the Gmail account, then create an App Password at
+   https://myaccount.google.com/apppasswords.
+2. In `.env`, set `MAIL_ENABLED=true`, `SMTP_USER` (the Gmail address), `SMTP_APP_PASSWORD`
+   (the 16-character App Password), and `MAIL_FROM_NAME`.
+
 ## Running tests
 
 The QR decoding tests need OpenCV, which is only a development dependency:
