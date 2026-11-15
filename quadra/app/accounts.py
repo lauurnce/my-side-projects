@@ -131,17 +131,18 @@ def login():
     email = normalize_email(request.form.get("email"))
     if email_problem(email):
         return login_page(next_url, email, WRONG_LOGIN, 401)
-    if seconds := lock_seconds_left(email):
+    address = request.remote_addr or ""
+    if seconds := lock_seconds_left(email, address):
         return login_page(next_url, email, locked_message(seconds), 429)
 
     account = account_for_login(email, request.form.get("password", ""))
     if account:
-        record_login(account)
+        record_login(account, address)
         sign_in(account)
         return redirect(next_url)
 
-    record_failed_login(email)
-    if seconds := lock_seconds_left(email):
+    record_failed_login(email, address)
+    if seconds := lock_seconds_left(email, address):
         return login_page(next_url, email, locked_message(seconds), 429)
     return login_page(next_url, email, WRONG_LOGIN, 401)
 

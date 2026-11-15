@@ -102,6 +102,29 @@ def test_only_the_nearest_proxy_hop_is_believed(tmp_path):
     assert app.test_client().get("/echo", headers=forged_then_real).get_json()["address"] == "203.0.113.7"
 
 
+def wrong_password(client, address):
+    return client.post(
+        "/staff/login",
+        data={**STAFF, "password": "not-the-password"},
+        headers={"X-Forwarded-For": address},
+    )
+
+
+def test_forged_address_does_not_dodge_the_login_lock_without_a_trusted_hop(production_app):
+    client = production_app.test_client()
+    for _ in range(5):
+        wrong_password(client, "203.0.113.7")
+    assert wrong_password(client, "198.51.100.9").status_code == 429
+
+
+def test_login_lock_follows_the_forwarded_address_with_a_trusted_hop(tmp_path):
+    client = build_app(tmp_path, TRUSTED_PROXY_HOPS=1).test_client()
+    for _ in range(5):
+        wrong_password(client, "203.0.113.7")
+    assert wrong_password(client, "203.0.113.7").status_code == 429
+    assert wrong_password(client, "198.51.100.9").status_code == 401
+
+
 @pytest.mark.parametrize("path", ["/", "/health", "/staff/login", "/staff/forgot", "/admin", "/static/css/style.css", "/no-such-page"])
 def test_every_response_carries_the_security_headers(client, path):
     headers = client.get(path).headers

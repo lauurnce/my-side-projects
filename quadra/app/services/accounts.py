@@ -17,6 +17,7 @@ MAX_PASSWORD_LENGTH = 200
 MAX_NAME_LENGTH = 100
 MAX_EMAIL_LENGTH = 254
 MAX_FAILED_LOGINS = 5
+MAX_FAILED_LOGINS_PER_EMAIL = 50
 LOCK_TIME = timedelta(minutes=15)
 LINK_LIFETIMES = {"invite": timedelta(hours=72), "reset": timedelta(hours=1)}
 FORGOT_COOLDOWN = timedelta(minutes=5)
@@ -104,31 +105,46 @@ def account_for_login(email, password):
     return None
 
 
-def lock_seconds_left(email):
-    attempts = get_db().execute(
-        "SELECT failures, last_failed_at FROM login_attempts WHERE email = %s", (email,)
+def last_counted_failure(email, address):
+    recent = get_db().execute(
+        "SELECT COALESCE(SUM(failures), 0) AS email_failures, MAX(last_failed_at) AS email_latest,"
+        " COALESCE(SUM(CASE WHEN address = %s THEN failures ELSE 0 END), 0) AS address_failures,"
+        " MAX(CASE WHEN address = %s THEN last_failed_at END) AS address_latest"
+        " FROM login_attempts WHERE email = %s AND last_failed_at > %s",
+        (address, address, email, utc_timestamp(-LOCK_TIME)),
     ).fetchone()
-    if attempts is None or attempts["failures"] < MAX_FAILED_LOGINS:
+    if recent["address_failures"] >= MAX_FAILED_LOGINS:
+        return recent["address_latest"]
+    if recent["email_failures"] >= MAX_FAILED_LOGINS_PER_EMAIL:
+        return recent["email_latest"]
+    return None
+
+
+def lock_seconds_left(email, address):
+    latest = last_counted_failure(email, address)
+    if latest is None:
         return 0
-    unlocks_at = datetime.fromisoformat(attempts["last_failed_at"]) + LOCK_TIME
+    unlocks_at = datetime.fromisoformat(latest) + LOCK_TIME
     return max(0, math.ceil((unlocks_at - utc_now()).total_seconds()))
 
 
-def record_failed_login(email):
+def record_failed_login(email, address):
     db = get_db()
     db.execute("DELETE FROM login_attempts WHERE last_failed_at <= %s", (utc_timestamp(-LOCK_TIME),))
     db.execute(
-        "INSERT INTO login_attempts (email, failures, last_failed_at) VALUES (%s, 1, %s)"
-        " ON CONFLICT (email) DO UPDATE SET failures = login_attempts.failures + 1,"
+        "INSERT INTO login_attempts (email, address, failures, last_failed_at) VALUES (%s, %s, 1, %s)"
+        " ON CONFLICT (email, address) DO UPDATE SET failures = login_attempts.failures + 1,"
         " last_failed_at = excluded.last_failed_at",
-        (email, utc_timestamp()),
+        (email, address, utc_timestamp()),
     )
     db.commit()
 
 
-def record_login(account):
+def record_login(account, address):
     db = get_db()
-    db.execute("DELETE FROM login_attempts WHERE email = %s", (account["email"],))
+    db.execute(
+        "DELETE FROM login_attempts WHERE email = %s AND address = %s", (account["email"], address)
+    )
     db.execute("UPDATE accounts SET last_login_at = %s WHERE id = %s", (utc_timestamp(), account["id"]))
     db.commit()
 

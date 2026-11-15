@@ -21,9 +21,11 @@ CREATE TABLE account_tokens (
 );
 
 CREATE TABLE login_attempts (
-    email TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    address TEXT NOT NULL,
     failures INTEGER NOT NULL,
-    last_failed_at TEXT NOT NULL
+    last_failed_at TEXT NOT NULL,
+    PRIMARY KEY (email, address)
 );
 
 ALTER TABLE attendees ADD COLUMN checked_in_by_id INTEGER REFERENCES accounts (id);

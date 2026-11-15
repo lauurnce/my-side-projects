@@ -10,6 +10,8 @@ from app.services import accounts as account_rules
 BASE_URL = "http://localhost:5000"
 NEW_PASSWORD = "a-brand-new-password"
 WRONG_PASSWORD = "not-the-password"
+HOME = "198.51.100.20"
+ELSEWHERE = "203.0.113.200"
 
 
 @pytest.fixture
@@ -24,8 +26,20 @@ def outbox(monkeypatch):
     return sent
 
 
-def login(client, email, password, **form):
-    return client.post("/staff/login", data={"email": email, "password": password, **form})
+def login(client, email, password, address=None, **form):
+    return client.post(
+        "/staff/login",
+        data={"email": email, "password": password, **form},
+        environ_overrides={"REMOTE_ADDR": address} if address else {},
+    )
+
+
+def fail_from_many_addresses(app, email, failures):
+    client = app.test_client()
+    return [
+        login(client, email, WRONG_PASSWORD, address=f"203.0.113.{attempt // 5 + 1}").status_code
+        for attempt in range(failures)
+    ]
 
 
 def saved(app, email):
@@ -49,8 +63,8 @@ def new_password_form(**extra):
 
 def attempts(app):
     with app.app_context():
-        rows = get_db().execute("SELECT email, failures FROM login_attempts ORDER BY email").fetchall()
-    return {row["email"]: row["failures"] for row in rows}
+        rows = get_db().execute("SELECT * FROM login_attempts").fetchall()
+    return {(row["email"], row["address"]): row["failures"] for row in rows}
 
 
 def failed_login_page(app, email, password):
@@ -162,15 +176,64 @@ def test_attempts_while_locked_do_not_extend_the_lock(client, staff, pass_time):
 def test_the_lock_is_kept_in_the_database_not_in_the_app(app, staff, pass_time):
     for _ in range(5):
         login(app.test_client(), staff["email"], WRONG_PASSWORD)
-    assert attempts(app) == {staff["email"]: 5}
+    assert attempts(app) == {(staff["email"], "127.0.0.1"): 5}
     assert "pin_attempts" not in app.extensions
     assert login(app.test_client(), staff["email"], staff["password"]).status_code == 429
 
 
-def test_the_lock_follows_the_email_not_the_device(app, staff, owner, pass_time):
+def test_the_lock_is_for_one_email_only(app, staff, owner, pass_time):
     for _ in range(5):
         login(app.test_client(), staff["email"], WRONG_PASSWORD)
     assert login(app.test_client(), owner["email"], owner["password"]).status_code == 302
+
+
+def test_wrong_guesses_from_one_address_do_not_lock_the_owner_of_the_email_out(app, staff, pass_time):
+    for _ in range(5):
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address=ELSEWHERE)
+    assert login(app.test_client(), staff["email"], staff["password"], address=ELSEWHERE).status_code == 429
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+
+
+def test_each_address_gets_its_own_five_tries(app, staff, pass_time):
+    for _ in range(4):
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address=ELSEWHERE)
+    for _ in range(4):
+        assert login(app.test_client(), staff["email"], WRONG_PASSWORD, address=HOME).status_code == 401
+    assert attempts(app) == {(staff["email"], ELSEWHERE): 4, (staff["email"], HOME): 4}
+
+
+@pytest.mark.parametrize("email", ["staff@example.com", "nobody@example.com"])
+def test_fifty_failures_across_addresses_lock_the_email_everywhere(app, staff, pass_time, email):
+    statuses = fail_from_many_addresses(app, email, 50)
+    assert statuses == [401, 401, 401, 401, 429] * 10
+
+    locked = login(app.test_client(), email, staff["password"], address=HOME)
+    assert locked.status_code == 429
+    assert "Too many failed attempts for this email. Try again in 15 minutes." in locked.get_data(as_text=True)
+    assert (email, HOME) not in attempts(app)
+
+    pass_time(minutes=15)
+    assert login(app.test_client(), email, WRONG_PASSWORD, address=HOME).status_code == 401
+
+
+def test_forty_nine_failures_across_addresses_do_not_lock_the_email(app, staff, pass_time):
+    fail_from_many_addresses(app, staff["email"], 49)
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+
+
+def test_the_email_wide_lock_only_counts_the_last_fifteen_minutes(app, staff, pass_time):
+    fail_from_many_addresses(app, staff["email"], 25)
+    pass_time(minutes=15)
+    fail_from_many_addresses(app, staff["email"], 25)
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+
+
+def test_a_successful_login_clears_only_its_own_address(app, staff, pass_time):
+    for _ in range(4):
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address=ELSEWHERE)
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address=HOME)
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+    assert attempts(app) == {(staff["email"], ELSEWHERE): 4}
 
 
 def test_a_successful_login_resets_the_failure_count(app, client, staff, pass_time):
@@ -187,7 +250,7 @@ def test_failures_older_than_fifteen_minutes_are_forgotten(app, client, staff, p
         login(client, staff["email"], WRONG_PASSWORD)
     pass_time(minutes=15)
     assert login(client, "someone-else@example.com", WRONG_PASSWORD).status_code == 401
-    assert attempts(app) == {"someone-else@example.com": 1}
+    assert attempts(app) == {("someone-else@example.com", "127.0.0.1"): 1}
     for _ in range(3):
         assert login(client, staff["email"], WRONG_PASSWORD).status_code == 401
 
@@ -488,6 +551,16 @@ def test_setting_a_password_by_link_lifts_the_lock(app, client, staff, pass_time
         login(client, staff["email"], WRONG_PASSWORD)
     client.post(link_path(app, staff, "reset"), data=new_password_form())
     assert login(client, staff["email"], NEW_PASSWORD).status_code == 302
+
+
+def test_setting_a_password_by_link_lifts_the_email_wide_lock(app, client, staff, pass_time):
+    fail_from_many_addresses(app, staff["email"], 50)
+    login(client, "someone-else@example.com", WRONG_PASSWORD)
+    assert login(client, staff["email"], staff["password"], address=HOME).status_code == 429
+
+    client.post(link_path(app, staff, "reset"), data=new_password_form())
+    assert attempts(app) == {("someone-else@example.com", "127.0.0.1"): 1}
+    assert login(client, staff["email"], NEW_PASSWORD, address=HOME).status_code == 302
 
 
 def test_forgot_password_answers_the_same_for_every_email(app, staff, make_account, outbox):
