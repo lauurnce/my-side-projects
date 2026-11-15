@@ -358,7 +358,7 @@ pytest
 ruff check .
 ```
 
-There are 399 tests. They use a temporary database and never send real email.
+There are 405 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
