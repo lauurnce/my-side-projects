@@ -10,10 +10,10 @@ It runs on a laptop with a SQLite file, and in production on Vercel with a Postg
 
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
-| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 78 automated tests. Three attendees registered through the form in Chrome. |
-| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 57 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
-| 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 19 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
-| 4. Check-in Scanner | Staff PIN login. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export. | 94 automated tests (check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
+| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 80 automated tests. Three attendees registered through the form in Chrome. |
+| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 60 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
+| 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
+| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 192 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
@@ -34,7 +34,10 @@ flowchart LR
     gmail -->|ticket email| inbox([Attendee inbox])
 
     inbox -.->|shows QR at the door| phone([Staff phone camera])
-    phone -->|opens /checkin/token| staff[staff.py<br>login, scanner, admin]
+    phone -->|opens /checkin/token| staff[staff.py<br>scanner, admin]
+    staff -->|who is signed in| accounts[accounts.py<br>login, team, passwords]
+    accounts --> db
+    accounts -->|invite and reset links| mailer
     laptop([Laptop webcam or USB scanner]) -->|POST /api/checkin| staff
     staff --> checkin[services/checkin.py]
     checkin -->|sets checked_in| db
@@ -79,12 +82,11 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | Key | What it is for | Example |
 | --- | --- | --- |
 | `SECRET_KEY` | Signs the session cookie. Any long random text. | `f3a9...` |
-| `PUBLIC_BASE_URL` | The address written into every QR code. Phones must be able to open it. | `http://192.168.1.23:5000` |
+| `PUBLIC_BASE_URL` | The address written into every QR code, invite and password link. Phones must be able to open it. | `http://192.168.1.23:5000` |
 | `MAIL_ENABLED` | `true` sends real email. `false` writes the email to the log. | `true` |
 | `SMTP_USER` | The Gmail address that sends the tickets. | `organizer@gmail.com` |
 | `SMTP_APP_PASSWORD` | The 16-character Gmail App Password for that account. Spaces are fine. | `abcd efgh ijkl mnop` |
 | `MAIL_FROM_NAME` | The sender name attendees see. | `Quadra` |
-| `STAFF_PIN` | The PIN staff type at `/staff/login`. Staff pages stay locked while it is empty. | `482913` |
 | `DATABASE_URL` | Postgres address for production. Leave empty to use the local SQLite file. | `postgresql://...` |
 | `QUADRA_ENV` | Set to `production` on the live site. | `production` |
 | `TRUSTED_PROXY_HOPS` | `1` on Vercel, otherwise leave empty. | `1` |
@@ -92,7 +94,8 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
 | `EVENT_VENUE` | Venue of the first event. | `PUP Main Campus, Manila` |
 
-`.env` is ignored by git, so the password and PIN are never committed.
+`.env` is ignored by git, so the mail password is never committed. Staff passwords are not in
+`.env` at all: each person chooses their own and only a hash is stored in the database.
 
 ### Gmail App Password
 
@@ -108,7 +111,16 @@ flask --app app run
 ```
 
 Open http://127.0.0.1:5000 to see the landing page. `init-db` creates the first event from the
-`EVENT_` keys in `.env`. It erases every event and attendee, so run it only once.
+`EVENT_` keys in `.env`. It erases every event, attendee and staff account, so run it only once.
+
+Nobody can sign in to the staff pages until the first owner exists:
+
+```bash
+flask --app app create-owner --email you@example.com --name "Your Name"
+```
+
+It prints a link that works once and lasts 72 hours. Open it to choose the password. See
+[Staff accounts](#staff-accounts).
 
 On macOS, AirPlay Receiver already uses port 5000. Add `--port 5001` to the run command and use
 that port everywhere below.
@@ -117,6 +129,7 @@ that port everywhere below.
 | --- | --- |
 | `flask --app app init-db` | Creates the database and the first event. Erases existing data. |
 | `flask --app app add-event --name "..." --date 2027-01-18 --venue "..."` | Adds another event. `--opens 2026-12-15` delays registration. |
+| `flask --app app create-owner --email you@example.com --name "Your Name"` | Creates an owner account and prints its one-time set-password link. Refuses an email that already has an account. |
 | `flask --app app run` | Starts the app. |
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
 | `flask --app app resend-ticket --code SEM-2026-0001` | Emails one ticket again. |
@@ -166,9 +179,66 @@ TEST_DATABASE_URL=pgserver pytest
 nothing else needs installing. `TEST_DATABASE_URL` also accepts the address of a Postgres you
 started yourself. Every test erases that database, so never point it at real data.
 
+## Staff accounts
+
+Every staff member has their own account and signs in at `/staff/login` with an email and a
+password. There are two roles:
+
+| Role | Can do |
+| --- | --- |
+| `admin` | Scan tickets, use the admin dashboard, add events, change their own password. |
+| `owner` | Everything an admin can, plus the team page. |
+
+### The first owner
+
+```bash
+flask --app app create-owner --email you@example.com --name "Your Name"
+```
+
+The command creates the account without a password and prints a set-password link built from
+`PUBLIC_BASE_URL`. The link works once and expires after 72 hours, so no password is ever typed
+into a terminal or sent in a chat. If it expires, use "Forgot your password?" on the login page.
+Run the command again with another email to add a second owner.
+
+### Team management
+
+Owners open `/staff/team` from the navigation bar. Admins who open it get a 403 page.
+
+| Action | What happens |
+| --- | --- |
+| Invite an admin | Creates the account and emails a link that lasts 72 hours. The invited person sets their own name and password. |
+| Resend invite | Emails a new link. The earlier link stops working. |
+| Disable | The account is signed out on its next request and cannot sign in. Any unused link it had stops working. |
+| Enable | The account can sign in again with its old password. |
+
+An owner cannot disable their own account, and the last active owner cannot be disabled. Roles are
+not changed from the page.
+
+With `MAIL_ENABLED=false` the invite is written to the log instead, link included, so it can be
+copied from there on a laptop.
+
+### Passwords and sign-in rules
+
+- Passwords need at least 10 characters and are stored as scrypt hashes.
+- Emails are matched without regard to case.
+- `/staff/account` changes your own password after asking for the current one. Changing it, or
+  setting a new one from an emailed link, signs that account out everywhere else.
+- "Forgot your password?" emails a link that works once and lasts 1 hour. The page answers the
+  same way whether or not the email has an account, and sends at most one email every 5 minutes
+  per account.
+- Only a hash of each link's token is stored. A used or expired link shows "This link no longer
+  works".
+- Five failed logins for an email lock that email for 15 minutes, whether or not it has an
+  account. A wrong password, an unknown email and a disabled account all get the same answer.
+  The count lives in the database, so it holds across serverless instances and restarts.
+- Every staff request checks that the account still exists and is active.
+
+The dashboard table and the CSV export show who checked each attendee in, and the database
+records who added each event.
+
 ## Event day check-in
 
-Staff log in at `/staff/login` with `STAFF_PIN`. Five wrong PINs lock login for 60 seconds.
+Staff sign in at `/staff/login` with their own account.
 
 | Page | What it does |
 | --- | --- |
@@ -221,12 +291,12 @@ Set these wherever the app is hosted. Local development needs none of them.
 | --- | --- | --- |
 | `QUADRA_ENV` | `production` | Turns on production mode. The app refuses to start while `SECRET_KEY` is empty or still the built-in development key, the session cookie is marked `Secure`, and every response carries `Strict-Transport-Security`. |
 | `SECRET_KEY` | Long random text, for example from `python -c "import secrets; print(secrets.token_urlsafe(48))"` | Signs the session cookie. |
-| `TRUSTED_PROXY_HOPS` | `1` on Vercel, `0` (the default) when nothing sits in front of the app | How many proxies in front of the app may say who the visitor is. With `1`, the last `X-Forwarded-For` address and `X-Forwarded-Proto` are believed, so the wrong-PIN lock counts the real visitor and the app knows the request came over `https`. |
+| `TRUSTED_PROXY_HOPS` | `1` on Vercel, `0` (the default) when nothing sits in front of the app | How many proxies in front of the app may say who the visitor is. With `1`, the last `X-Forwarded-For` address and `X-Forwarded-Proto` are believed, so the app knows the visitor's address and that the request came over `https`. |
 | `PUBLIC_BASE_URL` | The public `https://` address | Written into every QR code. |
 
 Leave `TRUSTED_PROXY_HOPS` at `0` unless a proxy you control overwrites `X-Forwarded-For`. With a
-number above zero and no such proxy, a visitor can send a made-up address and slip past the
-wrong-PIN lock. Vercel overwrites the header with the visitor's public address and does not pass
+number above zero and no such proxy, a visitor can send a made-up address and scheme. Vercel
+overwrites the header with the visitor's public address and does not pass
 on values sent by the client, which is why `1` is safe there
 ([Vercel request headers](https://vercel.com/docs/headers/request-headers#x-forwarded-for)).
 
@@ -243,8 +313,11 @@ policy in `app/security.py` updated.
 2. Keep the detected Flask preset. Vercel finds the `app` object in `wsgi.py`, installs
    `requirements.txt` and sends every request to the app, which also serves `/static`. There is no
    build command and no `vercel.json`.
-3. Add the keys from the table above and the mail, PIN and event keys from the `.env` section as
+3. Add the keys from the table above and the mail and event keys from the `.env` section as
    Environment Variables for Production.
+4. With `DATABASE_URL` and `PUBLIC_BASE_URL` set to the production values on your laptop, run
+   `flask --app app migrate` and then `flask --app app create-owner` once, and open the link it
+   prints.
 
 `.vercelignore` keeps the tests, docs, screenshots and `requirements-dev.txt` out of the upload, so
 only the runtime packages are installed.
@@ -264,8 +337,8 @@ Platform limits that matter here:
 - An instance that has been idle starts cold, and a function unused for two weeks is archived and
   takes at least a second longer on its next request
   ([runtimes](https://vercel.com/docs/functions/runtimes#archiving)).
-- The wrong-PIN count is kept in memory per instance, so it resets on a cold start and is not
-  shared between instances.
+- Instances share no memory, so failed logins are counted in the database and the signed-in
+  account is read from the database on every staff request.
 
 ## Running tests
 
@@ -275,7 +348,7 @@ pytest
 ruff check .
 ```
 
-There are 248 tests. They use a temporary database and never send real email.
+There are 358 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -292,15 +365,17 @@ quadra/
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
 │   ├── routes.py            landing page, event pages, confirmation, ticket image
-│   ├── staff.py             login, check-in, scanner, admin, CSV export
-│   ├── commands.py          resend-ticket, add-event, lan-url
+│   ├── accounts.py          login, logout, password links, account page, team page
+│   ├── staff.py             check-in, scanner, admin, CSV export
+│   ├── commands.py          resend-ticket, add-event, create-owner, lan-url
 │   ├── services/
 │   │   ├── events.py        events, dates, registration state
 │   │   ├── registration.py  create attendee, deliver ticket
 │   │   ├── qr.py            QR ticket image, built in memory
-│   │   ├── mailer.py        ticket email over Gmail SMTP
+│   │   ├── accounts.py      staff accounts, passwords, lockout, one-time links
+│   │   ├── mailer.py        ticket, invite and password emails over Gmail SMTP
 │   │   └── checkin.py       check-in, totals, search
-│   ├── templates/           pages and the ticket email
+│   ├── templates/           pages and the ticket, invite and password emails
 │   └── static/              stylesheet, form, event filter and scanner scripts
 ├── tests/                   pytest suite
 ├── docs/TEST-REPORT.md      verification results
@@ -321,8 +396,13 @@ quadra/
 - The scanner page loads `html5-qrcode` 2.3.8 from unpkg, so the laptop needs internet access for
   camera scanning. The typed and USB scanner input works without it.
 - Phone browsers only allow the camera over `https`, so `/scanner` on a phone needs the tunnel.
-- There is one shared staff PIN and no per-person accounts or record of who checked someone in.
-- The wrong-PIN lock is counted per device address and resets when the app restarts.
+- The login lock is per email, so anyone who knows a staff email can lock that person out for 15
+  minutes by guessing wrong five times. A password link from "Forgot your password?" lifts it.
+- "Forgot your password?" sends its email while the page waits, so it answers more slowly for an
+  email that has an account, even though the page shown is the same.
+- There is no two-step sign-in. Accounts can be disabled but not deleted, and roles cannot be
+  changed from the team page. Another owner is added with `create-owner`.
+- Check-ins and events from before staff accounts existed have no recorded person.
 - A check-in cannot be undone from the dashboard.
 - Events cannot be edited or deleted from the dashboard once added.
 - The pages load their fonts from Google Fonts and fall back to system fonts offline.
