@@ -71,6 +71,13 @@ class FrozenDatetime(datetime):
         return cls.frozen.astimezone(tz)
 
 
+@pytest.fixture(autouse=True)
+def waits(monkeypatch):
+    waited = []
+    monkeypatch.setattr(clock, "wait", waited.append)
+    return waited
+
+
 @pytest.fixture
 def freeze(monkeypatch):
     def at(iso_utc):

@@ -16,6 +16,8 @@ from flask import (
     url_for,
 )
 
+from . import clock
+from .db import close_db
 from .services.accounts import (
     MIN_PASSWORD_LENGTH,
     DuplicateAccountError,
@@ -46,6 +48,7 @@ SESSION_ACCOUNT = "account_id"
 SESSION_VERSION = "session_version"
 WRONG_LOGIN = "Wrong email or password."
 FORGOT_ANSWER = "If that email has a staff account, a link to set a new password is on its way."
+FORGOT_ANSWER_SECONDS = 6
 INVITE_RESULTS = {
     "sent": ("An invite was sent to {email}.", "success"),
     "logged": ("MAIL_ENABLED is off, so the invite for {email} was logged instead of sent.", "warning"),
@@ -157,7 +160,10 @@ def logout():
 def forgot():
     if request.method == "GET":
         return render_template("staff_forgot.html")
+    started = clock.stopwatch()
     email_forgotten_password_link(request.form.get("email"))
+    close_db()
+    clock.wait(FORGOT_ANSWER_SECONDS - (clock.stopwatch() - started))
     flash(FORGOT_ANSWER, "success")
     return redirect(url_for("accounts.login"))
 

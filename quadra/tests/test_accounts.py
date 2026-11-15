@@ -4,6 +4,7 @@ import re
 import pytest
 
 from app import accounts as account_pages
+from app import clock
 from app.db import get_db
 from app.services import accounts as account_rules
 
@@ -12,6 +13,7 @@ NEW_PASSWORD = "a-brand-new-password"
 WRONG_PASSWORD = "not-the-password"
 HOME = "198.51.100.20"
 ELSEWHERE = "203.0.113.200"
+REAL_WAIT = clock.wait
 
 
 @pytest.fixture
@@ -561,6 +563,66 @@ def test_setting_a_password_by_link_lifts_the_email_wide_lock(app, client, staff
     client.post(link_path(app, staff, "reset"), data=new_password_form())
     assert attempts(app) == {("someone-else@example.com", "127.0.0.1"): 1}
     assert login(client, staff["email"], NEW_PASSWORD, address=HOME).status_code == 302
+
+
+@pytest.fixture
+def timer(monkeypatch):
+    now = {"seconds": 500.0}
+
+    def wait(seconds):
+        now["seconds"] += max(0, seconds)
+
+    monkeypatch.setattr(clock, "stopwatch", lambda: now["seconds"])
+    monkeypatch.setattr(clock, "wait", wait)
+    return now
+
+
+def slow_mail(monkeypatch, timer, seconds):
+    def send(*_args):
+        timer["seconds"] += seconds
+        return True
+
+    monkeypatch.setattr(account_rules, "send_account_email", send)
+
+
+@pytest.mark.parametrize("email", ["staff@example.com", "nobody@example.com", "not-an-email"])
+def test_forgot_password_takes_the_same_time_for_every_email(client, staff, monkeypatch, timer, email):
+    slow_mail(monkeypatch, timer, 2.5)
+    client.post("/staff/forgot", data={"email": email})
+    assert timer["seconds"] == 500.0 + account_pages.FORGOT_ANSWER_SECONDS
+
+
+def test_forgot_password_floor_is_well_above_a_normal_send():
+    assert account_pages.FORGOT_ANSWER_SECONDS == 6
+
+
+def test_forgot_password_does_not_wait_longer_when_mail_is_slower_than_the_floor(client, staff, monkeypatch, timer):
+    slow_mail(monkeypatch, timer, 9)
+    client.post("/staff/forgot", data={"email": staff["email"]})
+    assert timer["seconds"] == 509.0
+
+
+def test_forgot_password_page_itself_does_not_wait(client, waits):
+    client.get("/staff/forgot")
+    assert waits == []
+
+
+def test_forgot_password_releases_the_database_before_waiting(app, client, staff, monkeypatch):
+    from flask import g
+
+    connections_open = []
+    monkeypatch.setattr(clock, "wait", lambda _seconds: connections_open.append("db" in g))
+    client.post("/staff/forgot", data={"email": staff["email"]})
+    assert connections_open == [False]
+
+
+def test_waiting_sleeps_only_for_time_that_is_left(monkeypatch):
+    slept = []
+    monkeypatch.setattr(clock.time, "sleep", slept.append)
+    REAL_WAIT(3.5)
+    REAL_WAIT(0)
+    REAL_WAIT(-2)
+    assert slept == [3.5]
 
 
 def test_forgot_password_answers_the_same_for_every_email(app, staff, make_account, outbox):
