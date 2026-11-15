@@ -13,7 +13,7 @@ It runs on a laptop with a SQLite file, and in production on Vercel with a Postg
 | 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 80 automated tests. Three attendees registered through the form in Chrome. |
 | 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 60 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
 | 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
-| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 198 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
+| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 233 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
@@ -227,14 +227,21 @@ answer. `create-owner` always prints its link, because that is the command's pur
 - `/staff/account` changes your own password after asking for the current one. Changing it, or
   setting a new one from an emailed link, signs that account out everywhere else.
 - "Forgot your password?" emails a link that works once and lasts 1 hour. The page answers the
-  same way whether or not the email has an account, and sends at most one email every 5 minutes
-  per account.
+  same way whether or not the email has an account, always takes at least 6 seconds to answer so
+  the wait gives nothing away, and sends at most one email every 5 minutes per account.
 - Only a hash of each link's token is stored. A used or expired link shows "This link no longer
   works".
-- Five failed logins for an email lock that email for 15 minutes, whether or not it has an
-  account. A wrong password, an unknown email and a disabled account all get the same answer.
-  The count lives in the database, so it holds across serverless instances and restarts.
+- Five failed logins for an email from one network address lock that email for that address for
+  15 minutes. Someone guessing from elsewhere cannot lock the real person out of their own
+  connection. An IPv6 address counts as its whole /64 network, so one subscriber cannot dodge
+  the limit by switching addresses.
+- Twenty failed logins for an email within 15 minutes, counted across every address, lock that
+  email everywhere for 15 minutes. Setting a new password from an emailed link clears the lock.
+- Both locks apply whether or not the email has an account. A wrong password, an unknown email
+  and a disabled account all get the same answer. The counts live in the database, so they hold
+  across serverless instances and restarts, and rows older than 15 minutes are removed.
 - Every staff request checks that the account still exists and is active.
+- Logging out signs that account out on every device, so a copied session cookie stops working.
 
 The dashboard table and the CSV export show who checked each attendee in, and the database
 records who added each event.
@@ -294,12 +301,12 @@ Set these wherever the app is hosted. Local development needs none of them.
 | --- | --- | --- |
 | `QUADRA_ENV` | `production` | Turns on production mode. The app refuses to start while `SECRET_KEY` is empty or still the built-in development key, the session cookie is marked `Secure`, and every response carries `Strict-Transport-Security`. |
 | `SECRET_KEY` | Long random text, for example from `python -c "import secrets; print(secrets.token_urlsafe(48))"` | Signs the session cookie. |
-| `TRUSTED_PROXY_HOPS` | `1` on Vercel, `0` (the default) when nothing sits in front of the app | How many proxies in front of the app may say who the visitor is. With `1`, the last `X-Forwarded-For` address and `X-Forwarded-Proto` are believed, so the app knows the visitor's address and that the request came over `https`. |
+| `TRUSTED_PROXY_HOPS` | `1` on Vercel, `0` (the default) when nothing sits in front of the app | How many proxies in front of the app may say who the visitor is. With `1`, the last `X-Forwarded-For` address and `X-Forwarded-Proto` are believed, so the login lock counts the real visitor's address and the app knows the request came over `https`. |
 | `PUBLIC_BASE_URL` | The public `https://` address | Written into every QR code. |
 
 Leave `TRUSTED_PROXY_HOPS` at `0` unless a proxy you control overwrites `X-Forwarded-For`. With a
-number above zero and no such proxy, a visitor can send a made-up address and scheme. Vercel
-overwrites the header with the visitor's public address and does not pass
+number above zero and no such proxy, a visitor can send a made-up address and slip past the
+per-address login lock. Vercel overwrites the header with the visitor's public address and does not pass
 on values sent by the client, which is why `1` is safe there
 ([Vercel request headers](https://vercel.com/docs/headers/request-headers#x-forwarded-for)).
 
@@ -351,7 +358,7 @@ pytest
 ruff check .
 ```
 
-There are 364 tests. They use a temporary database and never send real email.
+There are 399 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -399,10 +406,11 @@ quadra/
 - The scanner page loads `html5-qrcode` 2.3.8 from unpkg, so the laptop needs internet access for
   camera scanning. The typed and USB scanner input works without it.
 - Phone browsers only allow the camera over `https`, so `/scanner` on a phone needs the tunnel.
-- The login lock is per email, so anyone who knows a staff email can lock that person out for 15
-  minutes by guessing wrong five times. A password link from "Forgot your password?" lifts it.
-- "Forgot your password?" sends its email while the page waits, so it answers more slowly for an
-  email that has an account, even though the page shown is the same.
+- Someone guessing from at least four addresses can still reach the twenty-failure limit and lock
+  an email everywhere for 15 minutes. A password link from "Forgot your password?" lifts it.
+- "Forgot your password?" always takes at least 6 seconds, and longer when the mail server needs
+  more than that.
+- Logging out on one device signs the same account out on the others.
 - There is no two-step sign-in. Accounts can be disabled but not deleted, and roles cannot be
   changed from the team page. Another owner is added with `create-owner`.
 - Check-ins and events from before staff accounts existed have no recorded person.
