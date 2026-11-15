@@ -30,6 +30,7 @@ from .services.accounts import (
     email_link,
     email_problem,
     enable_account,
+    end_sessions,
     get_account,
     list_accounts,
     lock_seconds_left,
@@ -152,6 +153,9 @@ def login():
 
 @bp.post("/staff/logout")
 def logout():
+    account = current_account()
+    if account:
+        end_sessions(account["id"])
     session.clear()
     return redirect(url_for("accounts.login"))
 

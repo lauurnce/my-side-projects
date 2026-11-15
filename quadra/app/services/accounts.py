@@ -149,6 +149,12 @@ def record_login(account, address):
     db.commit()
 
 
+def end_sessions(account_id):
+    db = get_db()
+    db.execute("UPDATE accounts SET session_version = session_version + 1 WHERE id = %s", (account_id,))
+    db.commit()
+
+
 def save_password(account_id, password, name=None):
     return get_db().execute(
         "UPDATE accounts SET password_hash = %s, name = COALESCE(%s, name),"

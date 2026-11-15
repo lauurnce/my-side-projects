@@ -299,6 +299,34 @@ def test_logout_ends_the_session(staff_client):
         assert "account_id" not in after
 
 
+def test_a_cookie_copied_before_logout_stops_working(app, staff, staff_client):
+    with staff_client.session_transaction() as live:
+        copied = dict(live)
+    other_browser = app.test_client()
+    with other_browser.session_transaction() as pasted:
+        pasted.update(copied)
+    assert other_browser.get("/admin").status_code == 200
+
+    staff_client.post("/staff/logout")
+    assert other_browser.get("/admin").status_code == 302
+    assert other_browser.post("/api/checkin", json={"code": "x"}).status_code == 401
+    with staff_client.session_transaction() as replayed:
+        replayed.update(copied)
+    assert staff_client.get("/admin").status_code == 302
+
+
+def test_logging_out_signs_the_account_out_on_every_device(staff, sign_in):
+    phone, laptop = sign_in(staff), sign_in(staff)
+    phone.post("/staff/logout")
+    assert laptop.get("/admin").status_code == 302
+    assert sign_in(staff, laptop).get("/admin").status_code == 200
+
+
+def test_logout_without_a_session_ends_nobody_elses(app, staff, staff_client):
+    assert app.test_client().post("/staff/logout").status_code == 302
+    assert staff_client.get("/admin").status_code == 200
+
+
 def test_a_disabled_account_loses_access_on_its_next_request(app, staff, staff_client):
     assert staff_client.get("/admin").status_code == 200
     disable(app, staff)
