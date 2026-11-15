@@ -41,6 +41,10 @@ def fake_smtp(app, monkeypatch):
     return smtp_class
 
 
+ACCOUNT = {"id": 7, "email": "nina@example.com", "name": "Nina New"}
+LINK = "http://localhost:5000/staff/set-password/one-time-token"
+
+
 def get_row(app, email="juan@example.com"):
     with app.app_context():
         return get_db().execute("SELECT * FROM attendees WHERE email = %s", (email,)).fetchone()
@@ -188,6 +192,58 @@ def test_mail_disabled_logs_instead_of_sending(client, app, valid_form, fake_smt
     assert fake_smtp.instances == []
     assert get_row(app)["email_status"] == "pending"
     assert "MAIL_ENABLED is off, not sending. To: juan@example.com" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("kind", "hours", "subject", "expiry"),
+    [
+        ("invite", 72, "You are invited to the Quadra staff team", "expires in 72 hours"),
+        ("reset", 1, "Set a new Quadra password", "expires in 1 hour."),
+    ],
+)
+def test_account_email_carries_the_link_in_both_parts(app, fake_smtp, kind, hours, subject, expiry):
+    with app.test_request_context():
+        assert mailer.send_account_email(kind, ACCOUNT, LINK, hours) is True
+    message = sent_message(fake_smtp)
+    assert message["Subject"] == subject
+    assert message["To"] == "nina@example.com"
+    assert message["From"] == "Seminar Team <organizer@gmail.com>"
+    plain = message.get_body(("plain",)).get_content()
+    html = message.get_body(("html",)).get_content()
+    assert LINK in plain
+    assert f'href="{LINK}"' in html
+    assert expiry in plain
+    assert expiry in html
+    assert "background:#9c1b1c" in html
+    assert not list(message.iter_attachments())
+
+
+def test_invite_email_greets_someone_without_a_name_yet(app, fake_smtp):
+    with app.test_request_context():
+        mailer.send_account_email("invite", {**ACCOUNT, "name": ""}, LINK, 72)
+    message = sent_message(fake_smtp)
+    assert message.get_body(("plain",)).get_content().startswith("Hi,\n")
+    assert "sign in with nina@example.com" in message.get_body(("plain",)).get_content()
+
+
+def test_account_email_escapes_the_name(app, fake_smtp):
+    with app.test_request_context():
+        mailer.send_account_email("reset", {**ACCOUNT, "name": "<b>Nina</b>"}, LINK, 1)
+    assert "&lt;b&gt;Nina&lt;/b&gt;" in sent_message(fake_smtp).get_body(("html",)).get_content()
+
+
+@pytest.mark.parametrize("kind", ["invite", "reset"])
+def test_account_email_is_logged_not_sent_when_mail_is_off(app, kind, caplog):
+    with app.test_request_context(), caplog.at_level("INFO"):
+        assert mailer.send_account_email(kind, ACCOUNT, LINK, 1) is False
+    assert "MAIL_ENABLED is off, not sending. To: nina@example.com" in caplog.text
+    assert LINK in caplog.text
+
+
+def test_account_email_works_outside_a_request(app, fake_smtp):
+    with app.app_context():
+        assert mailer.send_account_email("reset", ACCOUNT, LINK, 1) is True
+    assert LINK in sent_message(fake_smtp).get_body(("plain",)).get_content()
 
 
 def test_resend_ticket_command_sends(client, app, valid_form, fake_smtp, monkeypatch):

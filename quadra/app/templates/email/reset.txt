@@ -1,0 +1,9 @@
+Hi {{ account.name }},
+
+Someone asked for a new password for your Quadra staff account.
+If that was you, choose one here:
+
+{{ link }}
+
+The link works once and expires in {{ hours }} hour{% if hours != 1 %}s{% endif %}.
+If you did not ask for it, ignore this email and your password stays the same.

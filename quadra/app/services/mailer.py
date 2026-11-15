@@ -12,16 +12,26 @@ class MailConfigError(Exception):
     pass
 
 
-def build_ticket_email(attendee):
+ACCOUNT_SUBJECTS = {
+    "invite": "You are invited to the Quadra staff team",
+    "reset": "Set a new Quadra password",
+}
+
+
+def new_message(subject, recipient):
     config = current_app.config
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((config["MAIL_FROM_NAME"], config["SMTP_USER"]))
+    message["To"] = recipient
+    return message
+
+
+def build_ticket_email(attendee):
     code = attendee["attendee_code"]
     png = ticket_png(attendee)
     qr_cid = make_msgid(domain="quadra.local")
-
-    message = EmailMessage()
-    message["Subject"] = f"Your ticket: {attendee['event_name']}"
-    message["From"] = formataddr((config["MAIL_FROM_NAME"], config["SMTP_USER"]))
-    message["To"] = attendee["email"]
+    message = new_message(f"Your ticket: {attendee['event_name']}", attendee["email"])
 
     context = {"attendee": attendee, "qr_cid": qr_cid[1:-1]}
     message.set_content(render_template("email/ticket.txt", **context))
@@ -29,6 +39,14 @@ def build_ticket_email(attendee):
     html_part = message.get_payload()[1]
     html_part.add_related(png, maintype="image", subtype="png", cid=qr_cid, filename=f"{code}.png")
     message.add_attachment(png, maintype="image", subtype="png", filename=f"{code}.png")
+    return message
+
+
+def build_account_email(kind, account, link, hours):
+    message = new_message(ACCOUNT_SUBJECTS[kind], account["email"])
+    context = {"account": account, "link": link, "hours": hours}
+    message.set_content(render_template(f"email/{kind}.txt", **context))
+    message.add_alternative(render_template(f"email/{kind}.html", **context), subtype="html")
     return message
 
 
@@ -48,8 +66,7 @@ def send_message(message):
         smtp.send_message(message)
 
 
-def send_ticket_email(attendee):
-    message = build_ticket_email(attendee)
+def send_or_log(message):
     if not current_app.config["MAIL_ENABLED"]:
         current_app.logger.info(
             "MAIL_ENABLED is off, not sending. To: %s | Subject: %s\n%s",
@@ -60,3 +77,11 @@ def send_ticket_email(attendee):
         return False
     send_message(message)
     return True
+
+
+def send_ticket_email(attendee):
+    return send_or_log(build_ticket_email(attendee))
+
+
+def send_account_email(kind, account, link, hours):
+    return send_or_log(build_account_email(kind, account, link, hours))

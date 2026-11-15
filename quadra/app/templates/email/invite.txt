@@ -1,0 +1,9 @@
+Hi{% if account.name %} {{ account.name }}{% endif %},
+
+You have been given a Quadra staff account for checking people in at events.
+Set your name and password here:
+
+{{ link }}
+
+The link works once and expires in {{ hours }} hours.
+You will sign in with {{ account.email }}.
