@@ -285,8 +285,10 @@ def test_csv_export_lists_every_attendee(app, staff_client, valid_form):
     assert rows[0]["checked_in_at"] == FIRST_CHECKIN_SHOWN
     assert rows[0]["created_at"] == "Nov 2, 2026 1:30 AM"
     assert rows[0]["email_sent_at"] == ""
+    assert rows[0]["checked_in_by"] == "Sam Staff"
     assert rows[1]["checked_in"] == "0"
     assert rows[1]["checked_in_at"] == ""
+    assert rows[1]["checked_in_by"] == ""
     assert "ticket_token" not in rows[0]
 
 
@@ -294,6 +296,45 @@ def test_csv_export_neutralizes_spreadsheet_formulas(staff_client, valid_form):
     register(staff_client, {**valid_form, "organization": "=HYPERLINK(\"http://evil\")"})
     rows = list(csv.DictReader(io.StringIO(staff_client.get("/admin/export.csv").get_data(as_text=True))))
     assert rows[0]["organization"] == "'=HYPERLINK(\"http://evil\")"
+
+
+def test_csv_export_neutralizes_a_formula_in_the_staff_name(app, client, make_account, sign_in, token):
+    sign_in(make_account("formula@example.com", "=SUM(A1)"), client)
+    client.get(f"/checkin/{token}")
+    rows = list(csv.DictReader(io.StringIO(client.get("/admin/export.csv").get_data(as_text=True))))
+    assert rows[0]["checked_in_by"] == "'=SUM(A1)"
+
+
+def test_ticket_link_records_who_checked_in(app, staff, staff_client, token):
+    staff_client.get(f"/checkin/{token}")
+    assert row(app)["checked_in_by_id"] == staff["id"]
+
+
+def test_scanner_api_records_who_checked_in(app, staff, staff_client, token):
+    staff_client.post("/api/checkin", json={"code": token})
+    assert row(app)["checked_in_by_id"] == staff["id"]
+
+
+def test_dashboard_button_records_who_checked_in(app, staff, staff_client, token):
+    staff_client.post(f"/admin/checkin/{row(app)['id']}")
+    assert row(app)["checked_in_by_id"] == staff["id"]
+
+
+def test_second_scan_by_someone_else_keeps_the_first_name(app, staff, staff_client, owner, sign_in, token):
+    staff_client.get(f"/checkin/{token}")
+    sign_in(owner).get(f"/checkin/{token}")
+    assert row(app)["checked_in_by_id"] == staff["id"]
+
+
+def test_nobody_is_recorded_before_check_in(app, token):
+    assert row(app)["checked_in_by_id"] is None
+
+
+def test_admin_table_shows_who_checked_in(staff_client, token):
+    staff_client.get(f"/checkin/{token}")
+    html = staff_client.get("/admin").get_data(as_text=True)
+    assert '<th scope="col">Checked in by</th>' in html
+    assert '<td class="staff-name">Sam Staff</td>' in html
 
 
 def test_lan_url_command_prints_the_address(app, monkeypatch):

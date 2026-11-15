@@ -14,8 +14,9 @@ class DuplicateEmailError(Exception):
 
 ATTENDEE_QUERY = (
     "SELECT a.*, e.name AS event_name, e.event_date AS event_date,"
-    " e.venue AS event_venue, e.slug AS event_slug"
+    " e.venue AS event_venue, e.slug AS event_slug, c.name AS checked_in_by"
     " FROM attendees a JOIN events e ON e.id = a.event_id"
+    " LEFT JOIN accounts c ON c.id = a.checked_in_by_id"
 )
 
 

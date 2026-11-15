@@ -14,7 +14,7 @@ from flask import (
     url_for,
 )
 
-from .accounts import staff_required
+from .accounts import current_account, staff_required
 from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
 from .services.events import (
@@ -40,16 +40,17 @@ CSV_COLUMNS = (
     "email_sent_at",
     "checked_in",
     "checked_in_at",
+    "checked_in_by",
     "created_at",
 )
-USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization")
+USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "checked_in_by")
 TIME_COLUMNS = ("email_sent_at", "checked_in_at", "created_at")
 
 
 @bp.get("/checkin/<token>")
 @staff_required
 def checkin(token):
-    status, attendee = check_in(token)
+    status, attendee = check_in(token, current_account()["id"])
     http_status = 404 if status == "invalid" else 200
     return render_template("checkin_result.html", status=status, attendee=attendee), http_status
 
@@ -64,7 +65,7 @@ def scanner():
 @staff_required
 def api_checkin():
     payload = request.get_json(silent=True) or {}
-    status, attendee = check_in(extract_token(str(payload.get("code", ""))))
+    status, attendee = check_in(extract_token(str(payload.get("code", ""))), current_account()["id"])
     if attendee is None:
         return jsonify(status=status)
     return jsonify(
@@ -115,7 +116,7 @@ def admin_create_event():
     data, errors = validate_event(request.form)
     if errors:
         return admin_page(selected_event(""), new_event=request.form, errors=errors, status=400)
-    event = create_event(**data)
+    event = create_event(**data, created_by_id=current_account()["id"])
     flash(f"{event['name']} was added.", "success")
     return redirect(url_for("staff.admin", event=event["slug"]))
 
@@ -137,7 +138,7 @@ def back_to_admin(attendee):
 @staff_required
 def admin_checkin(attendee_id):
     attendee = attendee_or_404(attendee_id)
-    status, attendee = check_in(attendee["ticket_token"])
+    status, attendee = check_in(attendee["ticket_token"], current_account()["id"])
     if status == "checked_in":
         flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
     else:

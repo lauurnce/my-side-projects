@@ -38,12 +38,12 @@ def free_slug(name):
     return slug
 
 
-def create_event(name, event_date, venue, opens_on=None):
+def create_event(name, event_date, venue, opens_on=None, created_by_id=None):
     db = get_db()
     slug = free_slug(name)
     db.execute(
-        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at)"
-        " VALUES (%s, %s, %s, %s, %s, %s)",
+        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at, created_by_id)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s)",
         (
             slug,
             name,
@@ -51,6 +51,7 @@ def create_event(name, event_date, venue, opens_on=None):
             venue,
             opens_on.isoformat() if opens_on else None,
             utc_timestamp(),
+            created_by_id,
         ),
     )
     db.commit()

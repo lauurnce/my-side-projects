@@ -198,6 +198,18 @@ def test_adding_an_event_requires_staff(app, client):
     assert response.headers["Location"].startswith("/staff/login")
 
 
+def test_event_added_on_the_dashboard_records_who_created_it(app, staff, staff_client):
+    staff_client.post("/admin/events", data={"name": "Talks", "venue": "Hall", "event_date": "2027-02-09"})
+    with app.app_context():
+        assert get_db().execute("SELECT * FROM events WHERE slug = 'talks'").fetchone()["created_by_id"] == staff["id"]
+
+
+def test_event_added_from_the_command_line_has_no_creator(app):
+    app.test_cli_runner().invoke(args=["add-event", "--name", "Talks", "--date", "2027-02-09", "--venue", "Hall"])
+    with app.app_context():
+        assert get_db().execute("SELECT * FROM events WHERE slug = 'talks'").fetchone()["created_by_id"] is None
+
+
 def test_add_event_command(app):
     result = app.test_cli_runner().invoke(
         args=["add-event", "--name", "Career Launch Talks", "--date", "2027-02-09", "--venue", "Main Campus"]

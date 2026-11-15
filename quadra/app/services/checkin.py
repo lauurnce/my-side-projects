@@ -13,12 +13,12 @@ def extract_token(scanned):
     return text.split("?", 1)[0].split("#", 1)[0].strip("/")
 
 
-def check_in(token):
+def check_in(token, account_id):
     db = get_db()
     marked = db.execute(
-        "UPDATE attendees SET checked_in = 1, checked_in_at = %s"
+        "UPDATE attendees SET checked_in = 1, checked_in_at = %s, checked_in_by_id = %s"
         " WHERE ticket_token = %s AND checked_in = 0",
-        (utc_timestamp(), token),
+        (utc_timestamp(), account_id, token),
     ).rowcount
     db.commit()
     attendee = get_attendee_by_token(token)
