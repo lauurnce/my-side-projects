@@ -57,6 +57,49 @@ def test_fresh_database_gets_every_migration(blank):
     assert count("attendees") == 0
 
 
+def test_fresh_database_has_the_account_tables_and_audit_columns(blank):
+    migrate()
+    assert count("accounts") == 0
+    assert count("account_tokens") == 0
+    assert count("login_attempts") == 0
+    get_db().execute("SELECT checked_in_by_id FROM attendees").fetchall()
+    get_db().execute("SELECT created_by_id FROM events").fetchall()
+
+
+def test_every_table_has_row_level_security_on_postgres(blank):
+    if get_db().dialect != "postgres":
+        pytest.skip("row level security only exists on postgres")
+    migrate()
+    tables = get_db().execute(
+        "SELECT relname, relrowsecurity FROM pg_class"
+        " WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace"
+    ).fetchall()
+    assert {table["relname"] for table in tables} == set(database.TABLES)
+    assert all(table["relrowsecurity"] for table in tables)
+
+
+def test_existing_rows_survive_the_accounts_migration(blank):
+    folder = database.MIGRATIONS / get_db().dialect
+    database.applied_migrations(get_db())
+    for name in SHIPPED_MIGRATIONS[:2]:
+        database.apply_migration(get_db(), folder / name)
+    get_db().execute(
+        "INSERT INTO events (slug, name, event_date, venue, created_at)"
+        " VALUES ('old', 'Old Seminar', '2026-11-30', 'Hall', '2026-11-01T00:00:00+00:00')"
+    )
+    get_db().execute(
+        "INSERT INTO attendees (event_id, attendee_code, full_name, email, organization, contact_number,"
+        " ticket_token, checked_in, checked_in_at, created_at) VALUES (1, 'SEM-2026-0001', 'Juan', 'juan@example.com',"
+        " 'PUP', '+639171234567', 'token', 1, '2026-11-30T08:15:00+00:00', '2026-11-01T00:00:00+00:00')"
+    )
+    get_db().commit()
+
+    assert migrate() == SHIPPED_MIGRATIONS[2:]
+    attendee = get_db().execute("SELECT * FROM attendees").fetchone()
+    assert (attendee["checked_in"], attendee["checked_in_by_id"]) == (1, None)
+    assert get_db().execute("SELECT * FROM events").fetchone()["created_by_id"] is None
+
+
 def test_running_again_applies_nothing_and_keeps_the_data(app, client, valid_form):
     client.post("/events/test-seminar/register", data=valid_form)
     with app.app_context():
