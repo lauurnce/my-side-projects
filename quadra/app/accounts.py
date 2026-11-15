@@ -32,14 +32,15 @@ from .services.accounts import (
     email_problem,
     enable_account,
     end_sessions,
+    forget_password_attempts,
     get_account,
     list_accounts,
     lock_seconds_left,
+    may_try_password,
     name_problem,
     normalize_email,
     password_matches,
     password_problem,
-    record_failed_login,
     record_login,
     use_link,
 )
@@ -137,8 +138,8 @@ def login():
     if email_problem(email):
         return login_page(next_url, email, WRONG_LOGIN, 401)
     address = address_key(request.remote_addr)
-    if seconds := lock_seconds_left(email, address):
-        return login_page(next_url, email, locked_message(seconds), 429)
+    if not may_try_password(email, address):
+        return login_page(next_url, email, locked_message(lock_seconds_left(email, address)), 429)
 
     account = account_for_login(email, request.form.get("password", ""))
     if account:
@@ -146,7 +147,6 @@ def login():
         sign_in(account)
         return redirect(next_url)
 
-    record_failed_login(email, address)
     if seconds := lock_seconds_left(email, address):
         return login_page(next_url, email, locked_message(seconds), 429)
     return login_page(next_url, email, WRONG_LOGIN, 401)
@@ -217,9 +217,15 @@ def account_page(errors=None, status=200):
 def account():
     if request.method == "GET":
         return account_page()
+    email, address = current_account()["email"], address_key(request.remote_addr)
+    if not may_try_password(email, address):
+        locked = locked_message(lock_seconds_left(email, address))
+        return account_page({"current_password": locked}, 429)
     password = request.form.get("password", "")
     errors = {"password": password_problem(password, request.form.get("confirmation", ""))}
-    if not password_matches(current_account(), request.form.get("current_password", "")):
+    if password_matches(current_account(), request.form.get("current_password", "")):
+        forget_password_attempts(email, address)
+    else:
         errors["current_password"] = "That is not your current password."
     if any(errors.values()):
         return account_page(errors, 400)

@@ -831,3 +831,67 @@ def test_create_owner_command_rejects_a_bad_email(app):
     result = app.test_cli_runner().invoke(args=["create-owner", "--email", "boss", "--name", "Bea Boss"])
     assert result.exit_code != 0
     assert "Enter a valid email address" in result.output
+
+
+def test_a_guess_that_slips_past_the_lock_check_is_still_refused(app, staff, monkeypatch):
+    client = app.test_client()
+    for _ in range(account_rules.MAX_FAILED_LOGINS):
+        login(client, staff["email"], WRONG_PASSWORD, address=HOME)
+    with app.app_context():
+        get_db().execute("UPDATE login_attempts SET failures = failures - 1")
+        get_db().commit()
+    assert login(client, staff["email"], WRONG_PASSWORD, address=HOME).status_code == 429
+    checked = []
+    monkeypatch.setattr(account_pages, "account_for_login", lambda *credentials: checked.append(credentials))
+    monkeypatch.setattr(account_rules, "lock_seconds_left", lambda email, address: 0)
+    assert login(client, staff["email"], staff["password"], address=HOME).status_code == 429
+    assert checked == []
+
+
+def test_each_login_try_is_counted_before_the_password_is_checked(app, staff, monkeypatch):
+    seen = []
+
+    def count_then_fail(email, password):
+        seen.append(attempts(app)[(staff["email"], HOME)])
+
+    monkeypatch.setattr(account_pages, "account_for_login", count_then_fail)
+    login(app.test_client(), staff["email"], WRONG_PASSWORD, address=HOME)
+    login(app.test_client(), staff["email"], WRONG_PASSWORD, address=HOME)
+    assert seen == [1, 2]
+
+
+def test_a_successful_login_leaves_no_counted_attempt(app, staff):
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+    assert attempts(app) == {}
+
+
+def test_wrong_current_passwords_on_the_account_page_lock_it(app, staff, staff_client):
+    wrong = new_password_form(current_password=WRONG_PASSWORD)
+    statuses = [
+        staff_client.post("/staff/account", data=wrong).status_code
+        for _ in range(account_rules.MAX_FAILED_LOGINS)
+    ]
+    assert statuses == [400] * account_rules.MAX_FAILED_LOGINS
+
+    right = new_password_form(current_password=staff["password"])
+    locked = staff_client.post("/staff/account", data=right)
+    assert locked.status_code == 429
+    assert "Too many failed attempts" in locked.get_data(as_text=True)
+    with app.app_context():
+        assert account_rules.password_matches(saved(app, staff["email"]), staff["password"])
+
+
+def test_the_account_page_lock_ends_after_the_lock_time(staff, staff_client, pass_time):
+    wrong = new_password_form(current_password=WRONG_PASSWORD)
+    for _ in range(account_rules.MAX_FAILED_LOGINS):
+        staff_client.post("/staff/account", data=wrong)
+    pass_time(minutes=16)
+    right = new_password_form(current_password=staff["password"])
+    assert staff_client.post("/staff/account", data=right).status_code == 302
+
+
+def test_a_correct_current_password_clears_earlier_wrong_tries(app, staff, staff_client):
+    staff_client.post("/staff/account", data=new_password_form(current_password=WRONG_PASSWORD))
+    mismatch = {"current_password": staff["password"], "password": NEW_PASSWORD, "confirmation": "different-one"}
+    assert staff_client.post("/staff/account", data=mismatch).status_code == 400
+    assert attempts(app) == {}

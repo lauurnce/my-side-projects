@@ -143,23 +143,34 @@ def lock_seconds_left(email, address):
     return max(0, math.ceil((unlocks_at - utc_now()).total_seconds()))
 
 
-def record_failed_login(email, address):
+def count_password_attempt(email, address):
     db = get_db()
     db.execute("DELETE FROM login_attempts WHERE last_failed_at <= %s", (utc_timestamp(-LOCK_TIME),))
-    db.execute(
+    attempt_number = db.execute(
         "INSERT INTO login_attempts (email, address, failures, last_failed_at) VALUES (%s, %s, 1, %s)"
         " ON CONFLICT (email, address) DO UPDATE SET failures = login_attempts.failures + 1,"
-        " last_failed_at = excluded.last_failed_at",
+        " last_failed_at = excluded.last_failed_at RETURNING failures",
         (email, address, utc_timestamp()),
-    )
+    ).fetchall()[0]["failures"]
+    db.commit()
+    return attempt_number
+
+
+def may_try_password(email, address):
+    if lock_seconds_left(email, address):
+        return False
+    return count_password_attempt(email, address) <= MAX_FAILED_LOGINS
+
+
+def forget_password_attempts(email, address):
+    db = get_db()
+    db.execute("DELETE FROM login_attempts WHERE email = %s AND address = %s", (email, address))
     db.commit()
 
 
 def record_login(account, address):
+    forget_password_attempts(account["email"], address)
     db = get_db()
-    db.execute(
-        "DELETE FROM login_attempts WHERE email = %s AND address = %s", (account["email"], address)
-    )
     db.execute("UPDATE accounts SET last_login_at = %s WHERE id = %s", (utc_timestamp(), account["id"]))
     db.commit()
 
