@@ -205,9 +205,9 @@ def test_each_address_gets_its_own_five_tries(app, staff, pass_time):
 
 
 @pytest.mark.parametrize("email", ["staff@example.com", "nobody@example.com"])
-def test_fifty_failures_across_addresses_lock_the_email_everywhere(app, staff, pass_time, email):
-    statuses = fail_from_many_addresses(app, email, 50)
-    assert statuses == [401, 401, 401, 401, 429] * 10
+def test_twenty_failures_across_addresses_lock_the_email_everywhere(app, staff, pass_time, email):
+    statuses = fail_from_many_addresses(app, email, 20)
+    assert statuses == [401, 401, 401, 401, 429] * 4
 
     locked = login(app.test_client(), email, staff["password"], address=HOME)
     assert locked.status_code == 429
@@ -218,15 +218,63 @@ def test_fifty_failures_across_addresses_lock_the_email_everywhere(app, staff, p
     assert login(app.test_client(), email, WRONG_PASSWORD, address=HOME).status_code == 401
 
 
-def test_forty_nine_failures_across_addresses_do_not_lock_the_email(app, staff, pass_time):
-    fail_from_many_addresses(app, staff["email"], 49)
+def test_nineteen_failures_across_addresses_do_not_lock_the_email(app, staff, pass_time):
+    fail_from_many_addresses(app, staff["email"], 19)
     assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
 
 
 def test_the_email_wide_lock_only_counts_the_last_fifteen_minutes(app, staff, pass_time):
-    fail_from_many_addresses(app, staff["email"], 25)
+    fail_from_many_addresses(app, staff["email"], 10)
     pass_time(minutes=15)
-    fail_from_many_addresses(app, staff["email"], 25)
+    fail_from_many_addresses(app, staff["email"], 10)
+    assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
+
+
+def test_the_email_wide_limit_is_twenty():
+    assert account_rules.MAX_FAILED_LOGINS == 5
+    assert account_rules.MAX_FAILED_LOGINS_PER_EMAIL == 20
+
+
+@pytest.mark.parametrize(
+    ("remote_addr", "key"),
+    [
+        ("203.0.113.7", "203.0.113.7"),
+        ("2001:db8:1:2:aaaa:bbbb:cccc:dddd", "2001:db8:1:2::/64"),
+        ("2001:db8:1:2::1", "2001:db8:1:2::/64"),
+        ("2001:db8:1:3::1", "2001:db8:1:3::/64"),
+        ("::ffff:203.0.113.7", "203.0.113.7"),
+        ("::1", "::/64"),
+        ("not-an-address", "unknown"),
+        ("203.0.113.7, 198.51.100.9", "unknown"),
+        ("", "unknown"),
+        (None, "unknown"),
+    ],
+)
+def test_address_key(remote_addr, key):
+    assert account_rules.address_key(remote_addr) == key
+
+
+def test_ipv6_addresses_in_one_subscriber_network_share_a_limit(app, staff, pass_time):
+    for host in range(1, 6):
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address=f"2001:db8:1:2::{host}")
+    assert attempts(app) == {(staff["email"], "2001:db8:1:2::/64"): 5}
+    rotated = login(app.test_client(), staff["email"], staff["password"], address="2001:db8:1:2:ffff::99")
+    assert rotated.status_code == 429
+    other_network = login(app.test_client(), staff["email"], staff["password"], address="2001:db8:1:3::1")
+    assert other_network.status_code == 302
+
+
+def test_ipv4_neighbours_do_not_share_a_limit(app, staff, pass_time):
+    for _ in range(5):
+        login(app.test_client(), staff["email"], WRONG_PASSWORD, address="203.0.113.7")
+    assert login(app.test_client(), staff["email"], staff["password"], address="203.0.113.8").status_code == 302
+
+
+def test_unreadable_addresses_share_one_limit_instead_of_failing(app, staff, pass_time):
+    for address in ("not-an-address", "999.1.1.1", "garbage", "[::1", "12345"):
+        assert login(app.test_client(), staff["email"], WRONG_PASSWORD, address=address).status_code in (401, 429)
+    assert attempts(app) == {(staff["email"], "unknown"): 5}
+    assert login(app.test_client(), staff["email"], staff["password"], address="more-garbage").status_code == 429
     assert login(app.test_client(), staff["email"], staff["password"], address=HOME).status_code == 302
 
 
@@ -584,7 +632,7 @@ def test_setting_a_password_by_link_lifts_the_lock(app, client, staff, pass_time
 
 
 def test_setting_a_password_by_link_lifts_the_email_wide_lock(app, client, staff, pass_time):
-    fail_from_many_addresses(app, staff["email"], 50)
+    fail_from_many_addresses(app, staff["email"], 20)
     login(client, "someone-else@example.com", WRONG_PASSWORD)
     assert login(client, staff["email"], staff["password"], address=HOME).status_code == 429
 

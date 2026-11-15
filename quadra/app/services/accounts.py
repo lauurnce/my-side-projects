@@ -1,4 +1,5 @@
 import hashlib
+import ipaddress
 import math
 import secrets
 from datetime import datetime, timedelta
@@ -17,7 +18,9 @@ MAX_PASSWORD_LENGTH = 200
 MAX_NAME_LENGTH = 100
 MAX_EMAIL_LENGTH = 254
 MAX_FAILED_LOGINS = 5
-MAX_FAILED_LOGINS_PER_EMAIL = 50
+MAX_FAILED_LOGINS_PER_EMAIL = 20
+UNKNOWN_ADDRESS = "unknown"
+IPV6_SUBSCRIBER_PREFIX = 64
 LOCK_TIME = timedelta(minutes=15)
 LINK_LIFETIMES = {"invite": timedelta(hours=72), "reset": timedelta(hours=1)}
 FORGOT_COOLDOWN = timedelta(minutes=5)
@@ -103,6 +106,18 @@ def account_for_login(email, password):
     if password_matches(account, password) and account["active"]:
         return account
     return None
+
+
+def address_key(remote_addr):
+    try:
+        address = ipaddress.ip_address(remote_addr or "")
+    except ValueError:
+        return UNKNOWN_ADDRESS
+    if address.version == 6 and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    if address.version == 4:
+        return str(address)
+    return str(ipaddress.ip_network((address, IPV6_SUBSCRIBER_PREFIX), strict=False))
 
 
 def last_counted_failure(email, address):

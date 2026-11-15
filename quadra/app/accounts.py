@@ -23,6 +23,7 @@ from .services.accounts import (
     DuplicateAccountError,
     account_for_link,
     account_for_login,
+    address_key,
     change_password,
     create_account,
     disable_account,
@@ -135,7 +136,7 @@ def login():
     email = normalize_email(request.form.get("email"))
     if email_problem(email):
         return login_page(next_url, email, WRONG_LOGIN, 401)
-    address = request.remote_addr or ""
+    address = address_key(request.remote_addr)
     if seconds := lock_seconds_left(email, address):
         return login_page(next_url, email, locked_message(seconds), 429)
 
