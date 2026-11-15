@@ -5,21 +5,27 @@
 {% block content %}
 <section class="panel glass glass-strong">
   <p class="success-badge">Staff only</p>
-  <h1>Enter the staff PIN</h1>
+  <h1>Sign in to check people in</h1>
   <p class="lead">Check-in and the attendee list are for event staff.</p>
 
+  {% include "_notices.html" %}
   {% if error %}
     <div class="alert" role="alert">{{ error }}</div>
   {% endif %}
 
-  <form method="post" action="{{ url_for('staff.login') }}">
+  <form method="post" action="{{ url_for('accounts.login') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ next_url }}">
     <div class="field">
-      <label for="pin">PIN</label>
-      <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" required autofocus>
+      <label for="email">Email address</label>
+      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="254" required value="{{ email }}"{% if not email %} autofocus{% endif %}>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required{% if email %} autofocus{% endif %}>
     </div>
     <button type="submit" class="btn btn-primary btn-wide">Log in</button>
   </form>
+  <p class="hint"><a href="{{ url_for('accounts.forgot') }}">Forgot your password?</a></p>
 </section>
 {% endblock %}

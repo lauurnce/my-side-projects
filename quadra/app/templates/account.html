@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Your account{% endblock %}
+
+{% block content %}
+<section class="panel account glass glass-strong">
+  <p class="eyebrow">{{ current_account.role }}</p>
+  <h1>{{ current_account.name }}</h1>
+  <p class="lead">Signed in as {{ current_account.email }}.</p>
+
+  <nav class="chips" aria-label="Staff pages">
+    <a class="pill" href="{{ url_for('staff.scanner') }}">Scanner</a>
+    <a class="pill" href="{{ url_for('staff.admin') }}">Admin</a>
+  </nav>
+
+  {% include "_notices.html" %}
+
+  <h2>Change your password</h2>
+  <form method="post" action="{{ url_for('accounts.account') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="username" value="{{ current_account.email }}" autocomplete="username">
+    <div class="field{% if errors.get('current_password') %} has-error{% endif %}">
+      <label for="current-password">Current password</label>
+      <input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+      <p class="error" role="alert">{{ errors.get('current_password') or '' }}</p>
+    </div>
+    <div class="field{% if errors.get('password') %} has-error{% endif %}">
+      <label for="password">New password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="{{ min_password_length }}" required>
+      <small class="hint">At least {{ min_password_length }} characters. Saving it signs out your other devices.</small>
+      <p class="error" role="alert">{{ errors.get('password') or '' }}</p>
+    </div>
+    <div class="field">
+      <label for="confirmation">New password again</label>
+      <input id="confirmation" name="confirmation" type="password" autocomplete="new-password" required>
+    </div>
+    <button type="submit" class="btn btn-primary btn-wide">Change password</button>
+  </form>
+</section>
+{% endblock %}

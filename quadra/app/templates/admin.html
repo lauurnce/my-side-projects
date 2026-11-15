@@ -17,9 +17,7 @@
     {% endif %}
   </div>
 
-  {% for category, message in get_flashed_messages(with_categories=true) %}
-    <p class="notice notice-{{ category }}" role="status">{{ message }}</p>
-  {% endfor %}
+  {% include "_notices.html" %}
 
   {% if events %}
   <nav class="chips" aria-label="Events">

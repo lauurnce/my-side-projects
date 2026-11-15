@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Forgot password{% endblock %}
+
+{% block content %}
+<section class="panel glass glass-strong">
+  <p class="success-badge">Staff only</p>
+  <h1>Forgot your password?</h1>
+  <p class="lead">Enter the email you sign in with. We will send a link that lets you choose a new password. It works once and expires in an hour.</p>
+
+  <form method="post" action="{{ url_for('accounts.forgot') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="email">Email address</label>
+      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="254" required autofocus>
+    </div>
+    <button type="submit" class="btn btn-primary btn-wide">Email me a link</button>
+  </form>
+  <p class="hint"><a href="{{ url_for('accounts.login') }}">Back to login</a></p>
+</section>
+{% endblock %}

@@ -288,3 +288,9 @@ button.pill { cursor: pointer; }
 .error-page { justify-items: start; padding: 2rem 1.5rem; overflow: hidden; }
 .error-code { font: 900 clamp(5.5rem, 26vw, 9rem) var(--display); font-stretch: 118%; line-height: 0.82; letter-spacing: -0.04em; color: var(--maroon); font-variant-numeric: tabular-nums; margin-bottom: 0.4rem; }
 .error-page .btn { margin-top: 0.4rem; }
+
+.nav-account { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.nav-name { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: 700; text-underline-offset: 3px; }
+.notice { overflow-wrap: anywhere; }
+.account { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
+.account h2 { font-size: 1.15rem; margin-top: 0.4rem; }

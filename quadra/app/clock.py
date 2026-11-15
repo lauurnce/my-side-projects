@@ -3,8 +3,12 @@ from datetime import UTC, datetime, timedelta, timezone
 MANILA = timezone(timedelta(hours=8), "PHT")
 
 
-def utc_timestamp():
-    return datetime.now(UTC).isoformat(timespec="seconds")
+def utc_now():
+    return datetime.now(UTC)
+
+
+def utc_timestamp(offset=timedelta(0)):
+    return (utc_now() + offset).isoformat(timespec="seconds")
 
 
 def manila_today():

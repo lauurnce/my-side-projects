@@ -1,11 +1,13 @@
 import pytest
 from flask import jsonify, request, url_for
 
-from app import create_app, staff
+from app import create_app
 from app.config import DEFAULT_SECRET_KEY
 from app.db import init_db
 from app.security import CONTENT_SECURITY_POLICY
+from app.services.accounts import change_password, create_account
 
+STAFF = {"email": "staff@example.com", "password": "correct-horse-battery"}
 PROXY_HEADERS = {
     "X-Forwarded-For": "203.0.113.7",
     "X-Forwarded-Proto": "https",
@@ -19,12 +21,12 @@ def build_app(tmp_path, **overrides):
         "DATABASE": str(tmp_path / "security.db"),
         "CSRF_ENABLED": False,
         "MAIL_ENABLED": False,
-        "STAFF_PIN": "246810",
         "TODAY": "2026-11-01",
         **overrides,
     })
     with app.app_context():
         init_db()
+        change_password(create_account(STAFF["email"], "admin", "Sam Staff")["id"], STAFF["password"])
     return app
 
 
@@ -45,10 +47,6 @@ def session_cookie(response):
     return next(value for value in response.headers.getlist("Set-Cookie") if value.startswith("session="))
 
 
-def wrong_pin(client, address):
-    return client.post("/staff/login", data={"pin": "000000"}, headers={"X-Forwarded-For": address})
-
-
 @pytest.mark.parametrize("secret_key", [DEFAULT_SECRET_KEY, ""])
 def test_production_refuses_a_missing_or_default_secret_key(tmp_path, secret_key):
     with pytest.raises(RuntimeError, match="SECRET_KEY"):
@@ -61,7 +59,7 @@ def test_development_starts_with_the_default_secret_key(tmp_path):
 
 
 def test_production_session_cookie_is_locked_down(production_app):
-    response = production_app.test_client().post("/staff/login", data={"pin": "246810"})
+    response = production_app.test_client().post("/staff/login", data=STAFF)
     cookie = session_cookie(response)
     assert "Secure" in cookie
     assert "HttpOnly" in cookie
@@ -71,7 +69,7 @@ def test_production_session_cookie_is_locked_down(production_app):
 
 def test_development_session_cookie_works_over_plain_http(tmp_path):
     client = build_app(tmp_path).test_client()
-    cookie = session_cookie(client.post("/staff/login", data={"pin": "246810"}))
+    cookie = session_cookie(client.post("/staff/login", data=STAFF))
     assert "Secure" not in cookie
     assert "HttpOnly" in cookie
     assert "SameSite=Lax" in cookie
@@ -104,31 +102,7 @@ def test_only_the_nearest_proxy_hop_is_believed(tmp_path):
     assert app.test_client().get("/echo", headers=forged_then_real).get_json()["address"] == "203.0.113.7"
 
 
-def test_forged_address_does_not_dodge_the_pin_lockout_without_a_trusted_hop(production_app):
-    client = production_app.test_client()
-    for _ in range(5):
-        wrong_pin(client, "203.0.113.7")
-    assert wrong_pin(client, "198.51.100.9").status_code == 429
-
-
-def test_pin_lockout_follows_the_forwarded_address_with_a_trusted_hop(tmp_path):
-    client = build_app(tmp_path, TRUSTED_PROXY_HOPS=1).test_client()
-    for _ in range(5):
-        wrong_pin(client, "203.0.113.7")
-    assert wrong_pin(client, "203.0.113.7").status_code == 429
-    assert wrong_pin(client, "198.51.100.9").status_code == 401
-
-
-def test_wrong_pin_bookkeeping_stays_bounded(tmp_path, monkeypatch):
-    monkeypatch.setattr(staff, "MAX_TRACKED_ADDRESSES", 2)
-    app = build_app(tmp_path, TRUSTED_PROXY_HOPS=1)
-    client = app.test_client()
-    for address in ("203.0.113.1", "203.0.113.2", "203.0.113.3"):
-        wrong_pin(client, address)
-    assert list(app.extensions["pin_attempts"]) == ["203.0.113.2", "203.0.113.3"]
-
-
-@pytest.mark.parametrize("path", ["/", "/health", "/staff/login", "/admin", "/static/css/style.css", "/no-such-page"])
+@pytest.mark.parametrize("path", ["/", "/health", "/staff/login", "/staff/forgot", "/admin", "/static/css/style.css", "/no-such-page"])
 def test_every_response_carries_the_security_headers(client, path):
     headers = client.get(path).headers
     assert headers["X-Content-Type-Options"] == "nosniff"

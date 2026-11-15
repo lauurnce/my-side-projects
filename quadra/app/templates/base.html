@@ -18,16 +18,19 @@
       <ul class="nav-links">
         <li><a href="{{ url_for('main.index') }}#events">Events</a></li>
         <li><a href="{{ url_for('main.index') }}#how">How it works</a></li>
-        {% if session.get('staff') %}
+        {% if current_account %}
         <li><a href="{{ url_for('staff.scanner') }}">Scanner</a></li>
         <li><a href="{{ url_for('staff.admin') }}">Admin</a></li>
         {% endif %}
       </ul>
-      {% if session.get('staff') %}
-      <form method="post" action="{{ url_for('staff.logout') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-glass btn-small">Log out</button>
-      </form>
+      {% if current_account %}
+      <div class="nav-account">
+        <a class="nav-name" href="{{ url_for('accounts.account') }}" title="Your account">{{ current_account.name or current_account.email }}</a>
+        <form method="post" action="{{ url_for('accounts.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-glass btn-small">Log out</button>
+        </form>
+      </div>
       {% elif last_ticket_code %}
       <a class="btn btn-glass btn-small" href="{{ url_for('main.registered', code=last_ticket_code) }}">My ticket <span aria-hidden="true">&rarr;</span></a>
       {% else %}
@@ -41,7 +44,7 @@
   <footer class="site-footer">
     <span class="brand">Quadra<b>.</b></span>
     <span>Event registration with QR tickets. A student project, not an official PUP website.</span>
-    <a href="{{ url_for('staff.login') }}">Staff login</a>
+    <a href="{{ url_for('accounts.login') }}">Staff login</a>
   </footer>
   {% block scripts %}{% endblock %}
 </body>

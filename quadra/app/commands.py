@@ -4,6 +4,13 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 
+from .services.accounts import (
+    DuplicateAccountError,
+    create_account,
+    email_problem,
+    issue_link,
+    normalize_email,
+)
 from .services.events import create_event, parse_date
 from .services.registration import deliver_ticket, get_attendee_by_code
 
@@ -40,6 +47,23 @@ def add_event_command(name, event_date, venue, opens):
     click.echo(f"Added {event['name']} at /events/{event['slug']}")
 
 
+@click.command("create-owner", help="Create an owner account and print its one-time set-password link.")
+@click.option("--email", required=True, help="Email address the owner signs in with.")
+@click.option("--name", required=True, help="Name shown to the rest of the team.")
+@with_appcontext
+def create_owner_command(email, name):
+    problem = email_problem(normalize_email(email))
+    if problem:
+        raise click.ClickException(problem)
+    try:
+        account = create_account(email, "owner", name.strip())
+    except DuplicateAccountError:
+        raise click.ClickException(f"{email} already has an account.") from None
+    click.echo(f"Created the owner account for {account['email']}.")
+    click.echo("Open this link within 72 hours to set the password. It works once:")
+    click.echo(issue_link(account["id"], "invite"))
+
+
 def lan_ip():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
         try:
@@ -62,3 +86,4 @@ def init_app(app):
     app.cli.add_command(resend_ticket_command)
     app.cli.add_command(lan_url_command)
     app.cli.add_command(add_event_command)
+    app.cli.add_command(create_owner_command)

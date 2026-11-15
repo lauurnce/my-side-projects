@@ -1,26 +1,9 @@
-from datetime import UTC, date, datetime
+from datetime import date
 
 import pytest
 
 from app import clock
 from app.services import events
-
-
-class FrozenDatetime(datetime):
-    frozen = None
-
-    @classmethod
-    def now(cls, tz=None):
-        return cls.frozen.astimezone(tz)
-
-
-@pytest.fixture
-def freeze(monkeypatch):
-    def at(iso_utc):
-        FrozenDatetime.frozen = datetime.fromisoformat(iso_utc).replace(tzinfo=UTC)
-        monkeypatch.setattr(clock, "datetime", FrozenDatetime)
-
-    return at
 
 
 @pytest.mark.parametrize(

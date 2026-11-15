@@ -17,7 +17,7 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path, exist_ok=True)
     app.logger.setLevel(logging.INFO)
 
-    from . import commands, csrf, db, errors, routes, security, staff
+    from . import accounts, commands, csrf, db, errors, routes, security, staff
     from .services import events
 
     security.init_app(app)
@@ -27,6 +27,7 @@ def create_app(test_config=None):
     commands.init_app(app)
     events.init_app(app)
     app.register_blueprint(routes.bp)
+    app.register_blueprint(accounts.bp)
     app.register_blueprint(staff.bp)
 
     return app

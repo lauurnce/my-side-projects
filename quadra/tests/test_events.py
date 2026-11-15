@@ -5,21 +5,12 @@ import pytest
 from app.db import get_db
 from app.services.events import create_event, parse_date, slugify
 
-PIN = "4321"
-
 
 @pytest.fixture
 def more_events(app):
     with app.app_context():
         create_event("Research Colloquium 2027", date(2027, 1, 18), "Bulwagang Balagtas", date(2026, 12, 15))
         create_event("Orientation 2026", date(2026, 10, 5), "Gymnasium")
-
-
-@pytest.fixture
-def staff_client(app, client):
-    app.config["STAFF_PIN"] = PIN
-    assert client.post("/staff/login", data={"pin": PIN}).status_code == 302
-    return client
 
 
 def attendee_count(app):
@@ -202,7 +193,6 @@ def test_adding_an_event_reports_what_is_wrong(app, staff_client, form, message)
 
 
 def test_adding_an_event_requires_staff(app, client):
-    app.config["STAFF_PIN"] = PIN
     response = client.post("/admin/events", data={"name": "Talks", "venue": "Hall", "event_date": "2027-02-09"})
     assert response.status_code == 302
     assert response.headers["Location"].startswith("/staff/login")
