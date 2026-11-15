@@ -127,7 +127,43 @@ def test_invite_with_mail_off_says_it_was_logged(app, owner_client, caplog):
     with caplog.at_level("INFO"):
         response = owner_client.post("/staff/team/invite", data={"email": "new@example.com"}, follow_redirects=True)
     assert "MAIL_ENABLED is off, so the invite for new@example.com was logged instead of sent." in response.get_data(as_text=True)
-    assert f"{BASE_URL}/staff/set-password/" in caplog.text
+    assert f"Set-password link for new@example.com: {BASE_URL}/staff/set-password/" in caplog.text
+    assert caplog.text.count("/staff/set-password/") == 1
+    assert "You have been given a Quadra staff account" not in caplog.text
+
+
+def link_count(app):
+    with app.app_context():
+        return get_db().execute("SELECT COUNT(*) AS total FROM account_tokens").fetchone()["total"]
+
+
+def test_invite_in_production_with_mail_off_issues_no_link(app, owner_client, caplog):
+    app.config["PRODUCTION"] = True
+    with caplog.at_level("INFO"):
+        response = owner_client.post("/staff/team/invite", data={"email": "new@example.com"}, follow_redirects=True)
+    assert "Email is turned off, so the invite could not be sent" in response.get_data(as_text=True)
+    assert link_count(app) == 0
+    assert "set-password" not in caplog.text
+    assert saved(app, "new@example.com")["password_hash"] is None
+
+
+def test_resend_in_production_with_mail_off_issues_no_link(app, owner_client, make_account, caplog):
+    invited = make_account("new@example.com", name="", password=None)
+    app.config["PRODUCTION"] = True
+    with caplog.at_level("INFO"):
+        response = owner_client.post(f"/staff/team/{invited['id']}/resend", follow_redirects=True)
+    assert "Email is turned off, so the invite could not be sent" in response.get_data(as_text=True)
+    assert link_count(app) == 0
+    assert "set-password" not in caplog.text
+
+
+def test_invite_in_production_with_mail_on_sends_without_logging_the_link(app, owner_client, outbox, caplog):
+    app.config.update(PRODUCTION=True, MAIL_ENABLED=True)
+    with caplog.at_level("INFO"):
+        owner_client.post("/staff/team/invite", data={"email": "new@example.com"})
+    assert len(outbox) == 1
+    assert link_count(app) == 1
+    assert "set-password" not in caplog.text
 
 
 def test_invite_that_fails_to_send_keeps_the_account_for_a_resend(app, owner_client, monkeypatch):

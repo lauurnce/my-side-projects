@@ -533,6 +533,42 @@ def test_forgot_password_resends_the_invite_to_someone_who_never_set_one(client,
     assert [(mail["kind"], mail["hours"]) for mail in outbox] == [("invite", 72)]
 
 
+def test_forgot_password_in_development_logs_the_link_but_not_the_email_body(client, staff, caplog):
+    with caplog.at_level("INFO"):
+        client.post("/staff/forgot", data={"email": staff["email"]})
+    assert f"Set-password link for {staff['email']}: {BASE_URL}/staff/set-password/" in caplog.text
+    assert caplog.text.count("/staff/set-password/") == 1
+    assert "Someone asked for a new password" not in caplog.text
+
+
+def test_forgot_password_in_production_with_mail_off_issues_no_link(app, staff, caplog):
+    app.config["PRODUCTION"] = True
+    answers = []
+    with caplog.at_level("INFO"):
+        for email in (staff["email"], "nobody@example.com"):
+            client = app.test_client()
+            response = client.post("/staff/forgot", data={"email": email})
+            page = client.get(response.headers["Location"]).get_data(as_text=True)
+            answers.append((response.status_code, re.sub(r'name="csrf_token" value="[^"]*"', "", page)))
+
+    assert answers[0] == answers[1]
+    assert "If that email has a staff account, a link to set a new password is on its way." in answers[0][1]
+    assert "set-password" not in caplog.text
+    with app.app_context():
+        assert get_db().execute("SELECT * FROM account_tokens").fetchall() == []
+
+
+def test_create_owner_command_prints_its_link_in_production_with_mail_off(app, caplog):
+    app.config["PRODUCTION"] = True
+    with caplog.at_level("INFO"):
+        result = app.test_cli_runner().invoke(
+            args=["create-owner", "--email", "boss@example.com", "--name", "Bea Boss"]
+        )
+    assert result.exit_code == 0
+    assert f"{BASE_URL}/staff/set-password/" in result.output
+    assert "set-password" not in caplog.text
+
+
 def test_forgot_password_survives_a_mail_failure(app, client, staff, monkeypatch):
     def broken(*_args):
         raise OSError("smtp is down")

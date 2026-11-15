@@ -66,13 +66,13 @@ def send_message(message):
         smtp.send_message(message)
 
 
-def send_or_log(message):
+def send_or_log(message, logged_body=""):
     if not current_app.config["MAIL_ENABLED"]:
         current_app.logger.info(
             "MAIL_ENABLED is off, not sending. To: %s | Subject: %s\n%s",
             message["To"],
             message["Subject"],
-            message.get_body(("plain",)).get_content(),
+            logged_body,
         )
         return False
     send_message(message)
@@ -80,7 +80,8 @@ def send_or_log(message):
 
 
 def send_ticket_email(attendee):
-    return send_or_log(build_ticket_email(attendee))
+    message = build_ticket_email(attendee)
+    return send_or_log(message, message.get_body(("plain",)).get_content())
 
 
 def send_account_email(kind, account, link, hours):

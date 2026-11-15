@@ -12,7 +12,7 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 358 tests on each database: 357 passed with 1 skipped on SQLite, and 357 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
+Automated tests: `pytest` ran 364 tests on each database: 363 passed with 1 skipped on SQLite, and 363 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -22,8 +22,8 @@ Automated tests: `pytest` ran 358 tests on each database: 357 passed with 1 skip
 | `tests/test_health.py` | 1 | health check |
 | `tests/test_qr.py` | 20 | QR content, ticket image, ticket download, caching, image failures |
 | `tests/test_mailer.py` | 26 | email content, attachment, failures, resend-ticket, invite and password emails |
-| `tests/test_accounts.py` | 70 | login, lockout, sessions, one-time links, forgot password, account page, create-owner |
-| `tests/test_team.py` | 34 | owner-only team page, invites, disable and enable, last-owner protection |
+| `tests/test_accounts.py` | 73 | login, lockout, sessions, one-time links, forgot password, account page, create-owner |
+| `tests/test_team.py` | 37 | owner-only team page, invites, disable and enable, last-owner protection |
 | `tests/test_checkin.py` | 50 | check-in, who checked in, scanner API, admin, CSV export |
 | `tests/test_db.py` | 13 | SQLite and Postgres connection, portable queries |
 | `tests/test_migrations.py` | 14 | schema upgrades that keep existing data, row level security |

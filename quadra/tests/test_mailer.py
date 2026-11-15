@@ -237,7 +237,10 @@ def test_account_email_is_logged_not_sent_when_mail_is_off(app, kind, caplog):
     with app.test_request_context(), caplog.at_level("INFO"):
         assert mailer.send_account_email(kind, ACCOUNT, LINK, 1) is False
     assert "MAIL_ENABLED is off, not sending. To: nina@example.com" in caplog.text
-    assert LINK in caplog.text
+    assert "Subject: " in caplog.text
+    assert LINK not in caplog.text
+    assert "one-time-token" not in caplog.text
+    assert "Nina New" not in caplog.text
 
 
 def test_account_email_works_outside_a_request(app, fake_smtp):

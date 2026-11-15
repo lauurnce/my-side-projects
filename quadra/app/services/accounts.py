@@ -199,7 +199,13 @@ def link_purpose(account):
     return "reset" if account["password_hash"] else "invite"
 
 
+def mail_is_off_in_production():
+    return current_app.config["PRODUCTION"] and not current_app.config["MAIL_ENABLED"]
+
+
 def email_link(account):
+    if mail_is_off_in_production():
+        return "off"
     purpose = link_purpose(account)
     link = issue_link(account["id"], purpose)
     hours = LINK_LIFETIMES[purpose] // timedelta(hours=1)
@@ -208,7 +214,10 @@ def email_link(account):
     except Exception:
         current_app.logger.exception("The %s email for account %s failed", purpose, account["id"])
         return "failed"
-    return "sent" if sent else "logged"
+    if sent:
+        return "sent"
+    current_app.logger.info("Set-password link for %s: %s", account["email"], link)
+    return "logged"
 
 
 def emailed_recently(account_id):

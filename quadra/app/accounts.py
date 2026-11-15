@@ -50,6 +50,7 @@ INVITE_RESULTS = {
     "sent": ("An invite was sent to {email}.", "success"),
     "logged": ("MAIL_ENABLED is off, so the invite for {email} was logged instead of sent.", "warning"),
     "failed": ("The invite for {email} could not be sent. Check the log, then resend it.", "error"),
+    "off": ("Email is turned off, so the invite could not be sent to {email}. Set MAIL_ENABLED, then resend it.", "error"),
 }
 
 

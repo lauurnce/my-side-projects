@@ -13,7 +13,7 @@ It runs on a laptop with a SQLite file, and in production on Vercel with a Postg
 | 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 80 automated tests. Three attendees registered through the form in Chrome. |
 | 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 60 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
 | 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
-| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 192 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
+| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 198 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
@@ -214,8 +214,11 @@ Owners open `/staff/team` from the navigation bar. Admins who open it get a 403 
 An owner cannot disable their own account, and the last active owner cannot be disabled. Roles are
 not changed from the page.
 
-With `MAIL_ENABLED=false` the invite is written to the log instead, link included, so it can be
-copied from there on a laptop.
+With `MAIL_ENABLED=false` on a laptop, the set-password link is written to the log so it can be
+copied from there. The email body itself is never logged. In production mode (`QUADRA_ENV=production`)
+with mail off, no invite or reset link is created at all, so a link never reaches the server
+log: the team page says the invite could not be sent, and "Forgot your password?" gives its usual
+answer. `create-owner` always prints its link, because that is the command's purpose.
 
 ### Passwords and sign-in rules
 
@@ -348,7 +351,7 @@ pytest
 ruff check .
 ```
 
-There are 358 tests. They use a temporary database and never send real email.
+There are 364 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
