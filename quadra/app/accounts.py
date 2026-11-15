@@ -18,12 +18,18 @@ from flask import (
 
 from .services.accounts import (
     MIN_PASSWORD_LENGTH,
+    DuplicateAccountError,
     account_for_link,
     account_for_login,
     change_password,
+    create_account,
+    disable_account,
     email_forgotten_password_link,
+    email_link,
     email_problem,
+    enable_account,
     get_account,
+    list_accounts,
     lock_seconds_left,
     name_problem,
     normalize_email,
@@ -40,7 +46,11 @@ SESSION_ACCOUNT = "account_id"
 SESSION_VERSION = "session_version"
 WRONG_LOGIN = "Wrong email or password."
 FORGOT_ANSWER = "If that email has a staff account, a link to set a new password is on its way."
-
+INVITE_RESULTS = {
+    "sent": ("An invite was sent to {email}.", "success"),
+    "logged": ("MAIL_ENABLED is off, so the invite for {email} was logged instead of sent.", "warning"),
+    "failed": ("The invite for {email} could not be sent. Check the log, then resend it.", "error"),
+}
 
 
 def sign_in(account):
@@ -84,6 +94,16 @@ def staff_required(view):
         return redirect(url_for("accounts.login", next=request.full_path.rstrip("?")))
 
     return wrapped
+
+
+def owner_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if current_account()["role"] != "owner":
+            abort(403)
+        return view(*args, **kwargs)
+
+    return staff_required(wrapped)
 
 
 def safe_next(target):
@@ -193,3 +213,73 @@ def account():
     session[SESSION_VERSION] = change_password(current_account()["id"], password)
     flash("Your password was changed. Your other devices were signed out.", "success")
     return redirect(url_for("accounts.account"))
+
+
+def team_page(invite_email="", error=None, status=200):
+    return render_template(
+        "team.html", accounts=list_accounts(), invite_email=invite_email, error=error
+    ), status
+
+
+def send_invite(account):
+    message, category = INVITE_RESULTS[email_link(account)]
+    flash(message.format(email=account["email"]), category)
+
+
+def account_or_404(account_id):
+    account = get_account(account_id)
+    if account is None:
+        abort(404)
+    return account
+
+
+@bp.get("/staff/team")
+@owner_required
+def team():
+    return team_page()
+
+
+@bp.post("/staff/team/invite")
+@owner_required
+def invite():
+    email = normalize_email(request.form.get("email"))
+    problem = email_problem(email)
+    if problem:
+        return team_page(email, problem, 400)
+    try:
+        account = create_account(email, "admin")
+    except DuplicateAccountError:
+        return team_page(email, "That email already has an account.", 400)
+    send_invite(account)
+    return redirect(url_for("accounts.team"))
+
+
+@bp.post("/staff/team/<int:account_id>/resend")
+@owner_required
+def resend_invite(account_id):
+    account = account_or_404(account_id)
+    if account["password_hash"] or not account["active"]:
+        abort(400, description="Only an invite that is still waiting can be sent again.")
+    send_invite(account)
+    return redirect(url_for("accounts.team"))
+
+
+@bp.post("/staff/team/<int:account_id>/disable")
+@owner_required
+def disable(account_id):
+    account = account_or_404(account_id)
+    if account["id"] == current_account()["id"]:
+        abort(403, description="You cannot disable your own account.")
+    if account["active"] and not disable_account(account_id):
+        abort(403, description="The last active owner cannot be disabled.")
+    flash(f"{account['email']} was disabled and signed out.", "success")
+    return redirect(url_for("accounts.team"))
+
+
+@bp.post("/staff/team/<int:account_id>/enable")
+@owner_required
+def enable(account_id):
+    account = account_or_404(account_id)
+    enable_account(account_id)
+    flash(f"{account['email']} can sign in again.", "success")
+    return redirect(url_for("accounts.team"))

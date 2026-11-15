@@ -21,6 +21,9 @@
         {% if current_account %}
         <li><a href="{{ url_for('staff.scanner') }}">Scanner</a></li>
         <li><a href="{{ url_for('staff.admin') }}">Admin</a></li>
+        {% if current_account.role == 'owner' %}
+        <li><a href="{{ url_for('accounts.team') }}">Team</a></li>
+        {% endif %}
         {% endif %}
       </ul>
       {% if current_account %}

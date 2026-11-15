@@ -11,6 +11,9 @@
   <nav class="chips" aria-label="Staff pages">
     <a class="pill" href="{{ url_for('staff.scanner') }}">Scanner</a>
     <a class="pill" href="{{ url_for('staff.admin') }}">Admin</a>
+    {% if current_account.role == 'owner' %}
+    <a class="pill" href="{{ url_for('accounts.team') }}">Team</a>
+    {% endif %}
   </nav>
 
   {% include "_notices.html" %}

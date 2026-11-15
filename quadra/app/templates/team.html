@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Team{% endblock %}
+
+{% block container_class %} container-wide{% endblock %}
+
+{% block content %}
+<section class="admin">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Owner</p>
+      <h1>Team</h1>
+      <p class="lead">Everyone here can scan tickets and open the admin dashboard. Only owners see this page.</p>
+    </div>
+  </div>
+
+  {% include "_notices.html" %}
+
+  <div class="table-scroll glass glass-strong">
+    <table class="attendees team">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Email</th>
+          <th scope="col">Role</th>
+          <th scope="col">Status</th>
+          <th scope="col">Last sign-in</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in accounts %}
+        <tr>
+          <td>{{ member.name or 'Not set yet' }}{% if member.id == current_account.id %} <span class="code">you</span>{% endif %}</td>
+          <td>{{ member.email }}</td>
+          <td><span class="pill{% if member.role == 'owner' %} on{% endif %}">{{ member.role }}</span></td>
+          <td>
+            {% if not member.active %}
+              <span class="pill pill-failed">Disabled</span>
+            {% elif not member.password_hash %}
+              <span class="pill pill-wait">Invited</span>
+            {% else %}
+              <span class="pill pill-sent">Active</span>
+            {% endif %}
+          </td>
+          <td>{{ member.last_login_at|manila_time or 'Never' }}</td>
+          <td>
+            <div class="row-actions">
+            {% if member.active and not member.password_hash %}
+            <form method="post" action="{{ url_for('accounts.resend_invite', account_id=member.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-glass btn-small">Resend invite</button>
+            </form>
+            {% endif %}
+            {% if not member.active %}
+            <form method="post" action="{{ url_for('accounts.enable', account_id=member.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-primary btn-small">Enable</button>
+            </form>
+            {% elif member.id != current_account.id %}
+            <form method="post" action="{{ url_for('accounts.disable', account_id=member.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-glass btn-small">Disable</button>
+            </form>
+            {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <details class="new-event glass" open>
+    <summary>Invite an admin</summary>
+    <form method="post" action="{{ url_for('accounts.invite') }}" class="new-event-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field{% if error %} has-error{% endif %}">
+        <label for="invite-email">Email address</label>
+        <input id="invite-email" name="email" type="email" autocapitalize="off" spellcheck="false" maxlength="254" required value="{{ invite_email }}">
+        <small class="hint">They get a link that lasts 72 hours to set their own name and password.</small>
+        <p class="error" role="alert">{{ error or '' }}</p>
+      </div>
+      <button type="submit" class="btn btn-primary">Send invite</button>
+    </form>
+  </details>
+</section>
+{% endblock %}

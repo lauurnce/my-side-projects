@@ -292,5 +292,6 @@ button.pill { cursor: pointer; }
 .nav-account { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
 .nav-name { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: 700; text-underline-offset: 3px; }
 .notice { overflow-wrap: anywhere; }
+.team td { white-space: nowrap; }
 .account { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
 .account h2 { font-size: 1.15rem; margin-top: 0.4rem; }
