@@ -1,8 +1,9 @@
 # Quadra
 
-Quadra is a Flask web app for seminars and events: the landing page lists the upcoming events, attendees register
-for one on a form, each gets a QR code ticket by email, and staff scan the tickets at the door
-to mark people as checked in.
+Quadra is a Flask web app for seminars and events: the landing page lists the upcoming events, people apply
+for one on a form, staff accept or decline each application, accepted people get a QR code ticket
+by email, and staff scan the tickets at the door to mark people as checked in. An event can also
+accept everyone automatically.
 
 It runs on a laptop with a SQLite file, and in production on Vercel with a Postgres database.
 
@@ -10,10 +11,10 @@ It runs on a laptop with a SQLite file, and in production on Vercel with a Postg
 
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
-| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. Staff add, edit, publish, close and delete events from the dashboard. | 236 automated tests. Three attendees registered through the form in Chrome. |
-| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 61 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
-| 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
-| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 233 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
+| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. Staff add, edit, publish, close and delete events from the dashboard, and accept or decline applications. A hidden trap field and a per-address limit slow down bots. | 326 automated tests. Three attendees registered through the form in Chrome. |
+| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 64 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
+| 3. Automated Email | The ticket is emailed through Gmail SMTP when a person is accepted: QR shown in the body and attached as a PNG. A declined person gets a short email with no QR. Several emails go over one connection. Failures are recorded and never lose the registration or the decision. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
+| 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 239 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
@@ -27,7 +28,8 @@ flowchart LR
     routes --> validation[validation.py]
     routes --> registration[services/registration.py]
     registration -->|insert row| db[(SQLite locally<br>Postgres in production)]
-    registration --> mailer[services/mailer.py]
+    routes -->|accepted at once| delivery[services/delivery.py<br>email batches]
+    delivery --> mailer[services/mailer.py]
     mailer --> qr[services/qr.py<br>PNG built in memory]
     routes -->|GET /ticket/token.png| qr
     mailer -->|SMTP over SSL| gmail[Gmail]
@@ -39,6 +41,9 @@ flowchart LR
     accounts --> db
     accounts -->|invite and reset links| mailer
     laptop([Laptop webcam or USB scanner]) -->|POST /api/checkin| staff
+    staff -->|accept, decline| review[services/review.py]
+    review --> db
+    staff -->|decision emails| delivery
     staff --> checkin[services/checkin.py]
     checkin -->|sets checked_in| db
     staff -->|totals, search, CSV| db
@@ -128,11 +133,11 @@ that port everywhere below.
 | Command | What it does |
 | --- | --- |
 | `flask --app app init-db` | Creates the database and the first event. Erases existing data. |
-| `flask --app app add-event --name "..." --date 2027-01-18 --venue "..."` | Adds another event. `--opens 2026-12-15` delays registration. |
+| `flask --app app add-event --name "..." --date 2027-01-18 --venue "..."` | Adds another event that reviews applications. `--opens 2026-12-15` delays registration. `--accept-everyone` issues tickets at once instead. |
 | `flask --app app create-owner --email you@example.com --name "Your Name"` | Creates an owner account and prints its one-time set-password link. Refuses an email that already has an account. |
 | `flask --app app run` | Starts the app. |
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
-| `flask --app app resend-ticket --code SEM-2026-0001` | Emails one ticket again. |
+| `flask --app app resend-ticket --code SEM-2026-0001` | Emails one person their ticket, or their decline email, again. |
 
 ## Database and migrations
 
@@ -254,7 +259,7 @@ panel under it shows the event's state and these buttons:
 
 | Button | What it does |
 | --- | --- |
-| Edit | Changes the name, venue, event date and the date registration opens. Clearing the opening date opens registration right away. The rules are the same as for adding an event. The link `/events/<slug>` never changes, even when the name does. The page also shows who created the event and who last changed it. |
+| Edit | Changes the name, venue, event date, the date registration opens, and whether applications are reviewed. Clearing the opening date opens registration right away. The rules are the same as for adding an event. The link `/events/<slug>` never changes, even when the name does. The page also shows who created the event and who last changed it. |
 | View page / Preview page | Opens the public page. For a draft only signed-in staff can open it, and it carries a draft notice. |
 | Publish / Unpublish | A draft is hidden from visitors: it is not on the landing page, and its page and its registration address answer 404. |
 | Close registration / Reopen registration | A closed event still shows publicly, marked "Registration closed", with no form. Reopening hands control back to the dates. |
@@ -275,17 +280,104 @@ An event is in exactly one state. The first rule that matches wins:
 Unpublishing or closing an event never touches the people already registered. Their tickets
 still open, still scan, and still appear on the dashboard and in the CSV export.
 
+## Reviewing applications
+
+Each event either reviews applications or accepts everyone automatically. The choice is made in
+"Add an event" and can be changed on the Edit page. New events review applications, including the
+first event created from `.env` and events added with `add-event` (pass `--accept-everyone` for
+the other mode). Events that existed before this feature keep accepting everyone.
+
+| | Review applications | Accept everyone automatically |
+| --- | --- | --- |
+| After the form is sent | The application is `pending`. No ticket, no QR code and no email. | The registration is `accepted` at once and the ticket is emailed, as before. |
+| What the applicant sees | "Application received", under review, and a private status link. | The ticket page with the QR code and the same private status link. |
+| Who decides | A staff member, recorded with the time. | Nobody. The dashboard shows "Automatic". |
+
+An application is in one of three states: `pending`, `accepted` or `declined`.
+
+- Staff can accept or decline a pending application, accept a declined one later, and decline an
+  accepted one later. Nothing goes back to pending.
+- Accepting sends the ticket email. Declining sends a short decline email with no QR code.
+- Declining an accepted application stops its ticket: the QR image answers 404 and every check-in
+  path refuses it.
+- Someone who is already checked in cannot be declined. They are in the room, so the attendance
+  record stays as it is and the dashboard says they were left alone.
+- Deciding the same way twice changes nothing and sends nothing, so two staff members clicking
+  Accept on the same person produce one email.
+- Switching an event between the two modes never changes a decision already made. Applications
+  that are still pending when an event is switched to automatic stay pending until staff accept
+  or decline them, and "Accept all pending" clears them in one click. Only people who register
+  after the switch are accepted automatically.
+
+### What the applicant sees
+
+No email is sent when someone applies to a review event. Otherwise a stranger could use the form
+to send mail to other people's addresses. The page shown after applying carries a private status
+link, `/application/<token>`, with a random 43-character token that is separate from the ticket
+token. It shows pending, accepted (with the ticket and its download) or declined, and it is
+repeated in both decision emails. The "My registration" link in the navigation opens the same page
+for the browser that applied.
+
+### On the dashboard
+
+For the selected event the dashboard shows how many applications are in each state, and each
+count is a filter that combines with the search box. Each row has Accept and Decline buttons, and
+ticking rows enables "Accept selected" and "Decline selected". "Accept all pending" and "Decline
+all pending" decide every pending application of the event, not only the rows on screen. The
+table shows who decided and when, and the CSV export has `state`, `decided_at` and `decided_by`
+columns. Ticking rows and the buttons work without JavaScript. The select-all box needs it.
+
+### Decision emails are sent in batches
+
+Opening a connection to Gmail takes about 4 seconds, so a decision request opens one connection
+and sends up to 25 emails over it (`EMAIL_BATCH_SIZE` in `app/services/delivery.py`). It also
+stops starting new emails after 45 seconds (`EMAIL_BATCH_SECONDS`). Everything else stays marked
+as waiting, and a bar on the dashboard shows how many emails are waiting and how many failed,
+with "Send next batch" and "Retry failed" buttons. Accepting 40 people decides all 40 at once,
+emails 25, and leaves 15 for the next click.
+
+Each application's email is in one state: `none` (nothing owed), `pending` (waiting), `sending`,
+`sent` or `failed`. Which email is owed follows the application's state: the ticket for accepted,
+the decline email for declined.
+
+- A batch first claims its emails in the database, then sends them. A second request arriving at
+  the same moment finds nothing left to claim, so nobody gets the same email from two requests.
+- A failure for one person is recorded for that person and the batch continues. If the connection
+  itself fails, the whole batch is marked failed. The decision is saved before any email is tried
+  and is never undone by a mail failure.
+- Changing a decision resets that person's email to waiting and cancels any claim on it. The
+  sender checks the claim again right before each email, so the email for the old decision is
+  not sent, even in the middle of a batch.
+- If the server is stopped in the middle of a batch, the emails it had claimed stay `sending`.
+  After 10 minutes they count as failed and only "Retry failed" sends them, because the app
+  cannot know whether Gmail already delivered them.
+- "Resend email" on a row sends that person's current email again on purpose.
+
+### Protection against form abuse
+
+- The form has a hidden field that people never see and bots tend to fill. A submission with it
+  filled in creates nothing and gets a general "could not submit" message.
+- One client address may create 30 applications per hour across all events
+  (`MAX_APPLICATIONS_PER_ADDRESS` and `APPLICATION_WINDOW` in `app/services/registration.py`).
+  The count is kept in the database because instances share no memory, and it uses the same
+  address rules as the login lock: IPv6 addresses are grouped by their /64 network. The next
+  application gets a 429 page and creates nothing. Invalid and duplicate submissions do not count.
+
 ## Event day check-in
 
 Staff sign in at `/staff/login` with their own account.
 
 | Page | What it does |
 | --- | --- |
-| `/checkin/<ticket_token>` | Opens when a phone camera reads a ticket. Green means checked in, amber means already checked in, red means invalid ticket. |
-| `/scanner` | Scans with the laptop or tablet camera, and takes input from a USB barcode scanner. |
-| `/admin` | One event at a time: totals, search, manual check-in, resend email, CSV export. Also adds, edits, publishes, closes and deletes events. |
+| `/checkin/<ticket_token>` | Opens when a phone camera reads a ticket. Green means checked in, amber means already checked in, red means invalid ticket, black means not accepted. |
+| `/scanner` | Scans with the laptop or tablet camera, and takes input from a USB barcode scanner. Shows the same four colours, and "not accepted" sounds three short beeps. |
+| `/admin` | One event at a time: totals, search, accept and decline, manual check-in, resend email, CSV export. Also adds, edits, publishes, closes and deletes events. |
 
 The first check-in time is kept. Scanning the same ticket again never overwrites it.
+
+Only an accepted application can be checked in, on the ticket link, the scanner and the dashboard
+button alike. A pending or declined ticket shows "NOT ACCEPTED" with the person's name and whether
+the application is still under review or was declined, and it is not checked in.
 
 ### Option A: phones on the same Wi-Fi or hotspot
 
@@ -358,6 +450,11 @@ policy in `app/security.py` updated.
    `flask --app app migrate` and then `flask --app app create-owner` once, and open the link it
    prints.
 
+When a release adds a migration, run `flask --app app migrate` against the production database
+before deploying the new code. The migrations only add columns and tables with defaults, so the
+old code keeps working on the migrated database until the deploy finishes, while the new code
+fails on a database that has not been migrated.
+
 `.vercelignore` keeps the tests, docs, screenshots and `requirements-dev.txt` out of the upload, so
 only the runtime packages are installed.
 
@@ -387,7 +484,7 @@ pytest
 ruff check .
 ```
 
-There are 562 tests. They use a temporary database and never send real email.
+There are 655 tests. They use a temporary database, never send real email and never wait.
 
 ## Project structure
 
@@ -403,19 +500,21 @@ quadra/
 │   ├── errors.py            error pages
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
-│   ├── routes.py            landing page, event pages, confirmation, ticket image
+│   ├── routes.py            landing page, event pages, status page, ticket image
 │   ├── accounts.py          login, logout, password links, account page, team page
-│   ├── staff.py             check-in, scanner, admin, event management, CSV export
+│   ├── staff.py             check-in, scanner, admin, review, event management, CSV export
 │   ├── commands.py          resend-ticket, add-event, create-owner, lan-url
 │   ├── services/
 │   │   ├── events.py        events, dates, the five event states, edit and delete
-│   │   ├── registration.py  create attendee, deliver ticket
+│   │   ├── registration.py  create an application, applications-per-address limit
+│   │   ├── review.py        accept and decline
+│   │   ├── delivery.py      decision emails in batches, claims, retries
 │   │   ├── qr.py            QR ticket image, built in memory
 │   │   ├── accounts.py      staff accounts, passwords, lockout, one-time links
-│   │   ├── mailer.py        ticket, invite and password emails over Gmail SMTP
+│   │   ├── mailer.py        ticket, decline, invite and password emails over Gmail SMTP
 │   │   └── checkin.py       check-in, totals, search
-│   ├── templates/           pages and the ticket, invite and password emails
-│   └── static/              stylesheet, form, event filter and scanner scripts
+│   ├── templates/           pages and the ticket, decline, invite and password emails
+│   └── static/              stylesheet, form, event filter, select-all and scanner scripts
 ├── tests/                   pytest suite
 ├── docs/TEST-REPORT.md      verification results
 ├── screenshots/             screenshots for this README and the report
@@ -428,9 +527,23 @@ quadra/
 
 - `flask run` is Flask's development server and is for a laptop only. The public site runs on
   Vercel, which has not been deployed yet.
-- Email is sent while the attendee waits, so registering takes about 4 seconds. A slow network
-  can make it take up to 15.
-- A free Gmail account can send about 500 emails a day.
+- On an event that accepts everyone, email is sent while the attendee waits, so registering
+  takes about 4 seconds. A slow network can make it take up to 15.
+- A free Gmail account can send about 500 emails a day. The app does not count them, so on a big
+  event send decision emails over more than one day.
+- Decision emails go out only when a staff member clicks. Nothing sends the waiting ones in the
+  background, so check the email bar on the dashboard after a large batch.
+- If the server stops between Gmail accepting an email and the app recording it, that email shows
+  as failed after 10 minutes, and "Retry failed" then delivers a second copy.
+- An applicant who loses the status link has no way to get it back before a decision, because no
+  email is sent when applying. Staff can still see the application on the dashboard.
+- A decision cannot be undone back to pending, and declining is not confirmed on a second page.
+  "Decline all pending" emails every pending applicant with one click.
+- A whole campus or mobile network can share one address, so the limit of 30 applications per
+  hour per address can turn real people away during a rush. Raise
+  `MAX_APPLICATIONS_PER_ADDRESS` if that happens.
+- Attendees who registered before review existed with email switched off are not queued for a
+  ticket email. "Resend email" sends theirs.
 - A ticket sent to the sending Gmail account itself lands in Sent, not the inbox.
 - The scanner page loads `html5-qrcode` 2.3.8 from unpkg, so the laptop needs internet access for
   camera scanning. The typed and USB scanner input works without it.
@@ -448,4 +561,6 @@ quadra/
 - The event link is set when the event is added and cannot be changed afterwards.
 - Only the latest change to an event is recorded, not the full history.
 - `add-event` on the command line always publishes the event.
+- With `MAIL_ENABLED=false` decision emails are logged (recipient and subject only) and stay
+  marked as waiting.
 - The pages load their fonts from Google Fonts and fall back to system fonts offline.
