@@ -11,6 +11,34 @@
       </form>
 {% endmacro %}
 
+{% set state_pills = {'pending': 'wait', 'accepted': 'sent', 'declined': 'failed'} %}
+{% set email_labels = {'none': 'not queued', 'pending': 'waiting', 'sending': 'sending', 'sent': 'sent', 'failed': 'failed'} %}
+
+{% macro row_form_fields() %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="q" value="{{ query }}">
+              <input type="hidden" name="state" value="{{ shown_state }}">
+{% endmacro %}
+
+{% macro decide_button(attendee, action, label, style) %}
+            <form method="post" action="{{ url_for('staff.admin_decide', slug=event.slug) }}">
+              {{ row_form_fields() }}
+              <input type="hidden" name="ids" value="{{ attendee.id }}">
+              <button type="submit" name="action" value="{{ action }}" class="btn {{ style }} btn-small">{{ label }}</button>
+            </form>
+{% endmacro %}
+
+{% macro row_button(endpoint, attendee, label, style) %}
+            <form method="post" action="{{ url_for(endpoint, attendee_id=attendee.id) }}">
+              {{ row_form_fields() }}
+              <button type="submit" class="btn {{ style }} btn-small">{{ label }}</button>
+            </form>
+{% endmacro %}
+
+{% macro email_pill(attendee) %}
+            {% if attendee.state != 'pending' %}<span class="pill pill-{{ {'sent': 'sent', 'failed': 'failed'}.get(attendee.email_status, 'wait') }}">{{ 'decline' if attendee.state == 'declined' else 'ticket' }} {{ email_labels[attendee.email_status] }}</span>{% endif %}
+{% endmacro %}
+
 {% block content %}
 <section class="admin">
   <div class="section-head">
@@ -65,12 +93,46 @@
     <div class="glass glass-maroon"><dt>Checked in</dt><dd id="total-checked-in">{{ totals.checked_in }}</dd></div>
   </dl>
 
+  {% if totals.emails_waiting or totals.emails_failed %}
+  <form id="email-queue" method="post" action="{{ url_for('staff.admin_send_emails', slug=event.slug) }}" class="notice notice-warning row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="q" value="{{ query }}">
+    <input type="hidden" name="state" value="{{ shown_state }}">
+    <span>Decision emails: <b id="emails-waiting">{{ totals.emails_waiting }}</b> waiting, <b id="emails-failed">{{ totals.emails_failed }}</b> failed. Each click sends up to {{ batch_size }}.</span>
+    {% if totals.emails_waiting %}<button type="submit" name="which" value="waiting" class="btn btn-primary btn-small">Send next batch</button>{% endif %}
+    {% if totals.emails_failed %}<button type="submit" name="which" value="failed" class="btn btn-glass btn-small">Retry failed</button>{% endif %}
+  </form>
+  {% endif %}
+
+  <nav class="chips" aria-label="Filter by application state">
+    <a class="pill{% if not shown_state %} on{% endif %}" href="{{ url_for('staff.admin', event=event.slug, q=query or None) }}"{% if not shown_state %} aria-current="true"{% endif %}>All &middot; {{ totals.registered }}</a>
+    {% for name in states %}
+    <a class="pill{% if shown_state == name %} on{% endif %}" href="{{ url_for('staff.admin', event=event.slug, q=query or None, state=name) }}"{% if shown_state == name %} aria-current="true"{% endif %}>{{ name|capitalize }} &middot; <span id="count-{{ name }}">{{ totals[name] }}</span></a>
+    {% endfor %}
+  </nav>
+
   <form method="get" action="{{ url_for('staff.admin') }}" class="search" role="search">
     <input type="hidden" name="event" value="{{ event.slug }}">
+    {% if shown_state %}<input type="hidden" name="state" value="{{ shown_state }}">{% endif %}
     <label for="q" class="visually-hidden">Search attendees</label>
     <input id="q" name="q" type="search" value="{{ query }}" placeholder="Search name, email, code, organization">
     <button type="submit" class="btn btn-primary btn-small">Search</button>
-    {% if query %}<a class="btn btn-glass btn-small" href="{{ url_for('staff.admin', event=event.slug) }}">Clear</a>{% endif %}
+    {% if query %}<a class="btn btn-glass btn-small" href="{{ url_for('staff.admin', event=event.slug, state=shown_state or None) }}">Clear</a>{% endif %}
+  </form>
+
+  <form id="bulk" method="post" action="{{ url_for('staff.admin_decide', slug=event.slug) }}" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="q" value="{{ query }}">
+    <input type="hidden" name="state" value="{{ shown_state }}">
+    {% if attendees %}
+    <button type="submit" name="action" value="accept" class="btn btn-primary btn-small">Accept selected</button>
+    <button type="submit" name="action" value="decline" class="btn btn-glass btn-small">Decline selected</button>
+    {% endif %}
+    {% if totals.pending %}
+    <button type="submit" name="action" value="accept-pending" class="btn btn-glass btn-small">Accept all {{ totals.pending }} pending</button>
+    <button type="submit" name="action" value="decline-pending" class="btn btn-glass btn-small">Decline all {{ totals.pending }} pending</button>
+    {% endif %}
+    <span class="hint">{% if event.review_applications %}Applications wait here until you decide.{% else %}New registrations are accepted automatically.{% endif %}</span>
   </form>
 
   {% if attendees %}
@@ -78,12 +140,14 @@
     <table class="attendees">
       <thead>
         <tr>
+          <th scope="col"><input type="checkbox" id="select-all" aria-label="Select everyone in this list" hidden></th>
           <th scope="col">Code</th>
           <th scope="col">Name</th>
-          <th scope="col">Email</th>
+          <th scope="col">Application</th>
+          <th scope="col">Email address</th>
           <th scope="col">Organization</th>
           <th scope="col">Contact</th>
-          <th scope="col">Ticket email</th>
+          <th scope="col">Decision email</th>
           <th scope="col">Check-in</th>
           <th scope="col">Checked in by</th>
           <th scope="col"><span class="visually-hidden">Actions</span></th>
@@ -92,34 +156,31 @@
       <tbody>
         {% for attendee in attendees %}
         <tr>
+          <td><input type="checkbox" name="ids" value="{{ attendee.id }}" form="bulk" aria-label="Select {{ attendee.full_name }}"></td>
           <td><span class="code">{{ attendee.attendee_code }}</span></td>
           <td>{{ attendee.full_name }}</td>
+          <td class="staff-name">
+            <span class="pill pill-{{ state_pills[attendee.state] }}">{{ attendee.state }}</span>
+            {% if attendee.decided_at %}<div class="hint">{{ attendee.decided_by or 'Automatic' }} &middot; {{ attendee.decided_at|manila_time }}</div>{% endif %}
+          </td>
           <td>{{ attendee.email }}</td>
           <td>{{ attendee.organization }}</td>
           <td class="mono">{{ attendee.contact_number }}</td>
-          <td><span class="pill pill-{{ attendee.email_status }}">{{ attendee.email_status }}</span></td>
+          <td>{{ email_pill(attendee) }}</td>
           <td>
             {% if attendee.checked_in %}
               <span class="pill pill-sent">{{ attendee.checked_in_at|manila_time }}</span>
-            {% else %}
+            {% elif attendee.state == 'accepted' %}
               <span class="pill pill-wait">Not yet</span>
             {% endif %}
           </td>
           <td class="staff-name">{{ attendee.checked_in_by or '' }}</td>
           <td>
             <div class="row-actions">
-            {% if not attendee.checked_in %}
-            <form method="post" action="{{ url_for('staff.admin_checkin', attendee_id=attendee.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="q" value="{{ query }}">
-              <button type="submit" class="btn btn-primary btn-small">Check in</button>
-            </form>
-            {% endif %}
-            <form method="post" action="{{ url_for('staff.admin_resend', attendee_id=attendee.id) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="q" value="{{ query }}">
-              <button type="submit" class="btn btn-glass btn-small">Resend email</button>
-            </form>
+            {% if attendee.state != 'accepted' %}{{ decide_button(attendee, 'accept', 'Accept', 'btn-primary') }}{% endif %}
+            {% if attendee.state != 'declined' and not attendee.checked_in %}{{ decide_button(attendee, 'decline', 'Decline', 'btn-glass') }}{% endif %}
+            {% if attendee.state == 'accepted' and not attendee.checked_in %}{{ row_button('staff.admin_checkin', attendee, 'Check in', 'btn-primary') }}{% endif %}
+            {% if attendee.state != 'pending' %}{{ row_button('staff.admin_resend', attendee, 'Resend email', 'btn-glass') }}{% endif %}
             </div>
           </td>
         </tr>
@@ -129,6 +190,8 @@
   </div>
   {% elif query %}
     <p class="empty glass">No attendee matches "{{ query }}".</p>
+  {% elif shown_state %}
+    <p class="empty glass">No {{ shown_state }} applications.</p>
   {% else %}
     <p class="empty glass">Nobody has registered yet.</p>
   {% endif %}
@@ -161,6 +224,14 @@
         <small class="hint">Leave empty to open registration right away.</small>
         <p class="error" role="alert">{{ errors.get('opens_on', '') }}</p>
       </div>
+      <div class="field">
+        <label for="event-applications">Applications</label>
+        <select id="event-applications" name="applications">
+          <option value="review">Review applications</option>
+          <option value="automatic"{% if new_event.get('applications') == 'automatic' %} selected{% endif %}>Accept everyone automatically</option>
+        </select>
+        <small class="hint">With review, nobody gets a ticket until staff accept them.</small>
+      </div>
       <div class="row">
         <button type="submit" class="btn btn-primary">Add and publish</button>
         <button type="submit" class="btn btn-glass" name="visibility" value="draft">Save as draft</button>
@@ -168,4 +239,8 @@
     </form>
   </details>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/review.js') }}"></script>
 {% endblock %}

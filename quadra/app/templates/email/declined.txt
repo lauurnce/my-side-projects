@@ -1,0 +1,8 @@
+Hi {{ attendee.full_name }},
+
+Thank you for applying to {{ attendee.event_name }}. We are sorry that we could not offer you a place this time.
+
+We hope to see you at another event.
+
+You can check your application here:
+{{ status_url }}

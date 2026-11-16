@@ -10,7 +10,15 @@ from psycopg.rows import dict_row
 from .clock import utc_timestamp
 
 MIGRATIONS = Path(__file__).parent / "migrations"
-TABLES = ("attendees", "events", "account_tokens", "login_attempts", "accounts", "schema_migrations")
+TABLES = (
+    "attendees",
+    "events",
+    "account_tokens",
+    "login_attempts",
+    "application_attempts",
+    "accounts",
+    "schema_migrations",
+)
 
 
 def without_nul(value):

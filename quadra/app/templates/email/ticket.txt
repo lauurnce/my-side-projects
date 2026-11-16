@@ -1,6 +1,6 @@
 Hi {{ attendee.full_name }},
 
-You're registered for {{ attendee.event_name }}.
+{% if attendee.decided_by_id %}Your application was accepted. You have a place at{% else %}You're registered for{% endif %} {{ attendee.event_name }}.
 
 Date: {{ attendee.event_date|long_date }}
 Venue: {{ attendee.event_venue }}
@@ -8,3 +8,6 @@ Attendee code: {{ attendee.attendee_code }}
 
 Your QR ticket is attached as {{ attendee.attendee_code }}.png.
 Show this QR code at the check-in desk.
+
+You can open your ticket again here:
+{{ status_url }}

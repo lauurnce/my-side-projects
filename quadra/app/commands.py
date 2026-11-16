@@ -11,25 +11,28 @@ from .services.accounts import (
     issue_link,
     normalize_email,
 )
+from .services.delivery import EMAIL_NAMES, send_emails
 from .services.events import create_event, parse_date
-from .services.registration import deliver_ticket, get_attendee_by_code
+from .services.registration import get_attendee_by_code
 
 
-@click.command("resend-ticket", help="Email the ticket to one attendee again.")
+@click.command("resend-ticket", help="Email one person their ticket or decline email again.")
 @click.option("--code", required=True, help="Attendee code to email again, e.g. SEM-2026-0001.")
 @with_appcontext
 def resend_ticket_command(code):
     attendee = get_attendee_by_code(code)
     if attendee is None:
         raise click.ClickException(f"No attendee with code {code}.")
+    if attendee["state"] == "pending":
+        raise click.ClickException(f"{code} has no decision yet, so there is no email to send.")
+    name = EMAIL_NAMES[attendee["state"]]
+    result = send_emails(attendee["event_id"], "any", [attendee["id"]])
     if not current_app.config["MAIL_ENABLED"]:
-        deliver_ticket(attendee)
         click.echo("MAIL_ENABLED is off, so the email was logged instead of sent.")
         return
-    attendee = deliver_ticket(attendee)
-    if attendee["email_status"] != "sent":
-        raise click.ClickException(f"Sending the ticket for {code} failed. Check the log above.")
-    click.echo(f"Ticket for {code} sent to {attendee['email']}.")
+    if not result["sent"]:
+        raise click.ClickException(f"Sending the {name} for {code} failed. Check the log above.")
+    click.echo(f"{name.capitalize()} for {code} sent to {attendee['email']}.")
 
 
 @click.command("add-event", help="Add an event that people can register for.")
@@ -37,13 +40,14 @@ def resend_ticket_command(code):
 @click.option("--date", "event_date", required=True, help="Event date, e.g. 2026-11-30.")
 @click.option("--venue", required=True, help="Where the event is held.")
 @click.option("--opens", help="Date registration opens, e.g. 2026-11-01. Open now if omitted.")
+@click.option("--accept-everyone", is_flag=True, help="Issue tickets at once instead of reviewing applications.")
 @with_appcontext
-def add_event_command(name, event_date, venue, opens):
+def add_event_command(name, event_date, venue, opens, accept_everyone):
     day = parse_date(event_date)
     opens_on = parse_date(opens) if opens else None
     if day is None or (opens and opens_on is None):
         raise click.ClickException("Dates must look like 2026-11-30.")
-    event = create_event(name, day, venue, opens_on)
+    event = create_event(name, day, venue, opens_on, review_applications=not accept_everyone)
     click.echo(f"Added {event['name']} at /events/{event['slug']}")
 
 

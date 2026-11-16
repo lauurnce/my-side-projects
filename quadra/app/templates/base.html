@@ -35,7 +35,7 @@
         </form>
       </div>
       {% elif last_ticket_code %}
-      <a class="btn btn-glass btn-small" href="{{ url_for('main.registered', code=last_ticket_code) }}">My ticket <span aria-hidden="true">&rarr;</span></a>
+      <a class="btn btn-glass btn-small" href="{{ url_for('main.registered', code=last_ticket_code) }}">My registration <span aria-hidden="true">&rarr;</span></a>
       {% else %}
       <a class="btn btn-glass btn-small" href="{{ url_for('main.index') }}#events">Register <span aria-hidden="true">&rarr;</span></a>
       {% endif %}

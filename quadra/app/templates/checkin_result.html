@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if status == 'checked_in' %}Checked in{% elif status == 'already' %}Already checked in{% else %}Invalid ticket{% endif %}</title>
+  <title>{% if status == 'checked_in' %}Checked in{% elif status == 'already' %}Already checked in{% elif status == 'not_accepted' %}Not accepted{% else %}Invalid ticket{% endif %}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -24,6 +24,13 @@
       <div class="result-plate">
         <b>{{ attendee.full_name }} ({{ attendee.attendee_code }})</b>
         <span>{{ attendee.event_name }}</span>
+      </div>
+    {% elif status == 'not_accepted' %}
+      <p class="result-mark" aria-hidden="true">&#8856;</p>
+      <h1>NOT ACCEPTED: {{ attendee.full_name }} ({{ attendee.attendee_code }})</h1>
+      <div class="result-plate">
+        <b>{{ attendee.event_name }}</b>
+        <span>{% if attendee.state == 'declined' %}This application was declined.{% else %}This application is still under review.{% endif %} Do not let this person in on this ticket.</span>
       </div>
     {% else %}
       <p class="result-mark" aria-hidden="true">&#10005;</p>

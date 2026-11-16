@@ -13,6 +13,7 @@ from flask import (
 )
 
 from .accounts import current_account
+from .services.delivery import send_emails
 from .services.events import get_event_by_slug, list_upcoming, registration_state
 from .services.qr import ticket_png
 from .services.registration import (
@@ -20,13 +21,21 @@ from .services.registration import (
     create_attendee,
     email_exists,
     get_attendee_by_code,
+    get_attendee_by_status_token,
     get_attendee_by_token,
+    may_apply,
 )
 from .validation import validate_registration
 
 bp = Blueprint("main", __name__)
 
-DUPLICATE_MSG = "This email is already registered for this event. Check your inbox for your ticket."
+DUPLICATE_MSG = (
+    "This email is already registered for this event."
+    " Check your inbox, or open the status link you were shown when you applied."
+)
+NOT_SUBMITTED_MSG = "We could not submit that. Please try again."
+TOO_MANY_MSG = "Too many applications came from your network in the last hour. Please try again later."
+TRAP_FIELD = "website"
 RECENT_CODES_KEY = "registered_codes"
 TICKET_CACHE_CONTROL = "private, max-age=300"
 
@@ -58,9 +67,21 @@ def event_or_404(slug):
     return event
 
 
+def form_page(event, values, errors, problem="", status=400):
+    return render_template("event.html", event=event, values=values, errors=errors, problem=problem), status
+
+
 @bp.get("/events/<slug>")
 def event_page(slug):
-    return render_template("event.html", event=event_or_404(slug), values={}, errors={})
+    return form_page(event_or_404(slug), {}, {}, status=200)
+
+
+def apply(event, data):
+    state = "pending" if event["review_applications"] else "accepted"
+    attendee = create_attendee(event["id"], state=state, **data)
+    if state == "accepted":
+        send_emails(event["id"], attendee_ids=[attendee["id"]])
+    return attendee["attendee_code"]
 
 
 @bp.post("/events/<slug>/register")
@@ -70,20 +91,21 @@ def register(slug):
         abort(403, description="Registration for this event is not open.")
 
     data, errors = validate_registration(request.form)
+    if request.form.get(TRAP_FIELD):
+        return form_page(event, data, {}, NOT_SUBMITTED_MSG)
     if not errors and email_exists(event["id"], data["email"]):
         errors["email"] = DUPLICATE_MSG
+    if errors:
+        return form_page(event, data, errors)
+    if not may_apply(request.remote_addr):
+        return form_page(event, data, {}, TOO_MANY_MSG, 429)
 
-    if not errors:
-        try:
-            attendee = create_attendee(event["id"], **data)
-        except DuplicateEmailError:
-            errors["email"] = DUPLICATE_MSG
-        else:
-            code = attendee["attendee_code"]
-            session[RECENT_CODES_KEY] = (session.get(RECENT_CODES_KEY, []) + [code])[-5:]
-            return redirect(url_for("main.registered", code=code))
-
-    return render_template("event.html", event=event, values=data, errors=errors), 400
+    try:
+        code = apply(event, data)
+    except DuplicateEmailError:
+        return form_page(event, data, {"email": DUPLICATE_MSG})
+    session[RECENT_CODES_KEY] = (session.get(RECENT_CODES_KEY, []) + [code])[-5:]
+    return redirect(url_for("main.registered", code=code))
 
 
 @bp.get("/registered/<code>")
@@ -96,10 +118,18 @@ def registered(code):
     return render_template("registered.html", attendee=attendee)
 
 
+@bp.get("/application/<token>")
+def application(token):
+    attendee = get_attendee_by_status_token(token)
+    if attendee is None:
+        abort(404)
+    return render_template("registered.html", attendee=attendee)
+
+
 @bp.get("/ticket/<token>.png")
 def ticket(token):
     attendee = get_attendee_by_token(token)
-    if attendee is None:
+    if attendee is None or attendee["state"] != "accepted":
         abort(404)
     code = attendee["attendee_code"]
     try:

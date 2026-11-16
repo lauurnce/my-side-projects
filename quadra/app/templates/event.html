@@ -33,17 +33,24 @@
     <dl class="facts">
       <dt>Date</dt><dd>{{ event.event_date|long_date }}</dd>
       <dt>Venue</dt><dd>{{ event.venue }}</dd>
-      <dt>Ticket</dt><dd>QR code, sent by email</dd>
+      <dt>Ticket</dt><dd>{% if event.review_applications %}QR code, emailed once you are accepted{% else %}QR code, sent by email{% endif %}</dd>
     </dl>
     <p>Bring the QR code on your phone or printed. Staff scan it at the entrance.</p>
   </section>
 
   {% if state == 'open' %}
   <section class="panel glass glass-strong">
+    {% if event.review_applications %}
+    <h2>Apply</h2>
+    <p class="lead">Fill in your details. Staff review every application. If you are accepted, your QR ticket is sent to your email.</p>
+    {% else %}
     <h2>Register</h2>
     <p class="lead">Fill in your details. Your QR ticket will be sent to your email.</p>
+    {% endif %}
 
-    {% if errors %}
+    {% if problem %}
+      <div class="alert" role="alert">{{ problem }}</div>
+    {% elif errors %}
       <div class="alert" role="alert">Please fix the highlighted fields below.</div>
     {% endif %}
 
@@ -53,7 +60,11 @@
       {{ field("email", "Email Address", type="email", autocomplete="email", placeholder="name@example.com", maxlength=254) }}
       {{ field("organization", "Organization", autocomplete="organization", placeholder="School or company", maxlength=150) }}
       {{ field("contact_number", "Contact Number", type="tel", autocomplete="tel", placeholder="09171234567", hint="09XXXXXXXXX or +639XXXXXXXXX") }}
-      <button type="submit" class="btn btn-primary btn-wide">Register</button>
+      <div class="visually-hidden" aria-hidden="true">
+        <label for="website">Leave this field empty</label>
+        <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-primary btn-wide">{% if event.review_applications %}Apply{% else %}Register{% endif %}</button>
     </form>
   </section>
   {% else %}

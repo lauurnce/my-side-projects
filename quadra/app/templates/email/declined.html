@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f3f0ee;font-family:Arial,Helvetica,sans-serif;color:#1a1112;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f0ee;padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border-radius:16px;">
+          <tr>
+            <td style="background:#9c1b1c;color:#ffffff;padding:26px 24px;text-align:center;border-radius:16px 16px 0 0;">
+              <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Your application</p>
+              <h1 style="margin:8px 0 0;font-size:22px;">{{ attendee.event_name }}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px;">
+              <p style="margin:0 0 12px;font-size:16px;">Hi {{ attendee.full_name }},</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">Thank you for applying to {{ attendee.event_name }}. We are sorry that we could not offer you a place this time.</p>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.5;">We hope to see you at another event.</p>
+              <p style="margin:0 0 8px;font-size:13px;color:#645657;">You can check your application here:</p>
+              <p style="margin:0;font-size:13px;font-family:Consolas,monospace;color:#6e0f12;word-break:break-all;"><a href="{{ status_url }}" style="color:#6e0f12;">{{ status_url }}</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

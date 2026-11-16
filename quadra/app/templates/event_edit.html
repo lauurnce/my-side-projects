@@ -29,6 +29,15 @@
     {{ field("venue", "Venue", maxlength=150) }}
     {{ field("event_date", "Event date", type="date") }}
     {{ field("opens_on", "Registration opens", type="date", required=False, hint="Leave empty to open registration right away.") }}
+    {% set applications = values.get('applications') or ('review' if event.review_applications else 'automatic') %}
+    <div class="field">
+      <label for="event-applications">Applications</label>
+      <select id="event-applications" name="applications">
+        <option value="review"{% if applications == 'review' %} selected{% endif %}>Review applications</option>
+        <option value="automatic"{% if applications == 'automatic' %} selected{% endif %}>Accept everyone automatically</option>
+      </select>
+      <small class="hint">Switching never changes a decision already made. Applications still pending stay pending until staff accept or decline them.</small>
+    </div>
     <div class="row">
       <button type="submit" class="btn btn-primary">Save changes</button>
       <a class="btn btn-glass" href="{{ url_for('staff.admin', event=event.slug) }}">Cancel</a>

@@ -1,21 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Registered: {{ attendee.attendee_code }}{% endblock %}
+{% block title %}{% if attendee.state == 'accepted' %}Registered{% else %}Application{% endif %}: {{ attendee.attendee_code }}{% endblock %}
 
 {% block container_class %} container-wide{% endblock %}
 
 {% block content %}
-<section class="ticket-card glass glass-strong">
+{% set status_link = url_for('main.application', token=attendee.status_token, _external=True) %}
+<section class="{% if attendee.state == 'accepted' %}ticket-card{% else %}account{% endif %} glass glass-strong">
   <div class="ticket-main">
-    {% if attendee.email_status == 'sent' %}
-      <p class="notice notice-success">We emailed your ticket to <strong>{{ attendee.email }}</strong>. Check your spam folder if you don't see it.</p>
-    {% elif attendee.email_status == 'failed' %}
-      <p class="notice notice-error" role="alert">We couldn't email your ticket to <strong>{{ attendee.email }}</strong> right now. Download it below and bring it to the event.</p>
-    {% endif %}
+    {% if attendee.state == 'pending' %}
+      <p class="success-badge">Application received</p>
+      <h1>Thanks, {{ attendee.full_name }}. Your application is under review.</h1>
+      <p class="lead">Staff look at every application. No email is sent until they decide. If you are accepted, your QR ticket arrives at <strong>{{ attendee.email }}</strong>.</p>
+    {% elif attendee.state == 'declined' %}
+      <p class="success-badge">Application declined</p>
+      <h1>We could not offer you a place, {{ attendee.full_name }}.</h1>
+      <p class="lead">Thank you for applying to {{ attendee.event_name }}. There is no ticket for this application.</p>
+    {% else %}
+      {% if attendee.email_status == 'sent' %}
+        <p class="notice notice-success">We emailed your ticket to <strong>{{ attendee.email }}</strong>. Check your spam folder if you don't see it.</p>
+      {% elif attendee.email_status == 'failed' %}
+        <p class="notice notice-error" role="alert">We couldn't email your ticket to <strong>{{ attendee.email }}</strong> right now. Download it below and bring it to the event.</p>
+      {% endif %}
 
-    <p class="success-badge">Registration complete</p>
-    <h1>You're in, {{ attendee.full_name }}!</h1>
-    <p class="lead">Keep your attendee code and the QR ticket.</p>
+      <p class="success-badge">{% if attendee.decided_by_id %}Application accepted{% else %}Registration complete{% endif %}</p>
+      <h1>You're in, {{ attendee.full_name }}!</h1>
+      <p class="lead">Keep your attendee code and the QR ticket.</p>
+    {% endif %}
 
     <dl class="facts">
       <dt>Event</dt><dd>{{ attendee.event_name }}</dd>
@@ -25,21 +36,28 @@
       <dt>Email Address</dt><dd>{{ attendee.email }}</dd>
       <dt>Organization</dt><dd>{{ attendee.organization }}</dd>
       <dt>Contact Number</dt><dd>{{ attendee.contact_number }}</dd>
-      <dt>Registered</dt><dd>{{ attendee.created_at|manila_time }}</dd>
+      <dt>{% if attendee.state == 'accepted' %}Registered{% else %}Applied{% endif %}</dt><dd>{{ attendee.created_at|manila_time }}</dd>
+      <dt>Status</dt><dd id="application-state">{{ attendee.state|capitalize }}</dd>
     </dl>
 
+    <p class="notice notice-warning">Bookmark your private status page. Anyone with this link can see this page: <a id="status-link" href="{{ status_link }}">{{ status_link }}</a></p>
+
     <div class="row">
+      {% if attendee.state == 'accepted' %}
       <a class="btn btn-primary" href="{{ url_for('main.ticket', token=attendee.ticket_token, download=1) }}"
          download="{{ attendee.attendee_code }}.png">Download ticket</a>
+      {% endif %}
       <a class="btn btn-glass" href="{{ url_for('main.event_page', slug=attendee.event_slug) }}">Register another person</a>
     </div>
   </div>
 
+  {% if attendee.state == 'accepted' %}
   <figure class="ticket">
     <img src="{{ url_for('main.ticket', token=attendee.ticket_token) }}"
          alt="QR ticket for {{ attendee.attendee_code }}" width="280">
     <p class="attendee-code">{{ attendee.attendee_code }}</p>
     <figcaption>Show this QR code at the entrance.</figcaption>
   </figure>
+  {% endif %}
 </section>
 {% endblock %}

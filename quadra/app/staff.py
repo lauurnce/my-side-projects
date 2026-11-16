@@ -17,6 +17,7 @@ from flask import (
 from .accounts import current_account, staff_required
 from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
+from .services.delivery import EMAIL_BATCH_SIZE, EMAIL_NAMES, send_emails
 from .services.events import (
     create_event,
     delete_event_without_registrations,
@@ -27,7 +28,8 @@ from .services.events import (
     update_event,
     validate_event,
 )
-from .services.registration import deliver_ticket, get_attendee_by_id
+from .services.registration import get_attendee_by_id
+from .services.review import DECISIONS, STATES, decide
 
 bp = Blueprint("staff", __name__)
 
@@ -39,6 +41,9 @@ CSV_COLUMNS = (
     "email",
     "organization",
     "contact_number",
+    "state",
+    "decided_at",
+    "decided_by",
     "email_status",
     "email_sent_at",
     "checked_in",
@@ -46,8 +51,10 @@ CSV_COLUMNS = (
     "checked_in_by",
     "created_at",
 )
-USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "checked_in_by")
-TIME_COLUMNS = ("email_sent_at", "checked_in_at", "created_at")
+USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "decided_by", "checked_in_by")
+TIME_COLUMNS = ("decided_at", "email_sent_at", "checked_in_at", "created_at")
+ALL_PENDING = "-pending"
+MAIL_OFF_MSG = "MAIL_ENABLED is off, so the email was logged instead of sent."
 EVENT_SWITCHES = {
     "publish": ({"published": 1}, "{name} is published."),
     "unpublish": ({"published": 0}, "{name} is a draft now. Only staff can see it."),
@@ -60,7 +67,7 @@ EVENT_SWITCHES = {
 @staff_required
 def checkin(token):
     status, attendee = check_in(token, current_account()["id"])
-    http_status = 404 if status == "invalid" else 200
+    http_status = {"invalid": 404, "not_accepted": 403}.get(status, 200)
     return render_template("checkin_result.html", status=status, attendee=attendee), http_status
 
 
@@ -81,6 +88,7 @@ def api_checkin():
         status=status,
         name=attendee["full_name"],
         code=attendee["attendee_code"],
+        state=attendee["state"],
         checked_in_at=manila_time(attendee["checked_in_at"]),
     )
 
@@ -95,14 +103,17 @@ def selected_event(events, slug=""):
     return events[-1] if events else None
 
 
-def admin_page(events, event, query="", new_event=None, errors=None, status=200):
+def admin_page(events, event, query="", state="", new_event=None, errors=None, status=200):
     return render_template(
         "admin.html",
         events=events,
         event=event,
         totals=totals(event["id"]) if event else None,
-        attendees=search_attendees(event["id"], query) if event else [],
+        attendees=search_attendees(event["id"], query, state) if event else [],
         query=query,
+        shown_state=state,
+        states=STATES,
+        batch_size=EMAIL_BATCH_SIZE,
         new_event=new_event or {},
         errors=errors or {},
         public_base_url=current_app.config["PUBLIC_BASE_URL"],
@@ -117,7 +128,8 @@ def admin():
     event = selected_event(events, slug)
     if slug and event is None:
         abort(404)
-    return admin_page(events, event, request.args.get("q", ""))
+    state = request.args.get("state", "")
+    return admin_page(events, event, request.args.get("q", ""), state if state in STATES else "")
 
 
 @bp.post("/admin/events")
@@ -131,6 +143,64 @@ def admin_create_event():
     event = create_event(**data, created_by_id=current_account()["id"], published=published)
     flash(f"{event['name']} was {'added' if published else 'saved as a draft'}.", "success")
     return redirect(url_for("staff.admin", event=event["slug"]))
+
+
+def back_to_event(slug):
+    return redirect(
+        url_for(
+            "staff.admin",
+            event=slug,
+            q=request.form.get("q") or None,
+            state=request.form.get("state") or None,
+        )
+    )
+
+
+def flash_email_result(result):
+    if result["logged"]:
+        flash(MAIL_OFF_MSG, "warning")
+    if result["sent"]:
+        flash(f"{result['sent']} {'email' if result['sent'] == 1 else 'emails'} sent.", "success")
+    if result["failed"]:
+        flash(f"{result['failed']} could not be emailed. Retry them from the email queue.", "error")
+
+
+def chosen_ids():
+    return [int(value) for value in request.form.getlist("ids") if value.isdecimal()]
+
+
+@bp.post("/admin/events/<slug>/decide")
+@staff_required
+def admin_decide(slug):
+    event = event_or_404(slug)
+    action = request.form.get("action", "")
+    decision = action.removesuffix(ALL_PENDING)
+    if decision not in DECISIONS:
+        abort(400)
+    attendee_ids = None if action.endswith(ALL_PENDING) else chosen_ids()
+    if attendee_ids == []:
+        flash("Tick at least one person first.", "warning")
+        return back_to_event(slug)
+    state = DECISIONS[decision]
+    decided = decide(event["id"], state, current_account()["id"], attendee_ids)
+    skipped = len(attendee_ids) - len(decided) if attendee_ids else 0
+    flash(f"{len(decided)} {state}.", "success" if decided else "warning")
+    if skipped:
+        flash(f"{skipped} left as they were: already {state}, or already checked in.", "warning")
+    flash_email_result(send_emails(event["id"], attendee_ids=decided))
+    return back_to_event(slug)
+
+
+@bp.post("/admin/events/<slug>/emails")
+@staff_required
+def admin_send_emails(slug):
+    event = event_or_404(slug)
+    which = "failed" if request.form.get("which") == "failed" else "waiting"
+    result = send_emails(event["id"], which)
+    if not any(result.values()):
+        flash("There was nothing to send.", "warning")
+    flash_email_result(result)
+    return back_to_event(slug)
 
 
 def event_or_404(slug):
@@ -197,12 +267,6 @@ def attendee_or_404(attendee_id):
     return attendee
 
 
-def back_to_admin(attendee):
-    return redirect(
-        url_for("staff.admin", event=attendee["event_slug"], q=request.form.get("q") or None)
-    )
-
-
 @bp.post("/admin/checkin/<int:attendee_id>")
 @staff_required
 def admin_checkin(attendee_id):
@@ -210,26 +274,30 @@ def admin_checkin(attendee_id):
     status, attendee = check_in(attendee["ticket_token"], current_account()["id"])
     if status == "checked_in":
         flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
+    elif status == "not_accepted":
+        flash(f"{attendee['attendee_code']} is not accepted, so it cannot be checked in.", "error")
     else:
         checked_in_at = manila_time(attendee["checked_in_at"])
         flash(f"{attendee['attendee_code']} was already checked in at {checked_in_at}.", "warning")
-    return back_to_admin(attendee)
+    return back_to_event(attendee["event_slug"])
 
 
 @bp.post("/admin/resend/<int:attendee_id>")
 @staff_required
 def admin_resend(attendee_id):
     attendee = attendee_or_404(attendee_id)
-    if not current_app.config["MAIL_ENABLED"]:
-        deliver_ticket(attendee)
-        flash("MAIL_ENABLED is off, so the email was logged instead of sent.", "warning")
-        return back_to_admin(attendee)
-    attendee = deliver_ticket(attendee)
-    if attendee["email_status"] == "sent":
-        flash(f"Ticket for {attendee['attendee_code']} sent to {attendee['email']}.", "success")
+    code = attendee["attendee_code"]
+    name = EMAIL_NAMES.get(attendee["state"], "email")
+    result = send_emails(attendee["event_id"], "any", [attendee_id])
+    if result["logged"]:
+        flash(MAIL_OFF_MSG, "warning")
+    elif result["sent"]:
+        flash(f"{name.capitalize()} for {code} sent to {attendee['email']}.", "success")
+    elif result["failed"]:
+        flash(f"Sending the {name} for {code} failed. Check the log.", "error")
     else:
-        flash(f"Sending the ticket for {attendee['attendee_code']} failed. Check the log.", "error")
-    return back_to_admin(attendee)
+        flash(f"Nothing was sent for {code}: it has no decision yet, or its email is being sent now.", "warning")
+    return back_to_event(attendee["event_slug"])
 
 
 def csv_cell(column, value):

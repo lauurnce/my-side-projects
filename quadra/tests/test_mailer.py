@@ -6,41 +6,6 @@ from app.db import get_db
 from app.services import mailer
 from app.services.qr import ticket_png
 
-
-class FakeSMTP:
-
-    def __init__(self, host, port, timeout=None, context=None):
-        self.host, self.port, self.timeout = host, port, timeout
-        self.login_args = None
-        self.sent = []
-        self.instances.append(self)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_exc):
-        return False
-
-    def login(self, user, password):
-        self.login_args = (user, password)
-
-    def send_message(self, message):
-        self.sent.append(message)
-
-
-@pytest.fixture
-def fake_smtp(app, monkeypatch):
-    app.config.update(
-        MAIL_ENABLED=True,
-        SMTP_USER="organizer@gmail.com",
-        SMTP_APP_PASSWORD="abcd efgh ijkl mnop",
-        MAIL_FROM_NAME="Seminar Team",
-    )
-    smtp_class = type("FakeSMTPForTest", (FakeSMTP,), {"instances": []})
-    monkeypatch.setattr(smtplib, "SMTP_SSL", smtp_class)
-    return smtp_class
-
-
 ACCOUNT = {"id": 7, "email": "nina@example.com", "name": "Nina New"}
 LINK = "http://localhost:5000/staff/set-password/one-time-token"
 
@@ -165,7 +130,7 @@ def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fak
 def test_smtp_error_is_logged(client, valid_form, fake_smtp, monkeypatch, caplog):
     fail_login(monkeypatch, fake_smtp)
     client.post("/events/test-seminar/register", data=valid_form)
-    assert "Ticket email failed for SEM-2026-0001" in caplog.text
+    assert "The mail connection failed" in caplog.text
 
 
 def test_missing_credentials_marks_failed(client, app, valid_form, fake_smtp):

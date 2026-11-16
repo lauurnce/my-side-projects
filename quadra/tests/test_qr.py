@@ -146,7 +146,7 @@ def test_qr_failure_marks_email_failed_and_logs(client, app, valid_form, monkeyp
     break_ticket_png(monkeypatch, mailer)
     register(client, valid_form)
     assert get_row(app)["email_status"] == "failed"
-    assert "Ticket email failed for SEM-2026-0001" in caplog.text
+    assert "Sending the ticket failed for SEM-2026-0001" in caplog.text
     assert "image library broke" in caplog.text
 
 

@@ -5,7 +5,6 @@ import pytest
 
 from app import commands
 from app.db import get_db
-from app.services import registration
 from app.services.checkin import extract_token, totals
 
 FIRST_CHECKIN_UTC = "2026-11-30T08:15:00+00:00"
@@ -215,7 +214,8 @@ def test_admin_totals_count_sent_emails_and_checkins(app, staff_client, valid_fo
     with app.app_context():
         get_db().execute("UPDATE attendees SET email_status = 'sent'")
         get_db().commit()
-        assert totals(row(app)["event_id"]) == {"registered": 2, "emails_sent": 2, "checked_in": 1}
+        counted = totals(row(app)["event_id"])
+        assert (counted["registered"], counted["emails_sent"], counted["checked_in"]) == (2, 2, 1)
 
 
 def test_admin_manual_checkin(app, staff_client, token):
@@ -235,25 +235,18 @@ def test_admin_manual_checkin_unknown_attendee(staff_client):
     assert staff_client.post("/admin/checkin/999").status_code == 404
 
 
-def test_admin_resend_sends_the_ticket(app, staff_client, token, monkeypatch):
-    sent_to = []
-    app.config["MAIL_ENABLED"] = True
-    monkeypatch.setattr(
-        registration, "send_ticket_email", lambda attendee: sent_to.append(attendee["email"]) or True
-    )
-
+def test_admin_resend_sends_the_ticket(app, staff_client, token, fake_smtp):
     response = staff_client.post(f"/admin/resend/{row(app)['id']}", follow_redirects=True)
     assert "Ticket for SEM-2026-0001 sent to juan@example.com." in response.get_data(as_text=True)
-    assert sent_to == ["juan@example.com"]
+    assert [message["To"] for message in fake_smtp.instances[0].sent] == ["juan@example.com"]
     assert row(app)["email_status"] == "sent"
 
 
-def test_admin_resend_reports_a_failed_send(app, staff_client, token, monkeypatch):
-    def fail(_attendee):
+def test_admin_resend_reports_a_failed_send(app, staff_client, token, fake_smtp, monkeypatch):
+    def fail(_smtp, _message):
         raise OSError("network down")
 
-    app.config["MAIL_ENABLED"] = True
-    monkeypatch.setattr(registration, "send_ticket_email", fail)
+    monkeypatch.setattr(fake_smtp, "send_message", fail)
 
     response = staff_client.post(f"/admin/resend/{row(app)['id']}", follow_redirects=True)
     assert "Sending the ticket for SEM-2026-0001 failed." in response.get_data(as_text=True)

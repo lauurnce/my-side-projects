@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app import clock, create_app
-from app.db import init_db
+from app.db import get_db, init_db
 from app.services.accounts import change_password, create_account, get_account
 
 BUNDLED_POSTGRES = "pgserver"
@@ -41,9 +41,17 @@ def make_app(tmp_path, postgres_url):
     return build
 
 
+def set_review(app, slug, review_applications):
+    with app.app_context():
+        get_db().execute(
+            "UPDATE events SET review_applications = %s WHERE slug = %s", (int(review_applications), slug)
+        )
+        get_db().commit()
+
+
 @pytest.fixture
 def app(make_app):
-    return make_app({
+    app = make_app({
         "PUBLIC_BASE_URL": "http://localhost:5000",
         "CSRF_ENABLED": False,
         "MAIL_ENABLED": False,
@@ -52,6 +60,14 @@ def app(make_app):
         "EVENT_DATE": "November 30, 2026",
         "EVENT_VENUE": "Main Hall",
     })
+    set_review(app, "test-seminar", False)
+    return app
+
+
+@pytest.fixture
+def reviewing(app):
+    set_review(app, "test-seminar", True)
+    return app
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +77,40 @@ def block_real_smtp(monkeypatch):
         raise RuntimeError("Tests must not send real email. Use the fake_smtp fixture.")
 
     monkeypatch.setattr(smtplib, "SMTP_SSL", refuse)
+
+
+class FakeSMTP:
+
+    def __init__(self, host, port, timeout=None, context=None):
+        self.host, self.port, self.timeout = host, port, timeout
+        self.login_args = None
+        self.sent = []
+        self.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+    def login(self, user, password):
+        self.login_args = (user, password)
+
+    def send_message(self, message):
+        self.sent.append(message)
+
+
+@pytest.fixture
+def fake_smtp(app, monkeypatch):
+    app.config.update(
+        MAIL_ENABLED=True,
+        SMTP_USER="organizer@gmail.com",
+        SMTP_APP_PASSWORD="abcd efgh ijkl mnop",
+        MAIL_FROM_NAME="Seminar Team",
+    )
+    smtp_class = type("FakeSMTPForTest", (FakeSMTP,), {"instances": []})
+    monkeypatch.setattr(smtplib, "SMTP_SSL", smtp_class)
+    return smtp_class
 
 
 class FrozenDatetime(datetime):

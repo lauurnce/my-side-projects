@@ -224,3 +224,82 @@ def test_init_db_refuses_a_database_url_without_force(app, client, valid_form):
     assert "DATABASE_URL is set" in result.output
     with app.app_context():
         assert count("attendees") == 1
+
+
+def test_existing_attendees_and_events_keep_working_after_the_review_migration(blank):
+    folder = database.MIGRATIONS / get_db().dialect
+    database.applied_migrations(get_db())
+    for name in SHIPPED_MIGRATIONS[:4]:
+        database.apply_migration(get_db(), folder / name)
+    get_db().execute(
+        "INSERT INTO events (slug, name, event_date, venue, created_at)"
+        " VALUES ('old', 'Old Seminar', '2026-11-30', 'Hall', '2026-11-01T00:00:00+00:00')"
+    )
+    for number, email_status in enumerate(("sent", "failed", "pending"), start=1):
+        get_db().execute(
+            "INSERT INTO attendees (event_id, attendee_code, full_name, email, organization, contact_number,"
+            " ticket_token, email_status, created_at) VALUES (1, %s, 'Juan', %s, 'PUP', '+639171234567', %s, %s,"
+            " '2026-11-01T00:00:00+00:00')",
+            (f"SEM-2026-000{number}", f"juan{number}@example.com", f"token-{number}", email_status),
+        )
+    get_db().commit()
+
+    assert migrate() == SHIPPED_MIGRATIONS[4:]
+    assert get_db().execute("SELECT review_applications FROM events").fetchone() == {"review_applications": 0}
+    attendees = get_db().execute("SELECT * FROM attendees ORDER BY id").fetchall()
+    assert [attendee["state"] for attendee in attendees] == ["accepted"] * 3
+    assert [attendee["email_status"] for attendee in attendees] == ["sent", "failed", "none"]
+    assert [attendee["decided_by_id"] for attendee in attendees] == [None] * 3
+    tokens = {attendee["status_token"] for attendee in attendees}
+    assert len(tokens) == 3
+    assert all(len(token) == 64 for token in tokens)
+    assert count("application_attempts") == 0
+
+
+def test_tickets_issued_before_the_review_migration_still_work(app, client, make_account, sign_in):
+    with app.app_context():
+        drop_tables()
+        folder = database.MIGRATIONS / get_db().dialect
+        database.applied_migrations(get_db())
+        for name in SHIPPED_MIGRATIONS[:4]:
+            database.apply_migration(get_db(), folder / name)
+        get_db().execute(
+            "INSERT INTO events (slug, name, event_date, venue, created_at)"
+            " VALUES ('old', 'Old Seminar', '2026-11-30', 'Hall', '2026-11-01T00:00:00+00:00')"
+        )
+        get_db().execute(
+            "INSERT INTO attendees (event_id, attendee_code, full_name, email, organization, contact_number,"
+            " ticket_token, created_at) VALUES (1, 'SEM-2026-0001', 'Juan', 'juan@example.com', 'PUP',"
+            " '+639171234567', 'old-token', '2026-11-01T00:00:00+00:00')"
+        )
+        get_db().commit()
+        migrate()
+        status_token = get_db().execute("SELECT status_token FROM attendees").fetchone()["status_token"]
+    staff_client = sign_in(make_account("staff@example.com"))
+
+    assert client.get("/ticket/old-token.png").status_code == 200
+    assert "old-token" in client.get(f"/application/{status_token}").get_data(as_text=True)
+    assert staff_client.post("/api/checkin", json={"code": "old-token"}).get_json()["status"] == "checked_in"
+    registered = client.post(
+        "/events/old/register",
+        data={"full_name": "Maria", "email": "maria@example.com", "organization": "TUP", "contact_number": "09181234567"},
+        follow_redirects=True,
+    ).get_data(as_text=True)
+    assert "Registration complete" in registered
+    dashboard = staff_client.get("/admin?event=old").get_data(as_text=True)
+    assert "New registrations are accepted automatically." in dashboard
+    assert '<b id="emails-waiting">1</b> waiting' in dashboard
+
+
+def test_a_row_written_by_the_previous_release_still_gets_a_status_token_on_postgres(app):
+    with app.app_context():
+        if get_db().dialect != "postgres":
+            pytest.skip("only the hosted postgres database serves two releases during a deploy")
+        get_db().execute(
+            "INSERT INTO attendees (event_id, attendee_code, full_name, email, organization, contact_number,"
+            " ticket_token, created_at) VALUES (1, 'SEM-2026-0001', 'Juan', 'juan@example.com', 'PUP',"
+            " '+639171234567', 'old-token', '2026-11-01T00:00:00+00:00')"
+        )
+        get_db().commit()
+        attendee = get_db().execute("SELECT * FROM attendees").fetchone()
+    assert (attendee["state"], len(attendee["status_token"])) == ("accepted", 64)

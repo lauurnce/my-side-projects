@@ -9,6 +9,7 @@ from ..db import get_db
 DATE_FORMATS = ("%Y-%m-%d", "%B %d, %Y", "%b %d, %Y")
 MAX_NAME_LENGTH = 120
 MAX_VENUE_LENGTH = 150
+AUTOMATIC = "automatic"
 STATES_BY_PRECEDENCE = (
     ("ended", lambda event, current: event["event_date"] < current),
     ("draft", lambda event, current: not event["published"]),
@@ -57,12 +58,14 @@ def free_slug(name):
     return slug
 
 
-def create_event(name, event_date, venue, opens_on=None, created_by_id=None, published=True):
+def create_event(
+    name, event_date, venue, opens_on=None, created_by_id=None, published=True, review_applications=True
+):
     db = get_db()
     slug = free_slug(name)
     db.execute(
-        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at, created_by_id, published)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at, created_by_id, published,"
+        " review_applications) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
         (
             slug,
             name,
@@ -72,6 +75,7 @@ def create_event(name, event_date, venue, opens_on=None, created_by_id=None, pub
             utc_timestamp(),
             created_by_id,
             int(published),
+            int(review_applications),
         ),
     )
     db.commit()
@@ -86,7 +90,7 @@ def update_event(event_id, account_id, **columns):
     db.commit()
 
 
-def save_event_details(event_id, account_id, name, event_date, venue, opens_on):
+def save_event_details(event_id, account_id, name, event_date, venue, opens_on, review_applications):
     update_event(
         event_id,
         account_id,
@@ -94,6 +98,7 @@ def save_event_details(event_id, account_id, name, event_date, venue, opens_on):
         event_date=event_date.isoformat(),
         venue=venue,
         opens_on=opens_on.isoformat() if opens_on else None,
+        review_applications=int(review_applications),
     )
 
 
@@ -127,7 +132,13 @@ def validate_event(form):
         errors["opens_on"] = "Pick a valid opening date, or leave it empty."
     elif opens_on and event_date and opens_on > event_date:
         errors["opens_on"] = "Registration must open on or before the event date."
-    return {"name": data["name"], "event_date": event_date, "venue": data["venue"], "opens_on": opens_on}, errors
+    return {
+        "name": data["name"],
+        "event_date": event_date,
+        "venue": data["venue"],
+        "opens_on": opens_on,
+        "review_applications": form.get("applications") != AUTOMATIC,
+    }, errors
 
 
 def seed_from_config():
