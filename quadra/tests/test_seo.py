@@ -130,3 +130,9 @@ def test_structured_data_cannot_break_out_of_its_script_block(app, client):
 
 def test_other_pages_carry_no_event_data(client):
     assert structured_data(client.get("/").get_data(as_text=True)) is None
+
+
+def test_search_console_tag_appears_only_when_configured(app, client):
+    assert "google-site-verification" not in client.get("/").get_data(as_text=True)
+    app.config["GOOGLE_SITE_VERIFICATION"] = "abc123"
+    assert '<meta name="google-site-verification" content="abc123">' in client.get("/").get_data(as_text=True)
