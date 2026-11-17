@@ -28,5 +28,6 @@ class Config:
     EVENT_VENUE = os.environ.get("EVENT_VENUE", "TBA")
     ATTENDEE_CODE_PREFIX = "SEM-2026"
     GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")
+    CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
     DATABASE = None
     DATABASE_URL = os.environ.get("DATABASE_URL") or None
