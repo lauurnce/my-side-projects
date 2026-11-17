@@ -95,6 +95,8 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `DATABASE_URL` | Postgres address for production. Leave empty to use the local SQLite file. | `postgresql://...` |
 | `QUADRA_ENV` | Set to `production` on the live site. | `production` |
 | `TRUSTED_PROXY_HOPS` | `1` on Vercel, otherwise leave empty. | `1` |
+| `CONTACT_EMAIL` | Shown on the privacy notice as the address for privacy requests. Optional. | `organizers@example.com` |
+| `GOOGLE_SITE_VERIFICATION` | The code Google Search Console gives you to prove you own the site. Optional. | `abc123...` |
 | `EVENT_NAME` | Name of the first event, created by `init-db`. | `Tech Innovators Seminar 2026` |
 | `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
 | `EVENT_VENUE` | Venue of the first event. | `PUP Main Campus, Manila` |
@@ -476,6 +478,39 @@ Platform limits that matter here:
 - Instances share no memory, so failed logins are counted in the database and the signed-in
   account is read from the database on every staff request.
 
+## Search engines and privacy
+
+### Being found
+
+| What | Where | Notes |
+| --- | --- | --- |
+| Sitemap | `/sitemap.xml` | The landing page, the privacy notice, and every published event that has not ended. |
+| Robots file | `/robots.txt` | Points to the sitemap and closes the staff, ticket and status pages. |
+| Search snippet | every page | A title, a description and a canonical address built from `PUBLIC_BASE_URL`. |
+| Share preview | every page | Title, description and one image (`app/static/share.png`) for link previews. |
+| Event details | each event page | The name, date and venue as schema.org `Event` data. |
+
+Staff pages, ticket images, private status pages and error pages carry `X-Robots-Tag: noindex`,
+so they stay out of search results even if someone links to them.
+
+To submit the site to Google:
+
+1. Open Google Search Console and add the site as a URL-prefix property.
+2. Choose the HTML tag method and copy the code inside `content="..."`.
+3. Set `GOOGLE_SITE_VERIFICATION` to that code, deploy, and press Verify.
+4. Under Sitemaps, submit `sitemap.xml`.
+
+Google decides when pages appear. It usually takes days to weeks.
+
+### Privacy notice and consent
+
+`/privacy` says what is collected, why, who can see it and how to ask for a correction or
+deletion. It is linked from every page. Set `CONTACT_EMAIL` so the notice names an address.
+
+The registration form has a required box agreeing to that notice. The server refuses a
+registration without it, and stores the time of agreement in `consented_at`, which the CSV
+export includes. Registrations made before this was added have no time.
+
 ## Running tests
 
 ```bash
@@ -484,7 +519,7 @@ pytest
 ruff check .
 ```
 
-There are 655 tests. They use a temporary database, never send real email and never wait.
+There are 694 tests. They use a temporary database, never send real email and never wait.
 
 ## Project structure
 
@@ -498,6 +533,7 @@ quadra/
 │   ├── clock.py             UTC timestamps shown in Manila time
 │   ├── security.py          production mode, cookies, security headers
 │   ├── errors.py            error pages
+│   ├── seo.py               sitemap, robots file, share preview and structured data
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
 │   ├── routes.py            landing page, event pages, status page, ticket image
@@ -557,6 +593,9 @@ quadra/
   changed from the team page. Another owner is added with `create-owner`.
 - Check-ins and events from before staff accounts existed have no recorded person.
 - A check-in cannot be undone from the dashboard.
+- A registration cannot be deleted from the dashboard. A deletion request under the privacy
+  notice has to be carried out in the database by the owner.
+- The privacy notice is written in plain language and has not been reviewed by a lawyer.
 - An event with registrations cannot be deleted, only unpublished or closed.
 - The event link is set when the event is added and cannot be changed afterwards.
 - Only the latest change to an event is recorded, not the full history.
