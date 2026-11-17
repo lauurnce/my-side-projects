@@ -29,6 +29,6 @@ def create_app(test_config=None):
     app.register_blueprint(routes.bp)
     app.register_blueprint(accounts.bp)
     app.register_blueprint(staff.bp)
-    app.register_blueprint(seo.bp)
+    seo.init_app(app)
 
     return app

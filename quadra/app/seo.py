@@ -77,3 +77,21 @@ def keep_private_pages_out_of_search(response):
     if is_private(request.path) or response.status_code >= 400:
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
+
+
+def event_structured_data(event):
+    return {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "name": event["name"],
+        "startDate": event["event_date"],
+        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "location": {"@type": "Place", "name": event["venue"], "address": event["venue"]},
+        "url": site_url(url_for("main.event_page", slug=event["slug"])),
+        "image": site_url(SHARE_IMAGE_PATH),
+    }
+
+
+def init_app(app):
+    app.jinja_env.globals["event_structured_data"] = event_structured_data
+    app.register_blueprint(bp)

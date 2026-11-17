@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import date
 from xml.etree import ElementTree
 
@@ -102,3 +104,29 @@ def test_public_pages_can_be_indexed(client, path):
 
 def test_api_errors_are_not_indexed(client):
     assert client.post("/api/checkin", json={"code": "x"}).headers["X-Robots-Tag"] == "noindex, nofollow"
+
+
+def structured_data(html):
+    found = re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.DOTALL)
+    return json.loads(found.group(1)) if found else None
+
+
+def test_event_page_describes_the_event_to_search_engines(client):
+    data = structured_data(client.get("/events/test-seminar").get_data(as_text=True))
+    assert data["@type"] == "Event"
+    assert data["name"] == "Test Seminar"
+    assert data["startDate"] == "2026-11-30"
+    assert data["location"] == {"@type": "Place", "name": "Main Hall", "address": "Main Hall"}
+    assert data["url"] == "http://localhost:5000/events/test-seminar"
+
+
+def test_structured_data_cannot_break_out_of_its_script_block(app, client):
+    with app.app_context():
+        create_event("Evil </script><b>", date(2027, 2, 9), "Hall", review_applications=False)
+    html = client.get("/events/evil-script-b").get_data(as_text=True)
+    assert "</script><b>" not in html
+    assert structured_data(html)["name"] == "Evil </script><b>"
+
+
+def test_other_pages_carry_no_event_data(client):
+    assert structured_data(client.get("/").get_data(as_text=True)) is None

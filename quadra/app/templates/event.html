@@ -6,6 +6,10 @@
 
 {% block container_class %} container-wide{% endblock %}
 
+{% block head %}
+{% if event.published %}<script type="application/ld+json">{{ event_structured_data(event)|tojson }}</script>{% endif %}
+{% endblock %}
+
 {% macro field(name, label, type="text", autocomplete="", placeholder="", maxlength=None, hint="") %}
   <div class="field{% if errors.get(name) %} has-error{% endif %}">
     <label for="{{ name }}">{{ label }}</label>
