@@ -3,7 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Quadra{% endblock %}</title>
+  <title>{% block title %}Quadra: seminars and events at PUP{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site_description }}{% endblock %}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:site_name" content="Quadra">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

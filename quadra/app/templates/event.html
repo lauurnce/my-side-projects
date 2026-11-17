@@ -2,6 +2,8 @@
 
 {% block title %}{{ event.name }}{% endblock %}
 
+{% block description %}{{ event.name }} on {{ event.event_date|long_date }} at {{ event.venue }}. Register on Quadra and get your QR ticket by email.{% endblock %}
+
 {% block container_class %} container-wide{% endblock %}
 
 {% macro field(name, label, type="text", autocomplete="", placeholder="", maxlength=None, hint="") %}
