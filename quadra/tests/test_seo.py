@@ -84,3 +84,21 @@ def test_robots_txt_points_to_the_sitemap_and_closes_private_pages(client):
     assert "Sitemap: http://localhost:5000/sitemap.xml" in lines
     for path in ("/staff/", "/admin", "/scanner", "/checkin/", "/application/", "/registered/", "/ticket/", "/api/"):
         assert f"Disallow: {path}" in lines
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/staff/login", "/staff/forgot", "/admin", "/scanner", "/checkin/some-token", "/application/nope",
+     "/registered/SEM-2026-0001", "/ticket/nope.png", "/no-such-page"],
+)
+def test_private_and_missing_pages_ask_search_engines_to_stay_away(client, path):
+    assert client.get(path).headers["X-Robots-Tag"] == "noindex, nofollow"
+
+
+@pytest.mark.parametrize("path", ["/", "/events/test-seminar", "/sitemap.xml", "/robots.txt"])
+def test_public_pages_can_be_indexed(client, path):
+    assert "X-Robots-Tag" not in client.get(path).headers
+
+
+def test_api_errors_are_not_indexed(client):
+    assert client.post("/api/checkin", json={"code": "x"}).headers["X-Robots-Tag"] == "noindex, nofollow"

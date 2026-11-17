@@ -66,3 +66,14 @@ def robots():
     lines += [f"Disallow: {path}" for path in PRIVATE_PATHS]
     lines.append(f"Sitemap: {site_url(url_for('seo.sitemap'))}")
     return Response("\n".join(lines) + "\n", mimetype="text/plain")
+
+
+def is_private(path):
+    return path.startswith(PRIVATE_PATHS)
+
+
+@bp.after_app_request
+def keep_private_pages_out_of_search(response):
+    if is_private(request.path) or response.status_code >= 400:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
