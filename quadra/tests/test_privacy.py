@@ -73,3 +73,14 @@ def test_the_box_stays_ticked_when_another_field_is_wrong(client, valid_form):
 def test_the_box_is_not_ticked_on_a_fresh_form(client):
     html = client.get("/events/test-seminar").get_data(as_text=True)
     assert "checked" not in html.split('id="consent"')[1].split(">")[0]
+
+
+def test_csv_export_shows_when_each_person_agreed(client, valid_form, owner, sign_in):
+    import csv
+    import io
+
+    client.post("/events/test-seminar/register", data=valid_form)
+    staff = sign_in(owner)
+    rows = list(csv.DictReader(io.StringIO(staff.get("/admin/export.csv").get_data(as_text=True))))
+    assert rows[0]["consented_at"] == rows[0]["created_at"]
+    assert rows[0]["consented_at"].endswith(("AM", "PM"))

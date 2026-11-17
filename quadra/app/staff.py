@@ -50,9 +50,10 @@ CSV_COLUMNS = (
     "checked_in_at",
     "checked_in_by",
     "created_at",
+    "consented_at",
 )
 USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "decided_by", "checked_in_by")
-TIME_COLUMNS = ("decided_at", "email_sent_at", "checked_in_at", "created_at")
+TIME_COLUMNS = ("decided_at", "email_sent_at", "checked_in_at", "created_at", "consented_at")
 ALL_PENDING = "-pending"
 MAIL_OFF_MSG = "MAIL_ENABLED is off, so the email was logged instead of sent."
 EVENT_SWITCHES = {
