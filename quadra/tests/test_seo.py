@@ -40,3 +40,12 @@ def test_event_names_are_escaped_in_the_page_head(app, client):
     html = client.get("/events/talks-script").get_data(as_text=True)
     assert "<script>\"" not in html
     assert "Talks &#34;&lt;script&gt;&#34;" in html
+
+
+def test_share_preview_has_a_large_image(client):
+    html = client.get("/").get_data(as_text=True)
+    assert '<meta property="og:image" content="http://localhost:5000/static/share.png">' in html
+    assert '<meta name="twitter:card" content="summary_large_image">' in html
+    image = client.get("/static/share.png")
+    assert image.status_code == 200
+    assert image.mimetype == "image/png"
