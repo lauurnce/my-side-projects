@@ -1,4 +1,19 @@
+from datetime import date
+from xml.etree import ElementTree
+
 import pytest
+
+from app.services.events import create_event
+
+SITEMAP_NAMESPACE = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+
+
+def sitemap_addresses(client):
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.mimetype == "application/xml"
+    tree = ElementTree.fromstring(response.get_data())
+    return [loc.text for loc in tree.iter(f"{SITEMAP_NAMESPACE}loc")]
 
 
 def test_landing_page_has_a_title_and_description(client):
@@ -31,10 +46,6 @@ def test_share_preview_repeats_the_title_and_description(client):
 
 
 def test_event_names_are_escaped_in_the_page_head(app, client):
-    from datetime import date
-
-    from app.services.events import create_event
-
     with app.app_context():
         create_event('Talks "<script>"', date(2027, 2, 9), "Hall", review_applications=False)
     html = client.get("/events/talks-script").get_data(as_text=True)
@@ -49,3 +60,17 @@ def test_share_preview_has_a_large_image(client):
     image = client.get("/static/share.png")
     assert image.status_code == 200
     assert image.mimetype == "image/png"
+
+
+def test_sitemap_lists_the_landing_page_and_open_events(client):
+    assert sitemap_addresses(client) == ["http://localhost:5000/", "http://localhost:5000/events/test-seminar"]
+
+
+def test_sitemap_leaves_out_drafts_and_past_events(app, client):
+    with app.app_context():
+        create_event("Hidden Draft", date(2027, 2, 9), "Hall", published=False)
+        create_event("Long Ago", date(2026, 10, 1), "Hall")
+        create_event("Coming Up", date(2027, 3, 1), "Hall")
+    addresses = sitemap_addresses(client)
+    assert "http://localhost:5000/events/coming-up" in addresses
+    assert not any("hidden-draft" in address or "long-ago" in address for address in addresses)
