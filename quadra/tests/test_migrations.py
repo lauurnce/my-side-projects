@@ -282,7 +282,7 @@ def test_tickets_issued_before_the_review_migration_still_work(app, client, make
     assert staff_client.post("/api/checkin", json={"code": "old-token"}).get_json()["status"] == "checked_in"
     registered = client.post(
         "/events/old/register",
-        data={"full_name": "Maria", "email": "maria@example.com", "organization": "TUP", "contact_number": "09181234567"},
+        data={"full_name": "Maria", "email": "maria@example.com", "organization": "TUP", "contact_number": "09181234567", "consent": "yes"},
         follow_redirects=True,
     ).get_data(as_text=True)
     assert "Registration complete" in registered

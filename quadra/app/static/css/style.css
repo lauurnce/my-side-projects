@@ -310,3 +310,6 @@ button.pill { cursor: pointer; }
 .prose ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }
 .prose p, .prose li { color: var(--ink-soft); }
 .prose strong { color: var(--ink); overflow-wrap: anywhere; }
+.field-check label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem; align-items: start; font-weight: 500; font-size: 0.9rem; }
+.field-check input { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; padding: 0; accent-color: var(--maroon); box-shadow: none; }
+.field-check.has-error input { outline-offset: 2px; }

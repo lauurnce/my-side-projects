@@ -6,6 +6,7 @@ MAX_LENGTHS = {
     "organization": 150,
 }
 
+CONSENT_VALUE = "yes"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PH_MOBILE_RE = re.compile(r"^(?:09|\+639)\d{9}$")
 
@@ -50,5 +51,8 @@ def validate_registration(form):
             )
         else:
             data["contact_number"] = phone
+
+    if form.get("consent") != CONSENT_VALUE:
+        errors["consent"] = "Tick the box to agree before you continue."
 
     return data, errors

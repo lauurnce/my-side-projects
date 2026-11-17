@@ -58,8 +58,8 @@ def create_attendee(event_id, full_name, email, organization, contact_number, st
     inserted = db.execute(
         "INSERT INTO attendees"
         " (event_id, attendee_code, full_name, email, organization, contact_number,"
-        " ticket_token, status_token, state, decided_at, email_status, created_at)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        " ticket_token, status_token, state, decided_at, email_status, created_at, consented_at)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         " ON CONFLICT (event_id, email) DO NOTHING RETURNING id",
         (
             event_id,
@@ -73,6 +73,7 @@ def create_attendee(event_id, full_name, email, organization, contact_number, st
             state,
             now if accepted else None,
             "pending" if accepted else "none",
+            now,
             now,
         ),
     ).fetchall()

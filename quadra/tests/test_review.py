@@ -19,6 +19,7 @@ def person(number):
         "email": f"person{number}@example.com",
         "organization": "PUP",
         "contact_number": f"0917123450{number}",
+        "consent": "yes",
     }
 
 

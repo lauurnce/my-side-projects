@@ -30,6 +30,9 @@
         return "Enter a PH mobile number: 09XXXXXXXXX or +639XXXXXXXXX.";
       }
       return "";
+    },
+    consent: function (v) {
+      return v ? "" : "Tick the box to agree before you continue.";
     }
   };
 
@@ -46,14 +49,15 @@
   }
 
   function check(input) {
-    var message = rules[input.name](input.value.trim());
+    var value = input.type === "checkbox" ? (input.checked ? "yes" : "") : input.value.trim();
+    var message = rules[input.name](value);
     showError(input, message);
     return !message;
   }
 
   Object.keys(rules).forEach(function (name) {
     var input = form.elements[name];
-    input.addEventListener("blur", function () { check(input); });
+    input.addEventListener(input.type === "checkbox" ? "change" : "blur", function () { check(input); });
     input.addEventListener("input", function () {
       if (input.closest(".field").classList.contains("has-error")) check(input);
     });

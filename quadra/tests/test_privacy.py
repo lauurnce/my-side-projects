@@ -26,3 +26,50 @@ def test_privacy_page_shows_the_contact_address_when_set(app, client):
 def test_every_page_links_to_the_privacy_notice(client):
     for path in ("/", "/events/test-seminar", "/staff/login"):
         assert 'href="/privacy"' in client.get(path).get_data(as_text=True)
+
+
+def saved_attendees(app):
+    from app.db import get_db
+
+    with app.app_context():
+        return get_db().execute("SELECT * FROM attendees ORDER BY id").fetchall()
+
+
+def test_form_asks_for_agreement_and_links_the_notice(client):
+    html = client.get("/events/test-seminar").get_data(as_text=True)
+    assert 'id="consent" name="consent" type="checkbox" value="yes" required' in html
+    assert '<a href="/privacy">privacy notice</a>' in html
+
+
+def test_registering_without_agreeing_is_refused(app, client, valid_form):
+    del valid_form["consent"]
+    response = client.post("/events/test-seminar/register", data=valid_form)
+    assert response.status_code == 400
+    assert "Tick the box to agree before you continue." in response.get_data(as_text=True)
+    assert saved_attendees(app) == []
+
+
+def test_any_value_other_than_yes_is_not_agreement(app, client, valid_form):
+    response = client.post("/events/test-seminar/register", data={**valid_form, "consent": "no"})
+    assert response.status_code == 400
+    assert saved_attendees(app) == []
+
+
+def test_agreeing_is_recorded_with_its_time(app, client, valid_form, freeze):
+    assert client.post("/events/test-seminar/register", data=valid_form).status_code == 302
+    attendee = saved_attendees(app)[0]
+    assert attendee["consented_at"] == attendee["created_at"]
+    assert attendee["consented_at"].startswith("20")
+
+
+def test_the_box_stays_ticked_when_another_field_is_wrong(client, valid_form):
+    response = client.post("/events/test-seminar/register", data={**valid_form, "contact_number": "123"})
+    html = response.get_data(as_text=True)
+    assert response.status_code == 400
+    assert "checked" in html.split('id="consent"')[1].split(">")[0]
+    assert "Tick the box" not in html
+
+
+def test_the_box_is_not_ticked_on_a_fresh_form(client):
+    html = client.get("/events/test-seminar").get_data(as_text=True)
+    assert "checked" not in html.split('id="consent"')[1].split(">")[0]

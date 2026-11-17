@@ -202,4 +202,5 @@ def valid_form():
         "email": "juan@example.com",
         "organization": "PUP",
         "contact_number": "09171234567",
+        "consent": "yes",
     }

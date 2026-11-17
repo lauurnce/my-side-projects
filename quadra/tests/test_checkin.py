@@ -14,6 +14,7 @@ OTHER_FORM = {
     "email": "maria@example.com",
     "organization": "TUP",
     "contact_number": "09181234567",
+    "consent": "yes",
 }
 
 

@@ -66,6 +66,16 @@
       {{ field("email", "Email Address", type="email", autocomplete="email", placeholder="name@example.com", maxlength=254) }}
       {{ field("organization", "Organization", autocomplete="organization", placeholder="School or company", maxlength=150) }}
       {{ field("contact_number", "Contact Number", type="tel", autocomplete="tel", placeholder="09171234567", hint="09XXXXXXXXX or +639XXXXXXXXX") }}
+      <div class="field field-check{% if errors.get('consent') %} has-error{% endif %}">
+        <label for="consent">
+          <input id="consent" name="consent" type="checkbox" value="yes" required
+                 aria-describedby="consent-error"
+                 {% if request.form.get('consent') == 'yes' %}checked{% endif %}
+                 {% if errors.get('consent') %}aria-invalid="true"{% endif %}>
+          <span>I agree to Quadra using these details to handle my registration, as described in the <a href="{{ url_for('main.privacy') }}">privacy notice</a>.</span>
+        </label>
+        <p class="error" id="consent-error" role="alert">{{ errors.get('consent', '') }}</p>
+      </div>
       <div class="visually-hidden" aria-hidden="true">
         <label for="website">Leave this field empty</label>
         <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">

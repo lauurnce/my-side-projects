@@ -116,6 +116,7 @@ def test_duplicate_email_is_rejected(client, app, valid_form):
 
 def test_duplicate_that_slips_past_the_form_check_is_refused(app, valid_form):
     details = {**valid_form, "contact_number": "+639171234567"}
+    del details["consent"]
     with app.app_context():
         event_id = get_db().execute("SELECT id FROM events").fetchone()["id"]
         first = registration.create_attendee(event_id, **details)
@@ -194,6 +195,7 @@ def other_person(number):
         "email": f"person{number}@example.com",
         "organization": "PUP",
         "contact_number": "09171234567",
+        "consent": "yes",
     }
 
 
