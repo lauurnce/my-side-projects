@@ -12,12 +12,14 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 655 tests on each database: 651 passed with 4 skipped on SQLite, and 654 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
+Automated tests: `pytest` ran 694 tests on each database: 690 passed with 4 skipped on SQLite, and 693 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `tests/test_registration.py` | 44 | form, saving, duplicates, attendee codes, CSRF, trap field, applications-per-address limit |
 | `tests/test_review.py` | 79 | review mode, application states, status page, accept and decline, bulk decisions, email batches, double-send protection, check-in refusal |
+| `tests/test_seo.py` | 28 | titles, descriptions, share preview, sitemap, robots file, noindex, structured data |
+| `tests/test_privacy.py` | 11 | privacy notice, required consent, consent time, CSV |
 | `tests/test_events.py` | 36 | landing page, several events, registration opening dates, adding events |
 | `tests/test_event_management.py` | 156 | event states, drafts, closing, editing, deleting, staff-only and CSRF checks |
 | `tests/test_validation.py` | 10 | phone number formats |
