@@ -65,7 +65,11 @@ def test_share_preview_has_a_large_image(client):
 
 
 def test_sitemap_lists_the_landing_page_and_open_events(client):
-    assert sitemap_addresses(client) == ["http://localhost:5000/", "http://localhost:5000/events/test-seminar"]
+    assert sitemap_addresses(client) == [
+        "http://localhost:5000/",
+        "http://localhost:5000/privacy",
+        "http://localhost:5000/events/test-seminar",
+    ]
 
 
 def test_sitemap_leaves_out_drafts_and_past_events(app, client):

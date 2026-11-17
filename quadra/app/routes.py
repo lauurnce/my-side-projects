@@ -51,6 +51,11 @@ def health():
     return jsonify(status="ok")
 
 
+@bp.get("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 @bp.get("/")
 def index():
     events = list_upcoming()

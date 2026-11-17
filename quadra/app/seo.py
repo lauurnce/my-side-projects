@@ -45,7 +45,7 @@ def inject_page_address():
 
 
 def public_paths():
-    paths = [url_for("main.index")]
+    paths = [url_for("main.index"), url_for("main.privacy")]
     paths += [url_for("main.event_page", slug=event["slug"]) for event in list_upcoming()]
     return paths
 

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy notice{% endblock %}
+
+{% block description %}What Quadra collects when you register for an event, why, who can see it, and how to have it corrected or deleted.{% endblock %}
+
+{% block container_class %} container-wide{% endblock %}
+
+{% block content %}
+<article class="panel glass glass-strong prose">
+  <p class="eyebrow">Privacy notice</p>
+  <h1>What happens to your details</h1>
+  <p class="lead">Quadra is a student project for registering people for seminars and events. It is not an official website of the Polytechnic University of the Philippines.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li>Your full name, email address, organization and mobile number, which you type into the registration form.</li>
+    <li>When you applied, whether you were accepted, and when you were checked in at the event.</li>
+    <li>The network address of your device, kept for up to one hour, to stop the form from being flooded.</li>
+  </ul>
+
+  <h2>Why we collect it</h2>
+  <ul>
+    <li>To register you for the event you chose.</li>
+    <li>To email you the decision on your application and your QR ticket.</li>
+    <li>To check you in at the door.</li>
+  </ul>
+  <p>We do not use your details for advertising and we do not sell or share them for marketing.</p>
+
+  <h2>Who can see it</h2>
+  <ul>
+    <li>The organizers who have a staff account on Quadra.</li>
+    <li>The services Quadra runs on: Vercel hosts the site, Supabase stores the database in Singapore, and Google sends the emails and serves the fonts.</li>
+  </ul>
+
+  <h2>How long we keep it</h2>
+  <p>We keep your registration until the event is over and the organizers no longer need the attendance record. You can ask for it to be deleted sooner.</p>
+
+  <h2>Cookies</h2>
+  <p>Quadra sets one cookie that remembers your ticket on this browser and keeps staff signed in. There is no advertising or analytics tracking.</p>
+
+  <h2>Your rights</h2>
+  <p>Under the Data Privacy Act of 2012 you can ask to see the details we hold about you, have them corrected, object to how they are used, or have them deleted. You can also raise a complaint with the National Privacy Commission.</p>
+  {% if config.CONTACT_EMAIL %}
+  <p>To make a request, write to <strong>{{ config.CONTACT_EMAIL }}</strong> and name the event you registered for.</p>
+  {% else %}
+  <p>To make a request, contact the organizers of the event you registered for.</p>
+  {% endif %}
+</article>
+{% endblock %}
