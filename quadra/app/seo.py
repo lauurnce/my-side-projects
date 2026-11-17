@@ -58,3 +58,11 @@ def sitemap():
         f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{entries}</urlset>'
     )
     return Response(body, mimetype="application/xml")
+
+
+@bp.get("/robots.txt")
+def robots():
+    lines = ["User-agent: *", "Allow: /"]
+    lines += [f"Disallow: {path}" for path in PRIVATE_PATHS]
+    lines.append(f"Sitemap: {site_url(url_for('seo.sitemap'))}")
+    return Response("\n".join(lines) + "\n", mimetype="text/plain")

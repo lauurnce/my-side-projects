@@ -74,3 +74,13 @@ def test_sitemap_leaves_out_drafts_and_past_events(app, client):
     addresses = sitemap_addresses(client)
     assert "http://localhost:5000/events/coming-up" in addresses
     assert not any("hidden-draft" in address or "long-ago" in address for address in addresses)
+
+
+def test_robots_txt_points_to_the_sitemap_and_closes_private_pages(client):
+    response = client.get("/robots.txt")
+    assert response.mimetype == "text/plain"
+    lines = response.get_data(as_text=True).splitlines()
+    assert lines[:2] == ["User-agent: *", "Allow: /"]
+    assert "Sitemap: http://localhost:5000/sitemap.xml" in lines
+    for path in ("/staff/", "/admin", "/scanner", "/checkin/", "/application/", "/registered/", "/ticket/", "/api/"):
+        assert f"Disallow: {path}" in lines
