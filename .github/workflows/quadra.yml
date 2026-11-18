@@ -1,0 +1,66 @@
+name: quadra
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "quadra/**"
+      - ".github/workflows/quadra.yml"
+  pull_request:
+    paths:
+      - "quadra/**"
+      - ".github/workflows/quadra.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quadra-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: quadra
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: quadra
+          POSTGRES_PASSWORD: throwaway-ci-only
+          POSTGRES_DB: quadra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username quadra --dbname quadra_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Check out the code (actions/checkout v6.0.2)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12 (actions/setup-python v6.2.0)
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            quadra/requirements.txt
+            quadra/requirements-dev.txt
+      - name: Install packages
+        run: python -m pip install --requirement requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Test on SQLite
+        run: python -m pytest -q
+      - name: Test on Postgres 17
+        run: python -m pytest -q
+        env:
+          TEST_DATABASE_URL: postgresql://quadra:throwaway-ci-only@localhost:5432/quadra_test
