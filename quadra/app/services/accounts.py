@@ -248,7 +248,8 @@ def link_purpose(account):
 
 
 def mail_is_off_in_production():
-    return current_app.config["PRODUCTION"] and not current_app.config["MAIL_ENABLED"]
+    config = current_app.config
+    return (config["PRODUCTION"] or config["STAGING"]) and not config["MAIL_ENABLED"]
 
 
 def email_link(account):

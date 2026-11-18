@@ -45,6 +45,8 @@ def inject_page_address():
 
 
 def public_paths():
+    if current_app.config["STAGING"]:
+        return []
     paths = [url_for("main.index"), url_for("main.privacy")]
     paths += [url_for("main.event_page", slug=event["slug"]) for event in list_upcoming()]
     return paths
@@ -62,6 +64,8 @@ def sitemap():
 
 @bp.get("/robots.txt")
 def robots():
+    if current_app.config["STAGING"]:
+        return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
     lines = ["User-agent: *", "Allow: /"]
     lines += [f"Disallow: {path}" for path in PRIVATE_PATHS]
     lines.append(f"Sitemap: {site_url(url_for('seo.sitemap'))}")

@@ -11,6 +11,9 @@ DEFAULT_SECRET_KEY = "dev-only-change-me"
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or DEFAULT_SECRET_KEY
     PRODUCTION = os.environ.get("QUADRA_ENV", "").strip().lower() == "production"
+    QUADRA_ENV = os.environ.get("QUADRA_ENV", "").strip().lower()
+    STAGING = QUADRA_ENV == "staging"
+    STAGING_MAIL_ALLOWLIST = os.environ.get("STAGING_MAIL_ALLOWLIST", "")
     TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS") or 0)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

@@ -17,9 +17,21 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path, exist_ok=True)
     app.logger.setLevel(logging.INFO)
 
-    from . import accounts, commands, csrf, db, errors, routes, security, seo, staff
+    from . import (
+        accounts,
+        commands,
+        csrf,
+        db,
+        errors,
+        routes,
+        security,
+        seo,
+        staff,
+        staging,
+    )
     from .services import events
 
+    staging.init_app(app)
     security.init_app(app)
     errors.init_app(app)
     db.init_app(app)

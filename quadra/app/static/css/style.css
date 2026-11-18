@@ -313,3 +313,10 @@ button.pill { cursor: pointer; }
 .field-check label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem; align-items: start; font-weight: 500; font-size: 0.9rem; }
 .field-check input { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; padding: 0; accent-color: var(--maroon); box-shadow: none; }
 .field-check.has-error input { outline-offset: 2px; }
+
+.staging-banner { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0.15rem 0.75rem; margin: 0; padding: 0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom)); background: var(--ink); color: var(--paper); border-top: 4px solid var(--warn); font-size: 0.82rem; font-weight: 600; line-height: 1.35; text-align: center; }
+.staging-banner b { color: var(--warn); font-family: var(--display); font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.staging-banner span { min-width: 0; overflow-wrap: anywhere; }
+.staging-banner ~ .site-footer { padding-bottom: 6.5rem; }
+.staging-banner ~ .result { padding-bottom: 7rem; }
+.pill-held { background: var(--warn-tint); color: #7a4b00; border-color: var(--warn-tint); }

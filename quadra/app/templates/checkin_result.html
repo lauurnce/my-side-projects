@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="result-page status-{{ status }}">
+  {% include "_staging_banner.html" %}
   <main class="result" role="status">
     {% if status == 'checked_in' %}
       <p class="result-mark" aria-hidden="true">&#10003;</p>
