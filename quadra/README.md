@@ -93,7 +93,8 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `SMTP_APP_PASSWORD` | The 16-character Gmail App Password for that account. Spaces are fine. | `abcd efgh ijkl mnop` |
 | `MAIL_FROM_NAME` | The sender name attendees see. | `Quadra` |
 | `DATABASE_URL` | Postgres address for production. Leave empty to use the local SQLite file. | `postgresql://...` |
-| `QUADRA_ENV` | Set to `production` on the live site. | `production` |
+| `QUADRA_ENV` | `production` on the live site, `staging` on the test copy, empty on a laptop. Any other value stops the app from starting. | `production` |
+| `STAGING_MAIL_ALLOWLIST` | Staging only: the only addresses the test copy may email, separated by commas. See [Staging](#staging). | `maria@gmail.com, jun@gmail.com` |
 | `TRUSTED_PROXY_HOPS` | `1` on Vercel, otherwise leave empty. | `1` |
 | `CONTACT_EMAIL` | Shown on the privacy notice as the address for privacy requests. Optional. | `organizers@example.com` |
 | `GOOGLE_SITE_VERIFICATION` | The code Google Search Console gives you to prove you own the site. Optional. | `abc123...` |
@@ -140,6 +141,7 @@ that port everywhere below.
 | `flask --app app run` | Starts the app. |
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
 | `flask --app app resend-ticket --code SEM-2026-0001` | Emails one person their ticket, or their decline email, again. |
+| `flask --app app demo-data` | Fills an empty test database with six made-up events and 23 made-up applicants. Sends no email. See [Demo data](#demo-data). |
 
 ## Database and migrations
 
@@ -223,7 +225,7 @@ not changed from the page.
 
 With `MAIL_ENABLED=false` on a laptop, the set-password link is written to the log so it can be
 copied from there. The email body itself is never logged. In production mode (`QUADRA_ENV=production`)
-with mail off, no invite or reset link is created at all, so a link never reaches the server
+or staging mode with mail off, no invite or reset link is created at all, so a link never reaches the server
 log: the team page says the invite could not be sent, and "Forgot your password?" gives its usual
 answer. `create-owner` always prints its link, because that is the command's purpose.
 
@@ -478,6 +480,163 @@ Platform limits that matter here:
 - Instances share no memory, so failed logins are counted in the database and the signed-in
   account is read from the database on every staff request.
 
+## Staging
+
+Staging is a second copy of the site for testing, with its own database, so nobody has to try
+things out on the live site. It is the same code. `QUADRA_ENV=staging` switches it on, and no
+database change is needed. The steps for testers are in [docs/QA-CHECKLIST.md](docs/QA-CHECKLIST.md).
+
+### What staging mode changes
+
+| | Production | Staging |
+| --- | --- | --- |
+| Banner | None. | A black **TEST COPY** bar fixed to the bottom of every page, including the full-screen check-in result. |
+| Search engines | Public pages can be indexed. | Every response carries `X-Robots-Tag: noindex, nofollow`, `/robots.txt` disallows everything, and `/sitemap.xml` is empty. |
+| Who can be emailed | Anyone. | Only the addresses in `STAGING_MAIL_ALLOWLIST`. Everything else is held back. |
+| Email subjects | As written. | Start with `[Test copy]`. |
+| `demo-data` | Refuses to run. | Runs. |
+| Secret key, `Secure` cookie, `Strict-Transport-Security`, no links in the log | Yes. | The same as production. |
+
+Everything else behaves exactly as in production: login, lockout, review, tickets and check-in.
+
+### Email on staging
+
+`STAGING_MAIL_ALLOWLIST` lists the testers' own addresses, separated by commas, spaces or new
+lines. Upper and lower case do not matter. A listed address also covers its plus-tagged forms, so
+`maria@gmail.com` allows `maria+a@gmail.com`, which lets one tester apply several times from one
+inbox. An entry that itself has a tag, such as `maria+qa@gmail.com`, allows only that exact
+address. An empty list means staging emails nobody.
+
+An email for any other address is **held back**:
+
+- It is never handed to Gmail, and no connection is opened for it.
+- The log gets one line with the recipient and subject only: `Staging held back an email. To: ... | Subject: ...`.
+- A ticket or decline email is marked `held` instead of `sent`. The dashboard row shows an amber
+  "ticket held back" or "decline held back" label, a yellow message says how many were held back,
+  the CSV export says `held`, and the person's ticket page says no email was sent. It does not
+  count under "Emails sent" and does not sit in the waiting queue.
+- An invite or a password link for an address off the list is not created at all. The team page
+  says the invite was held back.
+
+The check runs twice: once before the batch is sent, and again inside the mail connection itself,
+which in staging refuses any message whose To, Cc or Bcc holds an address off the list. A held
+email is sent only by pressing "Resend email" on its row after the address has been added to the
+list.
+
+Mixing the two modes stops the app from starting, with the reason in the error:
+
+- `QUADRA_ENV` set to anything other than `production`, `staging`, `development` or empty, so a
+  typo such as `stagging` cannot quietly run as an unprotected site.
+- `STAGING_MAIL_ALLOWLIST` set while `QUADRA_ENV=production`.
+- Staging and production both switched on.
+- Staging with a missing or default `SECRET_KEY`.
+
+### Demo data
+
+```bash
+flask --app app demo-data
+```
+
+It adds six events, one in each state, and 23 applicants whose names end in `(demo)` and whose
+addresses end in `@example.test`, a domain that can never receive mail:
+
+| Event | State | Applicants |
+| --- | --- | --- |
+| Campus Tech Summit (demo) | Open, reviews applications | 5 pending, 3 accepted, 2 declined, with one email waiting and one failed |
+| Freshmen Welcome Night (demo) | Open, accepts everyone | 4 accepted, one email waiting |
+| Research Colloquium (demo) | Draft | None, so it can be deleted |
+| Career Fair (demo) | Registration closed | 2 accepted, 1 pending |
+| Hackathon Kickoff (demo) | Opens in a week | None |
+| Alumni Homecoming Forum (demo) | Ended a week ago | 4 accepted with 3 checked in, 1 declined, 1 pending |
+
+It also adds one disabled staff account, Demo Reviewer, who appears as the person who decided and
+checked people in. That account has no password and cannot sign in. Dates are counted from the
+day the command runs.
+
+The command sends no email and refuses to run:
+
+- in production mode, even with `--force`;
+- when `DATABASE_URL` is set and `QUADRA_ENV` is not `staging`, even with `--force`, because a
+  hosted database outside staging could be the live one;
+- when the database already has an event, unless `--force` is given. `--force` adds the demo
+  events next to what is there.
+
+On a laptop with no `DATABASE_URL` it fills the local SQLite file.
+
+### Setting up the staging copy
+
+Nothing below has been done yet. It needs a second Supabase project and a second Vercel project,
+both free.
+
+1. **Database.** In Supabase create a new project named `quadra-staging` in the same region as
+   production, on Postgres 17. Do not reuse the production project. Copy its connection string
+   (the pooler address on port 6543, the same kind production uses). A Supabase branch of the
+   production project also works on a paid plan, as long as it has its own connection string.
+2. **Secret key.** Make a new one for staging. Never reuse the production key:
+   `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+3. **Site.** In Vercel import the same repository a second time as a new project named
+   `quadra-staging`, with Root Directory `quadra` and the Flask preset. Note the address Vercel
+   gives it, for example `https://quadra-staging.vercel.app`.
+4. **Settings.** In the staging project add these Environment Variables for Production (the
+   staging project's "production" is the staging site):
+
+   | Key | Value |
+   | --- | --- |
+   | `QUADRA_ENV` | `staging` |
+   | `SECRET_KEY` | The new key from step 2. |
+   | `DATABASE_URL` | The staging connection string from step 1. |
+   | `PUBLIC_BASE_URL` | The staging address from step 3, with `https://`. |
+   | `TRUSTED_PROXY_HOPS` | `1` |
+   | `STAGING_MAIL_ALLOWLIST` | Each tester's own email address, separated by commas. |
+   | `MAIL_ENABLED` | `true` |
+   | `SMTP_USER`, `SMTP_APP_PASSWORD` | A Gmail account and its App Password. The production account works, but staging mail then counts toward its 500 a day. |
+   | `MAIL_FROM_NAME` | `Quadra TEST` |
+   | `CONTACT_EMAIL` | Optional. |
+
+   Leave `GOOGLE_SITE_VERIFICATION`, `EVENT_NAME`, `EVENT_DATE` and `EVENT_VENUE` unset. Do not
+   add `STAGING_MAIL_ALLOWLIST` to the production project: production refuses to start with it.
+5. **Tables and demo data.** On your laptop, in a new terminal inside `quadra/` with the virtual
+   environment active, point this one terminal at staging. Values typed here win over `.env`:
+
+   ```bash
+   export QUADRA_ENV=staging
+   export SECRET_KEY='the staging key from step 2'
+   export DATABASE_URL='the staging connection string from step 1'
+   export PUBLIC_BASE_URL='https://quadra-staging.vercel.app'
+   export EVENT_DATE=
+   export MAIL_ENABLED=false
+   flask --app app migrate
+   ```
+
+   `migrate` must list every migration from `0001_initial.sql` onward. If it says "The database
+   is already up to date", the address is not a new database: stop and check `DATABASE_URL`
+   before running anything else. Then:
+
+   ```bash
+   flask --app app demo-data
+   flask --app app create-owner --email you@example.com --name "Your Name"
+   ```
+
+   Use an address that is on the allowlist, and open the link `create-owner` prints to set the
+   password. Close the terminal when done so the staging values do not linger.
+6. **Deploy.** Redeploy the staging project so it picks up the settings, open its address, and
+   check for the **TEST COPY** bar and that `/robots.txt` says `Disallow: /`.
+7. **Testers.** Invite each tester from the team page with their allowlisted address, give one of
+   them a second owner made with `create-owner`, and send them the checklist.
+
+To try changes on staging before they reach the live site, set the staging project's production
+branch to a branch named `staging` in its Vercel settings. Pushing to `staging` then deploys only
+the test copy, and a pull request from `staging` to `main` runs the tests before the live site
+changes. If both projects follow `main`, every push deploys both at once.
+
+When a release adds a migration, run `flask --app app migrate` against staging first, in a
+terminal set up as in step 5, and test there before migrating production.
+
+To reset staging between test rounds, in a terminal set up as in step 5, check that
+`echo $DATABASE_URL` shows the staging address, then run `flask --app app init-db --force`,
+`flask --app app demo-data` and `create-owner` again. `init-db --force` erases whatever database
+the address points to, so never run it with the production address.
+
 ## Search engines and privacy
 
 ### Being found
@@ -519,7 +678,19 @@ pytest
 ruff check .
 ```
 
-There are 694 tests. They use a temporary database, never send real email and never wait.
+There are 826 tests. They use a temporary database, never send real email and never wait.
+
+### Continuous integration
+
+`.github/workflows/quadra.yml`, at the root of the repository, runs on GitHub Actions for every
+pull request and every push to `main` that changes a file under `quadra/` or the workflow itself.
+On Python 3.12 it installs `requirements-dev.txt`, runs `ruff check .`, runs the tests on SQLite,
+and runs them again on a Postgres 17 container that exists only for that run. It uses no secrets,
+can only read the repository, and never connects to the production or staging database.
+
+The workflow has not run yet: it starts with the first push that includes it. To stop a failing
+change from being merged, add a branch protection rule for `main` on GitHub that requires the
+"Lint and test" check.
 
 ## Project structure
 
@@ -532,6 +703,8 @@ quadra/
 │   ├── migrations/          numbered schema changes for each database
 │   ├── clock.py             UTC timestamps shown in Manila time
 │   ├── security.py          production mode, cookies, security headers
+│   ├── staging.py           staging mode, email allowlist, start-up checks
+│   ├── demo.py              demo-data command
 │   ├── errors.py            error pages
 │   ├── seo.py               sitemap, robots file, share preview and structured data
 │   ├── csrf.py              CSRF token check
@@ -553,11 +726,15 @@ quadra/
 │   └── static/              stylesheet, form, event filter, select-all and scanner scripts
 ├── tests/                   pytest suite
 ├── docs/TEST-REPORT.md      verification results
+├── docs/QA-CHECKLIST.md     manual test steps for the staging site
 ├── screenshots/             screenshots for this README and the report
 ├── requirements.txt         runtime packages
 ├── requirements-dev.txt     test and lint packages
 └── .env.example             the keys .env needs
 ```
+
+The GitHub Actions workflow lives outside this folder, in `.github/workflows/quadra.yml` at the
+root of the repository, because GitHub only reads workflows from there.
 
 ## Known limitations
 
@@ -603,3 +780,10 @@ quadra/
 - With `MAIL_ENABLED=false` decision emails are logged (recipient and subject only) and stay
   marked as waiting.
 - The pages load their fonts from Google Fonts and fall back to system fonts offline.
+- Staging has not been set up yet, and the GitHub Actions workflow has not run yet.
+- On staging, an email that was held back is not sent on its own after its address joins the
+  allowlist. Press "Resend email" on that row.
+- Staging mode marks the session cookie `Secure`, so it is meant for an `https` address. On a
+  laptop use the default mode, where `demo-data` also works.
+- Nothing in the app can tell a staging database from the production one. Staging is only safe
+  while its `DATABASE_URL` points at its own database.
