@@ -22,6 +22,7 @@ def create_app(test_config=None):
         commands,
         csrf,
         db,
+        demo,
         errors,
         routes,
         security,
@@ -37,6 +38,7 @@ def create_app(test_config=None):
     db.init_app(app)
     csrf.init_app(app)
     commands.init_app(app)
+    demo.init_app(app)
     events.init_app(app)
     app.register_blueprint(routes.bp)
     app.register_blueprint(accounts.bp)
