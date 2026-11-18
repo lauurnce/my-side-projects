@@ -12,7 +12,7 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 694 tests on each database: 690 passed with 4 skipped on SQLite, and 693 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
+Automated tests: `pytest` ran 826 tests on each database: 822 passed with 4 skipped on SQLite, and 824 passed with 2 skipped on Postgres 16. `ruff check .` reported no issues. The GitHub Actions workflow that repeats this on Postgres 17 has not run yet. The manual steps for the staging site are in [QA-CHECKLIST.md](QA-CHECKLIST.md) and have not been carried out yet.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -34,6 +34,9 @@ Automated tests: `pytest` ran 694 tests on each database: 690 passed with 4 skip
 | `tests/test_clock.py` | 13 | UTC storage, Manila display |
 | `tests/test_security.py` | 23 | production mode, cookies, security headers, proxy trust |
 | `tests/test_errors.py` | 17 | error pages and API errors |
+| `tests/test_staging.py` | 52 | staging banner on every page, noindex, robots file, empty sitemap, start-up checks |
+| `tests/test_staging_mail.py` | 60 | email allowlist, held-back ticket, decline, invite and reset emails, the guarded mail connection |
+| `tests/test_demo.py` | 20 | demo-data contents, refusals in production and on a database with events, no email |
 
 The end-to-end run and the phone test below were done before the site was redesigned, before it
 supported several events, and while each ticket was still saved as a PNG file in
