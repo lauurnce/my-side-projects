@@ -56,6 +56,7 @@ USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "decid
 TIME_COLUMNS = ("decided_at", "email_sent_at", "checked_in_at", "created_at", "consented_at")
 ALL_PENDING = "-pending"
 MAIL_OFF_MSG = "MAIL_ENABLED is off, so the email was logged instead of sent."
+HELD_BACK_MSG = "This test copy only emails addresses on its allowlist."
 EVENT_SWITCHES = {
     "publish": ({"published": 1}, "{name} is published."),
     "unpublish": ({"published": 0}, "{name} is a draft now. Only staff can see it."),
@@ -164,6 +165,8 @@ def flash_email_result(result):
         flash(f"{result['sent']} {'email' if result['sent'] == 1 else 'emails'} sent.", "success")
     if result["failed"]:
         flash(f"{result['failed']} could not be emailed. Retry them from the email queue.", "error")
+    if result["held"]:
+        flash(f"{result['held']} held back, not sent. {HELD_BACK_MSG}", "warning")
 
 
 def chosen_ids():
@@ -296,6 +299,8 @@ def admin_resend(attendee_id):
         flash(f"{name.capitalize()} for {code} sent to {attendee['email']}.", "success")
     elif result["failed"]:
         flash(f"Sending the {name} for {code} failed. Check the log.", "error")
+    elif result["held"]:
+        flash(f"The {name} for {code} was held back, not sent. {HELD_BACK_MSG}", "warning")
     else:
         flash(f"Nothing was sent for {code}: it has no decision yet, or its email is being sent now.", "warning")
     return back_to_event(attendee["event_slug"])

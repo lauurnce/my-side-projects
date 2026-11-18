@@ -21,6 +21,8 @@
         <p class="notice notice-success">We emailed your ticket to <strong>{{ attendee.email }}</strong>. Check your spam folder if you don't see it.</p>
       {% elif attendee.email_status == 'failed' %}
         <p class="notice notice-error" role="alert">We couldn't email your ticket to <strong>{{ attendee.email }}</strong> right now. Download it below and bring it to the event.</p>
+      {% elif attendee.email_status == 'held' %}
+        <p class="notice notice-warning">This is a test copy, so no ticket was emailed to <strong>{{ attendee.email }}</strong>. Download it below instead.</p>
       {% endif %}
 
       <p class="success-badge">{% if attendee.decided_by_id %}Application accepted{% else %}Registration complete{% endif %}</p>

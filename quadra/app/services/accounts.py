@@ -10,8 +10,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..clock import utc_now, utc_timestamp
 from ..db import get_db
+from ..staging import log_held_back, may_email
 from ..validation import EMAIL_RE
-from .mailer import send_account_email
+from .mailer import ACCOUNT_SUBJECTS, send_account_email
 
 MIN_PASSWORD_LENGTH = 10
 MAX_PASSWORD_LENGTH = 200
@@ -256,6 +257,9 @@ def email_link(account):
     if mail_is_off_in_production():
         return "off"
     purpose = link_purpose(account)
+    if not may_email(account["email"]):
+        log_held_back(account["email"], ACCOUNT_SUBJECTS[purpose])
+        return "held"
     link = issue_link(account["id"], purpose)
     hours = LINK_LIFETIMES[purpose] // timedelta(hours=1)
     try:

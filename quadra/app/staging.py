@@ -1,7 +1,63 @@
+import re
+from email.utils import getaddresses
+
+from flask import current_app
+
 from . import security
 
 ENVIRONMENTS = ("", "development", "staging", "production")
 NO_INDEX = "noindex, nofollow"
+SUBJECT_MARK = "[Test copy] "
+RECIPIENT_HEADERS = ("To", "Cc", "Bcc")
+
+
+class HeldBackError(Exception):
+    pass
+
+
+def without_plus_tag(address):
+    mailbox, _, domain = address.rpartition("@")
+    return f"{mailbox.split('+', 1)[0]}@{domain}"
+
+
+def allowlist():
+    entries = re.split(r"[,;\s]+", current_app.config["STAGING_MAIL_ALLOWLIST"].lower())
+    return {entry for entry in entries if entry}
+
+
+def may_email(address):
+    if not current_app.config["STAGING"]:
+        return True
+    address = address.strip().lower()
+    return bool({address, without_plus_tag(address)} & allowlist())
+
+
+def log_held_back(recipient, subject):
+    current_app.logger.warning("Staging held back an email. To: %s | Subject: %s", recipient, subject)
+
+
+def marked_subject(subject):
+    return SUBJECT_MARK + subject if current_app.config["STAGING"] else subject
+
+
+def recipients(message):
+    headers = [value for name in RECIPIENT_HEADERS for value in message.get_all(name, [])]
+    return [address for _name, address in getaddresses(headers)]
+
+
+class AllowlistedSMTP:
+    def __init__(self, smtp):
+        self.smtp = smtp
+
+    def send_message(self, message):
+        addresses = recipients(message)
+        if not addresses or not all(may_email(address) for address in addresses):
+            raise HeldBackError(f"Staging does not email {', '.join(addresses) or 'nobody'}.")
+        return self.smtp.send_message(message)
+
+
+def allowlisted(smtp):
+    return AllowlistedSMTP(smtp) if current_app.config["STAGING"] else smtp
 
 
 def require_one_environment(app):

@@ -6,6 +6,7 @@ from email.utils import formataddr, make_msgid
 
 from flask import current_app, render_template
 
+from ..staging import allowlisted, marked_subject
 from .qr import ticket_png
 
 
@@ -23,7 +24,7 @@ ACCOUNT_SUBJECTS = {
 def new_message(subject, recipient):
     config = current_app.config
     message = EmailMessage()
-    message["Subject"] = subject
+    message["Subject"] = marked_subject(subject)
     message["From"] = formataddr((config["MAIL_FROM_NAME"], config["SMTP_USER"]))
     message["To"] = recipient
     return message
@@ -93,7 +94,7 @@ def mail_connection():
         context=ssl.create_default_context(),
     ) as smtp:
         smtp.login(user, password)
-        yield smtp
+        yield allowlisted(smtp)
 
 
 def log_unsent(recipient, subject):

@@ -30,6 +30,8 @@ def resend_ticket_command(code):
     if not current_app.config["MAIL_ENABLED"]:
         click.echo("MAIL_ENABLED is off, so the email was logged instead of sent.")
         return
+    if result["held"]:
+        raise click.ClickException(f"{attendee['email']} is not on STAGING_MAIL_ALLOWLIST, so the {name} was held back.")
     if not result["sent"]:
         raise click.ClickException(f"Sending the {name} for {code} failed. Check the log above.")
     click.echo(f"{name.capitalize()} for {code} sent to {attendee['email']}.")

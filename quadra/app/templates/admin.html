@@ -12,7 +12,7 @@
 {% endmacro %}
 
 {% set state_pills = {'pending': 'wait', 'accepted': 'sent', 'declined': 'failed'} %}
-{% set email_labels = {'none': 'not queued', 'pending': 'waiting', 'sending': 'sending', 'sent': 'sent', 'failed': 'failed'} %}
+{% set email_labels = {'none': 'not queued', 'pending': 'waiting', 'sending': 'sending', 'sent': 'sent', 'failed': 'failed', 'held': 'held back'} %}
 
 {% macro row_form_fields() %}
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -36,7 +36,7 @@
 {% endmacro %}
 
 {% macro email_pill(attendee) %}
-            {% if attendee.state != 'pending' %}<span class="pill pill-{{ {'sent': 'sent', 'failed': 'failed'}.get(attendee.email_status, 'wait') }}">{{ 'decline' if attendee.state == 'declined' else 'ticket' }} {{ email_labels[attendee.email_status] }}</span>{% endif %}
+            {% if attendee.state != 'pending' %}<span class="pill pill-{{ {'sent': 'sent', 'failed': 'failed', 'held': 'held'}.get(attendee.email_status, 'wait') }}">{{ 'decline' if attendee.state == 'declined' else 'ticket' }} {{ email_labels[attendee.email_status] }}</span>{% endif %}
 {% endmacro %}
 
 {% block content %}
