@@ -16,6 +16,7 @@ TABLES = (
     "account_tokens",
     "login_attempts",
     "application_attempts",
+    "error_alerts",
     "accounts",
     "schema_migrations",
 )
@@ -94,14 +95,17 @@ def apply_migration(db, path):
     db.commit()
 
 
+def shipped_migrations(dialect):
+    return sorted(path.name for path in (MIGRATIONS / dialect).glob("*.sql"))
+
+
 def migrate():
     db = get_db()
     applied = applied_migrations(db)
-    files = sorted((MIGRATIONS / db.dialect).glob("*.sql"))
-    pending = [path for path in files if path.name not in applied]
-    for path in pending:
-        apply_migration(db, path)
-    return [path.name for path in pending]
+    pending = [name for name in shipped_migrations(db.dialect) if name not in applied]
+    for name in pending:
+        apply_migration(db, MIGRATIONS / db.dialect / name)
+    return pending
 
 
 def seed_first_event():
@@ -119,7 +123,7 @@ def drop_tables():
     db.commit()
 
 
-def init_db(force=False):
+def init_db(force=False, seed=True):
     if current_app.config["DATABASE_URL"] and not force:
         raise click.ClickException(
             "DATABASE_URL is set, so init-db would erase that database."
@@ -127,27 +131,32 @@ def init_db(force=False):
         )
     drop_tables()
     migrate()
-    return seed_first_event()
+    return seed_first_event() if seed else None
+
+
+NO_EVENT_HELP = "Do not create the first event from .env. Use this before restoring a backup."
 
 
 @click.command("migrate", help="Apply pending database migrations. Keeps existing data.")
+@click.option("--no-event", is_flag=True, help=NO_EVENT_HELP)
 @with_appcontext
-def migrate_command():
+def migrate_command(no_event):
     applied = migrate()
     for name in applied:
         click.echo(f"Applied {name}")
     if not applied:
         click.echo("The database is already up to date.")
-    event = seed_first_event()
+    event = None if no_event else seed_first_event()
     if event is not None:
         click.echo(f"Created the event {event['name']} from .env.")
 
 
 @click.command("init-db", help="Erase the local database and rebuild it from the migrations.")
 @click.option("--force", is_flag=True, help="Erase the database even when DATABASE_URL is set.")
+@click.option("--no-event", is_flag=True, help=NO_EVENT_HELP)
 @with_appcontext
-def init_db_command(force):
-    event = init_db(force)
+def init_db_command(force, no_event):
+    event = init_db(force, seed=not no_event)
     click.echo("Initialized the database.")
     if event is None:
         click.echo("No event was created. Add one with: flask --app app add-event")
