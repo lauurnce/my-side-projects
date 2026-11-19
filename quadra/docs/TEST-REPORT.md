@@ -12,7 +12,7 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 899 tests on each database: 892 passed with 7 skipped on SQLite, and 897 passed with 2 skipped on Postgres 16. `ruff check .` reported no issues. The GitHub Actions workflow that repeats this on Postgres 17 has not run yet. The manual steps for the staging site are in [QA-CHECKLIST.md](QA-CHECKLIST.md) and have not been carried out yet.
+Automated tests: `pytest` ran 900 tests on each database: 893 passed with 7 skipped on SQLite, and 898 passed with 2 skipped on Postgres 16. `ruff check .` reported no issues. The GitHub Actions workflow that repeats this on Postgres 17 has not run yet. The manual steps for the staging site are in [QA-CHECKLIST.md](QA-CHECKLIST.md) and have not been carried out yet.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ Automated tests: `pytest` ran 899 tests on each database: 892 passed with 7 skip
 | `tests/test_staging.py` | 52 | staging banner on every page, noindex, robots file, empty sitemap, start-up checks |
 | `tests/test_staging_mail.py` | 60 | email allowlist, held-back ticket, decline, invite and reset emails, the guarded mail connection |
 | `tests/test_demo.py` | 20 | demo-data contents, refusals in production and on a database with events, no email |
-| `tests/test_backup.py` | 25 | backup file, round trip on and between both databases, refusals, all-or-nothing, id counters, check-in after a restore |
+| `tests/test_backup.py` | 26 | backup file, round trip on and between both databases, refusals, all-or-nothing, id counters, check-in after a restore |
 | `tests/test_readiness.py` | 24 | `/ready`, maintenance page while migrations are missing, one check per instance, recovery after migrate |
 | `tests/test_alerts.py` | 24 | alert content, redaction, limits shared through the database, timeout, mail failures, error reference |
 

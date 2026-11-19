@@ -702,7 +702,7 @@ pytest
 ruff check .
 ```
 
-There are 899 tests. They use a temporary database, never send real email and never wait.
+There are 900 tests. They use a temporary database, never send real email and never wait.
 
 ### Continuous integration
 
