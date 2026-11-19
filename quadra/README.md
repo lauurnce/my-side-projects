@@ -97,6 +97,7 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `STAGING_MAIL_ALLOWLIST` | Staging only: the only addresses the test copy may email, separated by commas. See [Staging](#staging). | `maria@gmail.com, jun@gmail.com` |
 | `TRUSTED_PROXY_HOPS` | `1` on Vercel, otherwise leave empty. | `1` |
 | `CONTACT_EMAIL` | Shown on the privacy notice as the address for privacy requests. Optional. | `organizers@example.com` |
+| `ALERT_EMAIL` | Gets an email when a request fails with an unexpected error. Leave empty for no alerts. | `you@example.com` |
 | `GOOGLE_SITE_VERIFICATION` | The code Google Search Console gives you to prove you own the site. Optional. | `abc123...` |
 | `EVENT_NAME` | Name of the first event, created by `init-db`. | `Tech Innovators Seminar 2026` |
 | `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
@@ -142,6 +143,8 @@ that port everywhere below.
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
 | `flask --app app resend-ticket --code SEM-2026-0001` | Emails one person their ticket, or their decline email, again. |
 | `flask --app app demo-data` | Fills an empty test database with six made-up events and 23 made-up applicants. Sends no email. See [Demo data](#demo-data). |
+| `flask --app app backup` | Writes every table to one private JSON file in `instance/backups/`. `--to file.json` chooses the place. |
+| `flask --app app restore file.json` | Loads a backup into an empty database at the same migrations. `--force` erases what is there first. |
 
 ## Database and migrations
 
@@ -163,7 +166,9 @@ which files have already run.
 | `flask --app app init-db --force` | Erases the `DATABASE_URL` database too. |
 
 For a hosted database, put its address in `DATABASE_URL` and run `migrate` once before the first
-deploy and again after adding a migration. Never use `init-db` there.
+deploy and again after adding a migration. Never use `init-db` there. Both commands take
+`--no-event` to skip creating the first event, which is what a database needs before a backup is
+restored into it.
 
 To change the schema, add the next numbered file with the same name to both folders, for example
 `0002_add_notes.sql`, then run `migrate`. Statements end with `;`. Never edit a file that has
@@ -457,7 +462,8 @@ policy in `app/security.py` updated.
 When a release adds a migration, run `flask --app app migrate` against the production database
 before deploying the new code. The migrations only add columns and tables with defaults, so the
 old code keeps working on the migrated database until the deploy finishes, while the new code
-fails on a database that has not been migrated.
+answers 503 with a maintenance page on a database that has not been migrated. The steps are in
+[docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 `.vercelignore` keeps the tests, docs, screenshots and `requirements-dev.txt` out of the upload, so
 only the runtime packages are installed.
@@ -637,6 +643,24 @@ To reset staging between test rounds, in a terminal set up as in step 5, check t
 `flask --app app demo-data` and `create-owner` again. `init-db --force` erases whatever database
 the address points to, so never run it with the production address.
 
+## Operations
+
+[docs/RUNBOOK.md](docs/RUNBOOK.md) has the numbered steps for the live site: releasing, backups
+and restores, rolling back a deploy, what each alert means, deleting a person's data, and
+rotating secrets. In short:
+
+- **Release order.** Back up, `flask --app app migrate`, then `vercel deploy --prod`. If code is
+  deployed before its migration, every page answers 503 with a maintenance message until
+  `migrate` has run, and the site recovers by itself within about 10 seconds.
+- **Backups.** `flask --app app backup` writes one JSON file with every row, read in a single
+  snapshot. `flask --app app restore` loads it, all or nothing, into SQLite or Postgres. The file
+  holds personal data and password hashes, so it stays in the git-ignored `instance/` folder.
+- **Monitoring.** `/health` says the code is running and never touches the database. `/ready`
+  says the database answers and has every migration, and is the address for an uptime monitor.
+- **Alerts.** With `ALERT_EMAIL` set, an unexpected error emails the error type, the route, the
+  Manila time and a reference that is also in the log and on the error page. No personal data is
+  included, and repeats are limited to one email per problem per hour.
+
 ## Search engines and privacy
 
 ### Being found
@@ -700,12 +724,15 @@ quadra/
 │   ├── __init__.py          app factory
 │   ├── config.py            settings read from .env
 │   ├── db.py                SQLite or Postgres connection, migrate, init-db
+│   ├── backup.py            backup and restore commands
+│   ├── readiness.py         maintenance page while migrations are missing, /ready
+│   ├── alerts.py            error alert emails, limited through the database
 │   ├── migrations/          numbered schema changes for each database
 │   ├── clock.py             UTC timestamps shown in Manila time
 │   ├── security.py          production mode, cookies, security headers
 │   ├── staging.py           staging mode, email allowlist, start-up checks
 │   ├── demo.py              demo-data command
-│   ├── errors.py            error pages
+│   ├── errors.py            error pages, with a reference after a crash
 │   ├── seo.py               sitemap, robots file, share preview and structured data
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
@@ -727,6 +754,7 @@ quadra/
 ├── tests/                   pytest suite
 ├── docs/TEST-REPORT.md      verification results
 ├── docs/QA-CHECKLIST.md     manual test steps for the staging site
+├── docs/RUNBOOK.md          releasing, backups, rollback, alerts, deletion requests, secrets
 ├── screenshots/             screenshots for this README and the report
 ├── requirements.txt         runtime packages
 ├── requirements-dev.txt     test and lint packages
@@ -771,7 +799,11 @@ root of the repository, because GitHub only reads workflows from there.
 - Check-ins and events from before staff accounts existed have no recorded person.
 - A check-in cannot be undone from the dashboard.
 - A registration cannot be deleted from the dashboard. A deletion request under the privacy
-  notice has to be carried out in the database by the owner.
+  notice has to be carried out in the database by the owner, as described in the runbook.
+- Backups are taken by hand. Nothing takes them on a schedule, and Supabase's free plan keeps
+  none.
+- An alert email is given 6 seconds. On a slow connection to Gmail it can be cut off and lost,
+  and the log line with the reference is then the only record.
 - The privacy notice is written in plain language and has not been reviewed by a lawyer.
 - An event with registrations cannot be deleted, only unpublished or closed.
 - The event link is set when the event is added and cannot be changed afterwards.
