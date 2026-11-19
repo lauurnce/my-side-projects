@@ -37,6 +37,9 @@ Automated tests: `pytest` ran 826 tests on each database: 822 passed with 4 skip
 | `tests/test_staging.py` | 52 | staging banner on every page, noindex, robots file, empty sitemap, start-up checks |
 | `tests/test_staging_mail.py` | 60 | email allowlist, held-back ticket, decline, invite and reset emails, the guarded mail connection |
 | `tests/test_demo.py` | 20 | demo-data contents, refusals in production and on a database with events, no email |
+| `tests/test_backup.py` | 25 | backup file, round trip on and between both databases, refusals, all-or-nothing, id counters, check-in after a restore |
+| `tests/test_readiness.py` | 24 | `/ready`, maintenance page while migrations are missing, one check per instance, recovery after migrate |
+| `tests/test_alerts.py` | 24 | alert content, redaction, limits shared through the database, timeout, mail failures, error reference |
 
 The end-to-end run and the phone test below were done before the site was redesigned, before it
 supported several events, and while each ticket was still saved as a PNG file in
