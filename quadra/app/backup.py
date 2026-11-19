@@ -32,6 +32,17 @@ LAST_ISSUED_ID = {
 }
 
 
+TABLE_NAMES = {
+    "sqlite": "SELECT name FROM sqlite_master WHERE type = 'table'",
+    "postgres": "SELECT tablename AS name FROM pg_tables WHERE schemaname = current_schema()",
+}
+
+
+def tables_in_database(db):
+    present = {row["name"] for row in db.execute(TABLE_NAMES[db.dialect]).fetchall()}
+    return [table for table in LOAD_ORDER if table in present]
+
+
 def applied_migrations(db):
     rows = db.execute(f"SELECT name FROM {MIGRATIONS_TABLE} ORDER BY name").fetchall()
     return [row["name"] for row in rows]
@@ -54,7 +65,8 @@ def take_backup():
             "migrations": applied_migrations(db),
             "last_ids": {table: last_issued_id(db, table) for table in COUNTED_TABLES},
             "tables": {
-                table: db.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall() for table in LOAD_ORDER
+                table: db.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()
+                for table in tables_in_database(db)
             },
         }
     finally:

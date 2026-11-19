@@ -339,3 +339,15 @@ def test_sqlite_backup_restores_into_postgres(app, tmp_path, postgres_url):
         later = create_attendee(1, "Pedro Penduko", "pedro@example.com", "PUP", "+639191234567")
     assert later["id"] == 3
     assert "CHECKED IN" in client.get(f"/checkin/{waiting['ticket_token']}").get_data(as_text=True).upper()
+
+
+def test_backup_works_before_the_newest_migration_is_applied(app, filled):
+    with app.app_context():
+        get_db().execute("DROP TABLE error_alerts")
+        get_db().execute("DELETE FROM schema_migrations WHERE name = %s", ("0007_error_alerts.sql",))
+        get_db().commit()
+    backup = backup_of(app)
+    assert "error_alerts" not in backup["tables"]
+    assert "0007_error_alerts.sql" not in backup["migrations"]
+    assert len(backup["tables"]["attendees"]) > 0
+    assert len(backup["tables"]["accounts"]) > 0
