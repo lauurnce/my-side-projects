@@ -8,6 +8,7 @@ PAGES = {
     410: ("This link no longer works", "It has expired or was already used. Ask for a new one from the staff login page."),
     429: ("Too many tries", "Wait a minute, then try again."),
     500: ("Something broke on our side", "It is not your fault. Try again in a moment."),
+    503: ("We will be right back", "The site is being updated. Try again in a few minutes."),
 }
 
 
