@@ -452,7 +452,7 @@ policy in `app/security.py` updated.
 1. Import the repository in Vercel and set the project's Root Directory to `quadra`.
 2. Keep the detected Flask preset. Vercel finds the `app` object in `wsgi.py`, installs
    `requirements.txt` and sends every request to the app, which also serves `/static`. There is no
-   build command and no `vercel.json`.
+   build command. `vercel.json` only pins the function to Singapore, next to the database.
 3. Add the keys from the table above and the mail and event keys from the `.env` section as
    Environment Variables for Production.
 4. With `DATABASE_URL` and `PUBLIC_BASE_URL` set to the production values on your laptop, run
@@ -702,7 +702,7 @@ pytest
 ruff check .
 ```
 
-There are 826 tests. They use a temporary database, never send real email and never wait.
+There are 899 tests. They use a temporary database, never send real email and never wait.
 
 ### Continuous integration
 
@@ -767,7 +767,7 @@ root of the repository, because GitHub only reads workflows from there.
 ## Known limitations
 
 - `flask run` is Flask's development server and is for a laptop only. The public site runs on
-  Vercel, which has not been deployed yet.
+  Vercel.
 - On an event that accepts everyone, email is sent while the attendee waits, so registering
   takes about 4 seconds. A slow network can make it take up to 15.
 - A free Gmail account can send about 500 emails a day. The app does not count them, so on a big

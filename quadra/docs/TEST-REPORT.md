@@ -12,7 +12,7 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 826 tests on each database: 822 passed with 4 skipped on SQLite, and 824 passed with 2 skipped on Postgres 16. `ruff check .` reported no issues. The GitHub Actions workflow that repeats this on Postgres 17 has not run yet. The manual steps for the staging site are in [QA-CHECKLIST.md](QA-CHECKLIST.md) and have not been carried out yet.
+Automated tests: `pytest` ran 899 tests on each database: 892 passed with 7 skipped on SQLite, and 897 passed with 2 skipped on Postgres 16. `ruff check .` reported no issues. The GitHub Actions workflow that repeats this on Postgres 17 has not run yet. The manual steps for the staging site are in [QA-CHECKLIST.md](QA-CHECKLIST.md) and have not been carried out yet.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
