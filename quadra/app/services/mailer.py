@@ -81,7 +81,7 @@ def build_account_email(kind, account, link, hours):
 
 
 @contextmanager
-def mail_connection():
+def mail_connection(timeout=None):
     config = current_app.config
     user = config["SMTP_USER"]
     password = config["SMTP_APP_PASSWORD"].replace(" ", "")
@@ -90,7 +90,7 @@ def mail_connection():
     with smtplib.SMTP_SSL(
         config["MAIL_SERVER"],
         config["MAIL_PORT"],
-        timeout=config["MAIL_TIMEOUT"],
+        timeout=timeout or config["MAIL_TIMEOUT"],
         context=ssl.create_default_context(),
     ) as smtp:
         smtp.login(user, password)

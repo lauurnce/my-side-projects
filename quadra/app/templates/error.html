@@ -8,6 +8,9 @@
   <p class="success-badge">Error {{ code }}</p>
   <h1>{{ title }}</h1>
   <p class="lead">{{ message }}</p>
+  {% if reference %}
+  <p class="error-reference">If you report this, mention reference <strong>{{ reference }}</strong>.</p>
+  {% endif %}
   <a class="btn btn-primary" href="{{ url_for('main.index') }}">Back to home <span aria-hidden="true">&rarr;</span></a>
 </section>
 {% endblock %}

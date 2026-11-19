@@ -1,4 +1,4 @@
-from flask import jsonify, render_template, request
+from flask import g, jsonify, render_template, request
 from werkzeug.exceptions import HTTPException
 
 PAGES = {
@@ -27,6 +27,9 @@ def init_app(app):
     @app.errorhandler(HTTPException)
     def show_error(error):
         title, message = title_and_message(error)
+        reference = g.get("error_reference")
         if request.path.startswith("/api/"):
-            return jsonify(status="error", code=error.code, message=message), error.code
-        return render_template("error.html", code=error.code, title=title, message=message), error.code
+            body = {"status": "error", "code": error.code, "message": message}
+            return jsonify(body | ({"reference": reference} if reference else {})), error.code
+        page = render_template("error.html", code=error.code, title=title, message=message, reference=reference)
+        return page, error.code

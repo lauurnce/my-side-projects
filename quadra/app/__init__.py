@@ -19,6 +19,7 @@ def create_app(test_config=None):
 
     from . import (
         accounts,
+        alerts,
         backup,
         commands,
         csrf,
@@ -37,6 +38,7 @@ def create_app(test_config=None):
     security.init_app(app)
     errors.init_app(app)
     db.init_app(app)
+    alerts.init_app(app)
     backup.init_app(app)
     csrf.init_app(app)
     commands.init_app(app)
