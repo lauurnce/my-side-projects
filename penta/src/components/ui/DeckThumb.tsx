@@ -3,7 +3,7 @@ import styles from "./DeckThumb.module.css";
 export type DeckFormat = "PDF" | "PPTX";
 
 export type DeckThumbProps = {
-  href: string;
+  href?: string;
   eyebrow: string;
   title: string;
   slideCount: number;
@@ -13,8 +13,8 @@ export type DeckThumbProps = {
 };
 
 export function DeckThumb({ href, eyebrow, title, slideCount, format, viewedCount, live }: DeckThumbProps) {
-  return (
-    <a href={href} className={styles.link}>
+  const card = (
+    <>
       <span className={styles.slide}>
         <span className={styles.eyebrow}>{eyebrow}</span>
         <span className={styles.title}>{title}</span>
@@ -28,6 +28,12 @@ export function DeckThumb({ href, eyebrow, title, slideCount, format, viewedCoun
           Viewed {viewedCount} / {slideCount}
         </span>
       </span>
+    </>
+  );
+  if (!href) return <div className={styles.link}>{card}</div>;
+  return (
+    <a href={href} className={styles.link}>
+      {card}
     </a>
   );
 }

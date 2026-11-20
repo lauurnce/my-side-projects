@@ -41,4 +41,13 @@ describe("DeckThumb", () => {
     expect(screen.getByText("LIVE")).toBeTruthy();
     expect(screen.getByRole("link", { name: /LIVE/ })).toBeTruthy();
   });
+
+  it("renders a static box with no link when there is no href", () => {
+    const { container } = render(<DeckThumb {...deck} href={undefined} live />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(container.querySelector("a, button, [tabindex]")).toBeNull();
+    expect(container.firstElementChild?.tagName).toBe("DIV");
+    expect(screen.getByText("Message-based integration")).toBeTruthy();
+    expect(screen.getByText("LIVE")).toBeTruthy();
+  });
 });
