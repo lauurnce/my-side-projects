@@ -88,7 +88,6 @@ function startScrollLoop(root: HTMLElement, setLayer: (layer: Layer) => void) {
     }
 
     if (hero && heroRect) write(hero, "--h", still ? 0 : heroProgress(heroRect.top, heroRect.height));
-    root.dataset.ready = "true";
   }
 
   function schedule() {
@@ -115,8 +114,12 @@ function startScrollLoop(root: HTMLElement, setLayer: (layer: Layer) => void) {
   pinnedPanels.addEventListener("change", schedule);
   panels?.addEventListener("focusin", revealFocusedPanel);
   update();
+  const readyFrame = window.requestAnimationFrame(() => {
+    root.dataset.ready = "true";
+  });
 
   return () => {
+    window.cancelAnimationFrame(readyFrame);
     resizes.disconnect();
     window.removeEventListener("scroll", schedule, { capture: true });
     window.removeEventListener("resize", schedule);
