@@ -5,7 +5,9 @@
   "engines": {
     "node": ">=22.13"
   },
-  "scripts": {},
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
