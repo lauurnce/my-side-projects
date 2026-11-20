@@ -68,4 +68,13 @@ describe("RouteCard", () => {
     cleanup();
     expect(fillWidth({ lessonsDone: 12, lessonsTotal: 12 })).toBe("100%");
   });
+
+  it("renders a static box with no link when there is no href", () => {
+    const { container } = render(<RouteCard {...route} href={undefined} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(container.querySelector("a, button, [tabindex]")).toBeNull();
+    expect(container.firstElementChild?.tagName).toBe("DIV");
+    expect(screen.getByText("Database Administration")).toBeTruthy();
+    expect(container.querySelector<HTMLElement>("[data-fill]")?.style.width).toBe("58%");
+  });
 });

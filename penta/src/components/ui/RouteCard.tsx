@@ -1,7 +1,7 @@
 import styles from "./RouteCard.module.css";
 
 export type RouteCardProps = {
-  href: string;
+  href?: string;
   code: string;
   section: string;
   title: string;
@@ -18,42 +18,46 @@ function progressPercent(done: number, total: number) {
 
 export function RouteCard({ href, code, section, title, lessonsDone, lessonsTotal, meters }: RouteCardProps) {
   const altitude = meters.toLocaleString("en-US");
-  return (
-    <a className={styles.link} href={href}>
-      <span className={styles.card}>
-        <span className={styles.row}>
-          <span>{code}</span>
-          <span>
-            <span aria-hidden="true">[ </span>
-            {section}
-            <span aria-hidden="true"> ]</span>
-          </span>
+  const card = (
+    <span className={styles.card}>
+      <span className={styles.row}>
+        <span>{code}</span>
+        <span>
+          <span aria-hidden="true">[ </span>
+          {section}
+          <span aria-hidden="true"> ]</span>
         </span>
-        <span className={styles.title}>{title}</span>
-        <span className={styles.progress}>
-          <span className={styles.track} aria-hidden="true">
-            <span
-              className={styles.fill}
-              data-fill=""
-              style={{ width: `${progressPercent(lessonsDone, lessonsTotal)}%` }}
-            />
+      </span>
+      <span className={styles.title}>{title}</span>
+      <span className={styles.progress}>
+        <span className={styles.track} aria-hidden="true">
+          <span
+            className={styles.fill}
+            data-fill=""
+            style={{ width: `${progressPercent(lessonsDone, lessonsTotal)}%` }}
+          />
+        </span>
+        <span className={styles.counts}>
+          <span>
+            <span aria-hidden="true">
+              Lesson {lessonsDone} / {lessonsTotal}
+            </span>
+            <span className="visually-hidden">
+              Lesson {lessonsDone} of {lessonsTotal}
+            </span>
           </span>
-          <span className={styles.counts}>
-            <span>
-              <span aria-hidden="true">
-                Lesson {lessonsDone} / {lessonsTotal}
-              </span>
-              <span className="visually-hidden">
-                Lesson {lessonsDone} of {lessonsTotal}
-              </span>
-            </span>
-            <span>
-              <span aria-hidden="true">{altitude} m</span>
-              <span className="visually-hidden">{altitude} meters</span>
-            </span>
+          <span>
+            <span aria-hidden="true">{altitude} m</span>
+            <span className="visually-hidden">{altitude} meters</span>
           </span>
         </span>
       </span>
+    </span>
+  );
+  if (!href) return <div className={styles.link}>{card}</div>;
+  return (
+    <a className={styles.link} href={href}>
+      {card}
     </a>
   );
 }

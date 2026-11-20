@@ -41,7 +41,7 @@
 .title {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 40px;
+  font-size: var(--route-title-size, 40px);
   line-height: 0.9;
   text-transform: uppercase;
 }
