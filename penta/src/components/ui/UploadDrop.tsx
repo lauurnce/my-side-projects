@@ -16,7 +16,10 @@ export type UploadDropProps = {
   onFiles: (files: File[]) => void;
 };
 
+const fallbackError = "Upload failed. Try again.";
+
 function statusText(state: UploadState, message: string) {
+  if (state === "error" && !message) return fallbackError;
   if (state !== "error" || !message || message.startsWith("Error: ")) return message;
   return `Error: ${message}`;
 }

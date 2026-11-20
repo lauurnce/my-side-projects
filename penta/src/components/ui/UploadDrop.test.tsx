@@ -90,4 +90,9 @@ describe("UploadDrop", () => {
     render(<UploadDrop {...drop} state="error" message="Error: File is over 25 MB" onFiles={vi.fn()} />);
     expect(screen.getByRole("status").textContent).toBe("Error: File is over 25 MB");
   });
+
+  it("shows a fixed sentence for an error with no message", () => {
+    render(<UploadDrop {...drop} state="error" onFiles={vi.fn()} />);
+    expect(screen.getByRole("status").textContent).toBe("Upload failed. Try again.");
+  });
 });
