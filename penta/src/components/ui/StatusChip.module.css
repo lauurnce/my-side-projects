@@ -1,0 +1,65 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.due {
+  border: 1px solid var(--fg);
+  color: var(--fg);
+}
+
+.due .dot {
+  border: 1px solid var(--fg);
+}
+
+.late {
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--accent-edge);
+}
+
+.late .dot {
+  background: var(--ink);
+}
+
+.submitted {
+  background: var(--chip-soft);
+  color: var(--ink);
+}
+
+.submitted .dot {
+  background: var(--ink);
+}
+
+.graded {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.graded .dot {
+  background: var(--bg-deep);
+}
+
+.live {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.live .dot {
+  background: var(--accent);
+}
