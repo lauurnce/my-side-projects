@@ -1,0 +1,20 @@
+.pills {
+  --pill-motion: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+:global([data-ready]) .pills {
+  --pill-motion: 1;
+}
+
+@media (max-width: 760px) {
+  .pills {
+    --pill-open: 0;
+    --pill-width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
