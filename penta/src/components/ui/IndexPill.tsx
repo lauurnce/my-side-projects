@@ -19,8 +19,8 @@ export function IndexPill({ index, name, sub, description, active, onSelect }: I
       <button
         type="button"
         className={styles.button}
-        aria-expanded={active}
-        aria-controls={descriptionId}
+        aria-current={active ? "true" : undefined}
+        aria-describedby={descriptionId}
         onClick={onSelect}
       >
         <span className={styles.index}>{index}</span>{" "}
@@ -30,7 +30,7 @@ export function IndexPill({ index, name, sub, description, active, onSelect }: I
           {active ? "−" : "+"}
         </span>
       </button>
-      <p id={descriptionId} className={styles.description} aria-hidden={active ? undefined : true}>
+      <p id={descriptionId} className={styles.description}>
         {description}
       </p>
     </div>

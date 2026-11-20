@@ -1,13 +1,21 @@
 .pill {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  width: var(--pill-width, 100%);
+  max-width: 320px;
+  padding: 11px 14px 11px 18px;
+  border: 1px solid rgba(var(--fg-rgb), 0.45);
+  border-radius: var(--radius-pill);
+  background: var(--pill-idle);
   color: var(--fg);
+  transition-property: background-color, color, border-color, border-radius;
+  transition-duration: calc(350ms * var(--pill-motion, 1));
+  transition-timing-function: ease;
 }
 
 .active {
   --ring: var(--fg-inv);
-  padding: 16px 20px;
+  border-color: var(--fg);
   border-radius: 22px;
   background: var(--fg);
   color: var(--fg-inv);
@@ -18,27 +26,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 100%;
-  padding: 10px 12px 10px 18px;
-  border: 1px solid rgba(var(--fg-rgb), 0.45);
-  border-radius: 999px;
-  background: var(--pill-idle);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.active .button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.active .button::after {
+.button::after {
   content: "";
   position: absolute;
-  inset: -10px 0;
+  inset: -12px -15px -12px -19px;
 }
 
 .index {
@@ -51,7 +52,7 @@
 .name {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -74,39 +75,41 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
   border-radius: 50%;
   background: rgba(var(--fg-rgb), 0.18);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
 }
 
 .active .mark {
-  background: rgba(var(--fg-inv-rgb), 0.18);
+  background: rgba(var(--fg-inv-rgb), 0.16);
 }
 
 .description {
+  width: 0;
+  min-width: 100%;
   max-height: 0;
   margin: 0;
   overflow: hidden;
-  visibility: hidden;
+  opacity: 0;
   font-size: 14px;
   line-height: 1.45;
-  transition:
-    max-height 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    margin-top 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    visibility 0s linear 450ms;
+  transition-property: max-height, margin-top, opacity;
+  transition-duration: calc(450ms * var(--pill-motion, 1));
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .active .description {
-  max-height: 120px;
-  margin-top: 8px;
-  visibility: visible;
-  transition-delay: 0s;
+  max-height: calc(120px * var(--pill-open, 1));
+  margin-top: calc(10px * var(--pill-open, 1));
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pill,
   .description {
     transition: none;
   }

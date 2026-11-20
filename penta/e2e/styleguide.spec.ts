@@ -149,8 +149,8 @@ for (const theme of themes) {
 test.describe("index pill", () => {
   async function closedPill(page: Page) {
     await page.goto("/styleguide");
-    const descriptionId = await page.locator('button[aria-expanded="false"]').first().getAttribute("aria-controls");
-    const button = page.locator(`button[aria-controls="${descriptionId}"]`);
+    const descriptionId = await page.locator("button[aria-describedby]:not([aria-current])").first().getAttribute("aria-describedby");
+    const button = page.locator(`button[aria-describedby="${descriptionId}"]`);
     const description = page.locator(`[id="${descriptionId}"]`);
     return { button, description };
   }
@@ -163,7 +163,7 @@ test.describe("index pill", () => {
     await expect(description).toHaveCSS("transition-timing-function", /^cubic-bezier\(0\.2, 0\.8, 0\.2, 1\)/);
 
     await button.click();
-    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await expect(button).toHaveAttribute("aria-current", "true");
     await expect(description).toBeVisible();
     await expect(description).toHaveCSS("max-height", "120px");
   });

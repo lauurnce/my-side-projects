@@ -16,7 +16,7 @@ describe("IndexPill", () => {
     render(<IndexPill {...decks} active={false} onSelect={() => {}} />);
     const button = screen.getByRole("button", { name: "02 Decks Presentations" });
     expect(button.getAttribute("type")).toBe("button");
-    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.hasAttribute("aria-current")).toBe(false);
   });
 
   it("leaves the sub label out when there is none", () => {
@@ -24,30 +24,43 @@ describe("IndexPill", () => {
     expect(screen.getByRole("button", { name: "01 Routes" })).toBeTruthy();
   });
 
-  it("hides the description while idle and shows a plus mark", () => {
-    const { container } = render(<IndexPill {...decks} active={false} onSelect={() => {}} />);
-    const description = screen.getByText(decks.description);
-    expect(description.getAttribute("aria-hidden")).toBe("true");
-    const mark = container.querySelector("[aria-hidden='true']");
-    expect(mark?.textContent).toBe("+");
+  it("never uses the disclosure attributes", () => {
+    render(
+      <>
+        <IndexPill {...decks} active={false} onSelect={() => {}} />
+        <IndexPill index="03" name="Ops" description="Quizzes that grade themselves." active onSelect={() => {}} />
+      </>,
+    );
+    screen.getAllByRole("button").forEach((button) => {
+      expect(button.hasAttribute("aria-expanded")).toBe(false);
+      expect(button.hasAttribute("aria-controls")).toBe(false);
+    });
   });
 
-  it("shows the description when active and marks the button expanded", () => {
+  it("keeps the description in the accessibility tree while idle and shows a plus mark", () => {
+    const { container } = render(<IndexPill {...decks} active={false} onSelect={() => {}} />);
+    const description = screen.getByText(decks.description);
+    expect(description.hasAttribute("aria-hidden")).toBe(false);
+    expect(description.hasAttribute("hidden")).toBe(false);
+    expect(screen.getByRole("button", { description: decks.description })).toBeTruthy();
+    expect(container.querySelector("[aria-hidden='true']")?.textContent).toBe("+");
+  });
+
+  it("marks the active button as current and shows a minus mark", () => {
     const { container } = render(<IndexPill {...decks} active onSelect={() => {}} />);
     const button = screen.getByRole("button", { name: "02 Decks Presentations" });
-    const description = screen.getByText(decks.description);
-    expect(button.getAttribute("aria-expanded")).toBe("true");
-    expect(description.hasAttribute("aria-hidden")).toBe(false);
+    expect(button.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText(decks.description).hasAttribute("aria-hidden")).toBe(false);
     expect(container.querySelector("[aria-hidden='true']")?.textContent).toBe("−");
   });
 
-  it("points aria-controls at the description, which sits outside the button", () => {
+  it("points aria-describedby at the description, which sits outside the button", () => {
     render(<IndexPill {...decks} active onSelect={() => {}} />);
     const button = screen.getByRole("button");
     const description = screen.getByText(decks.description);
     expect(description.tagName).toBe("P");
     expect(description.id).not.toBe("");
-    expect(button.getAttribute("aria-controls")).toBe(description.id);
+    expect(button.getAttribute("aria-describedby")).toBe(description.id);
     expect(button.contains(description)).toBe(false);
   });
 
@@ -59,7 +72,7 @@ describe("IndexPill", () => {
       </>,
     );
     const [first, second] = screen.getAllByRole("button");
-    expect(first.getAttribute("aria-controls")).not.toBe(second.getAttribute("aria-controls"));
+    expect(first.getAttribute("aria-describedby")).not.toBe(second.getAttribute("aria-describedby"));
   });
 
   it("calls onSelect when clicked", () => {
