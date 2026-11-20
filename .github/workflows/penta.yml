@@ -1,0 +1,46 @@
+name: penta
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "penta/**"
+      - ".github/workflows/penta.yml"
+  pull_request:
+    paths:
+      - "penta/**"
+      - ".github/workflows/penta.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: penta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: penta
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out the code (actions/checkout v6.0.2)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Set up Node 24 (actions/setup-node v7.1.0)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: penta/package-lock.json
+      - name: Install packages
+        run: npm ci
+      - name: Verify
+        run: npm run verify
