@@ -1,0 +1,6 @@
+.root {
+  position: relative;
+  overflow-x: clip;
+  background: var(--bg);
+  color: var(--fg);
+}
