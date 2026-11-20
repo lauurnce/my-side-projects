@@ -5,10 +5,10 @@ import { StatusChip } from "./StatusChip";
 
 afterEach(cleanup);
 
-function renderCard() {
+function renderCard(href: string | undefined = "/ops/quiz/message-brokers") {
   return render(
     <OpsCard
-      href="/ops/quiz/message-brokers"
+      href={href}
       icon={
         <svg data-testid="icon" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="5" y="3" width="14" height="18" fill="none" stroke="currentColor" strokeWidth="1.2" />
@@ -49,5 +49,16 @@ describe("OpsCard", () => {
     const chip = screen.getByText("Due Fri 23:59");
     expect(link.contains(chip)).toBe(true);
     expect(chip.dataset.status).toBe("due");
+  });
+
+  it("renders a static box with no link when there is no href", () => {
+    const { container } = render(
+      <OpsCard icon={<svg data-testid="icon" aria-hidden="true" />} kind="Gradebook" title="Term standing" detail="All 6 classes" status="Updated today" />,
+    );
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(container.querySelector("a, button, [tabindex]")).toBeNull();
+    expect(container.firstElementChild?.tagName).toBe("DIV");
+    expect(screen.getByText("Term standing")).toBeTruthy();
+    expect(container.firstElementChild?.contains(screen.getByTestId("icon"))).toBe(true);
   });
 });
