@@ -30,7 +30,7 @@ export function IndexPill({ index, name, sub, description, active, onSelect }: I
           {active ? "−" : "+"}
         </span>
       </button>
-      <p id={descriptionId} className={styles.description} hidden={!active}>
+      <p id={descriptionId} className={styles.description} aria-hidden={active ? undefined : true}>
         {description}
       </p>
     </div>

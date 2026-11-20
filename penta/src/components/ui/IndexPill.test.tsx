@@ -27,7 +27,7 @@ describe("IndexPill", () => {
   it("hides the description while idle and shows a plus mark", () => {
     const { container } = render(<IndexPill {...decks} active={false} onSelect={() => {}} />);
     const description = screen.getByText(decks.description);
-    expect(description.hidden).toBe(true);
+    expect(description.getAttribute("aria-hidden")).toBe("true");
     const mark = container.querySelector("[aria-hidden='true']");
     expect(mark?.textContent).toBe("+");
   });
@@ -37,7 +37,7 @@ describe("IndexPill", () => {
     const button = screen.getByRole("button", { name: "02 Decks Presentations" });
     const description = screen.getByText(decks.description);
     expect(button.getAttribute("aria-expanded")).toBe("true");
-    expect(description.hidden).toBe(false);
+    expect(description.hasAttribute("aria-hidden")).toBe(false);
     expect(container.querySelector("[aria-hidden='true']")?.textContent).toBe("−");
   });
 

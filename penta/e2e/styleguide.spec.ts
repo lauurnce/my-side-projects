@@ -32,8 +32,9 @@ async function hitBoxCoversFortyFourPixels(button: Locator) {
 }
 
 async function tabTo(page: Page, target: Locator) {
+  const linkTabKey = page.context().browser()?.browserType().name() === "webkit" ? "Alt+Tab" : "Tab";
   for (let presses = 0; presses < 120; presses += 1) {
-    await page.keyboard.press("Tab");
+    await page.keyboard.press(linkTabKey);
     if (await target.evaluate((element) => element === document.activeElement)) return;
   }
   throw new Error("The link was never reached with the Tab key");
@@ -144,3 +145,35 @@ for (const theme of themes) {
     });
   });
 }
+
+test.describe("index pill", () => {
+  async function closedPill(page: Page) {
+    await page.goto("/styleguide");
+    const descriptionId = await page.locator('button[aria-expanded="false"]').first().getAttribute("aria-controls");
+    const button = page.locator(`button[aria-controls="${descriptionId}"]`);
+    const description = page.locator(`[id="${descriptionId}"]`);
+    return { button, description };
+  }
+
+  test("opens to 120px over 450ms", async ({ page }) => {
+    const { button, description } = await closedPill(page);
+    await expect(description).toBeHidden();
+    await expect(description).toHaveCSS("max-height", "0px");
+    await expect(description).toHaveCSS("transition-duration", /^0\.45s/);
+    await expect(description).toHaveCSS("transition-timing-function", /^cubic-bezier\(0\.2, 0\.8, 0\.2, 1\)/);
+
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await expect(description).toBeVisible();
+    await expect(description).toHaveCSS("max-height", "120px");
+  });
+
+  test("opens without animation under reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const { button, description } = await closedPill(page);
+    await expect(description).not.toHaveCSS("transition-duration", /0\.45s/);
+
+    await button.click();
+    await expect(description).toBeVisible();
+  });
+});
