@@ -1,0 +1,82 @@
+.link,
+.link:hover {
+  color: var(--fg);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 22px;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.size124 {
+  width: 124px;
+  height: 124px;
+}
+
+.size96 {
+  width: 96px;
+  height: 96px;
+}
+
+.size72 {
+  width: 72px;
+  height: 72px;
+}
+
+.outline {
+  position: absolute;
+  inset: 0;
+}
+
+.octagon {
+  fill: transparent;
+  transition: fill 0.25s ease;
+}
+
+.arrow {
+  transition: stroke 0.25s ease;
+}
+
+.link:hover .octagon,
+.link:focus-visible .octagon {
+  fill: var(--fg);
+}
+
+.link:hover .arrow,
+.link:focus-visible .arrow {
+  stroke: var(--fg-inv);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  text-transform: uppercase;
+}
