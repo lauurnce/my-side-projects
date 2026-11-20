@@ -1,3 +1,8 @@
+"use client";
+
+import { useId } from "react";
+import styles from "./IndexPill.module.css";
+
 export type IndexPillProps = {
   index: string;
   name: string;
@@ -7,10 +12,27 @@ export type IndexPillProps = {
   onSelect: () => void;
 };
 
-export function IndexPill({ index, name, onSelect }: IndexPillProps) {
+export function IndexPill({ index, name, sub, description, active, onSelect }: IndexPillProps) {
+  const descriptionId = useId();
   return (
-    <button type="button" onClick={onSelect}>
-      {index} {name}
-    </button>
+    <div className={active ? `${styles.pill} ${styles.active}` : styles.pill}>
+      <button
+        type="button"
+        className={styles.button}
+        aria-expanded={active}
+        aria-controls={descriptionId}
+        onClick={onSelect}
+      >
+        <span className={styles.index}>{index}</span>{" "}
+        <span className={styles.name}>{name}</span>
+        {sub ? <> <span className={styles.sub}>{sub}</span></> : null}
+        <span className={styles.mark} aria-hidden="true">
+          {active ? "−" : "+"}
+        </span>
+      </button>
+      <p id={descriptionId} className={styles.description} hidden={!active}>
+        {description}
+      </p>
+    </div>
   );
 }
