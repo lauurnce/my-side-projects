@@ -1,0 +1,185 @@
+.grid {
+  --route-title-size: 34px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.feature {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 280px;
+  padding: 26px;
+  overflow: hidden;
+  background: var(--bg-deep);
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px));
+}
+
+.building {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 70%;
+  background-position: 70% 10%;
+  opacity: 0.85;
+}
+
+.tag {
+  position: absolute;
+  right: -10px;
+  top: 38%;
+  font-size: 120px;
+  transform: rotate(-8deg);
+  opacity: 0.6;
+}
+
+.scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58%;
+  background: linear-gradient(to top, rgba(var(--scrim-rgb), 0.92), rgba(var(--scrim-rgb), 0));
+}
+
+.featureText {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.featureCode {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(44px, 7vh, 72px);
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.featureName {
+  max-width: 300px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.resume {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.octagon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+}
+
+.outline {
+  position: absolute;
+  inset: 0;
+  fill: rgba(var(--scrim-rgb), 0.6);
+}
+
+.resumeText,
+.altitude {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.resumeText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cell > :only-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.cell > :only-child > :only-child {
+  flex: 1;
+}
+
+.altitude {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.line {
+  position: relative;
+  height: 1px;
+  background: rgba(var(--fg-rgb), 0.6);
+}
+
+.marker {
+  position: absolute;
+  left: 61%;
+  top: -6px;
+  width: 11px;
+  height: 11px;
+  background: var(--fg);
+  transform: rotate(45deg);
+}
+
+.you {
+  position: absolute;
+  left: 61%;
+  top: 12px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid > :nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grid > :nth-child(4) {
+    display: flex;
+  }
+
+  .altitude {
+    padding-bottom: 28px;
+  }
+}
