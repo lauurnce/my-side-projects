@@ -26,8 +26,11 @@ export function Panel({ id, cover, deep, children }: PanelProps) {
       data-deep={deep ? "true" : undefined}
       aria-labelledby={`${id}-title`}
     >
-      <div className={styles.inner}>{children}</div>
-      {cover ? <div className={styles.dim} aria-hidden="true" /> : null}
+      <div className={styles.inner}>
+        <div className={styles.grain} aria-hidden="true" />
+        {cover ? <div className={styles.dim} aria-hidden="true" /> : null}
+        {children}
+      </div>
     </section>
   );
 }

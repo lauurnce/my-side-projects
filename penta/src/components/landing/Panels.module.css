@@ -21,9 +21,13 @@
 
 .inner {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.6vh, 28px);
   box-sizing: border-box;
   padding: 48px 20px;
   background: var(--bg);
+  line-height: normal;
   transform-origin: 50% 0;
 }
 
@@ -31,8 +35,75 @@
   background: var(--bg-deep);
 }
 
-.dim {
+.grain {
+  position: absolute;
+  inset: 0;
+  background:
+    url("/design/grain.png") 0 0 / 220px 220px,
+    var(--bg);
+  background-blend-mode: var(--grain-blend);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.panel[data-deep] .grain {
+  background-color: var(--bg-deep);
+}
+
+.inner > * + * {
+  position: relative;
+  z-index: 1;
+}
+
+.inner > .dim {
   display: none;
+}
+
+.head {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(56px, 10vh, 104px);
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.labels,
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filters {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--fg-inv);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 @media (min-width: 761px) and (min-height: 561px) {
@@ -49,9 +120,6 @@
   }
 
   .inner {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(14px, 2.6vh, 28px);
     height: 100%;
     padding: clamp(28px, 6vh, 60px) var(--gutter);
     overflow: hidden;
@@ -63,10 +131,11 @@
     will-change: transform;
   }
 
-  .dim {
+  .inner > .dim {
     display: block;
     position: absolute;
     inset: 0;
+    z-index: 5;
     background: var(--dim);
     opacity: calc(var(--c) * 0.5);
     pointer-events: none;
@@ -79,7 +148,7 @@
     border-radius: 0;
   }
 
-  .dim {
+  .inner > .dim {
     opacity: 0;
   }
 }
