@@ -24,21 +24,30 @@ test("the theme toggle switches to dark and a reload keeps it", async ({ page })
   await expect(page.getByTestId("top-bar").getByRole("button", { name: "Switch to light theme" })).toBeVisible();
 });
 
-test("the first paint follows the cookie", async ({ request }) => {
-  const withCookie = await request.get("/styleguide", { headers: { Cookie: "penta-theme=dark" } });
-  expect(await withCookie.text()).toMatch(htmlTheme("dark"));
+test("the saved theme is applied before the app scripts run", async ({ context, page, baseURL }) => {
+  await context.addCookies([{ name: "penta-theme", value: "dark", url: baseURL }]);
+  await page.route("**/_next/static/**/*.js", (route) => route.abort());
 
-  const withoutCookie = await request.get("/styleguide");
-  expect(await withoutCookie.text()).toMatch(htmlTheme("light"));
+  await page.goto("/styleguide", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("body")).toHaveCSS("background-color", maroon);
 });
 
-test("the page is dark without JavaScript when the cookie is set", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL, javaScriptEnabled: false, colorScheme: "light" });
+test("the served page is static and light, with the theme script in the head", async ({ request }) => {
+  const response = await request.get("/styleguide", { headers: { Cookie: "penta-theme=dark" } });
+  const html = await response.text();
+  expect(html).toMatch(htmlTheme("light"));
+  expect(html.indexOf("penta-theme=dark")).toBeGreaterThan(-1);
+  expect(html.indexOf("penta-theme=dark")).toBeLessThan(html.indexOf("<body"));
+});
+
+test("the page falls back to light without JavaScript", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false, colorScheme: "dark" });
   await context.addCookies([{ name: "penta-theme", value: "dark", url: baseURL }]);
   const page = await context.newPage();
 
   await page.goto("/styleguide");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", maroon);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("body")).toHaveCSS("background-color", paper);
   await context.close();
 });

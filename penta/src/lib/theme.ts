@@ -2,6 +2,8 @@ export type Theme = "light" | "dark";
 
 export const themeCookieName = "penta-theme";
 
+export const themeBootScript = `try{if(/(?:^|; )${themeCookieName}=dark(?:;|$)/.test(document.cookie))document.documentElement.dataset.theme="dark"}catch(e){}`;
+
 const oneYearInSeconds = 60 * 60 * 24 * 365;
 
 export function parseTheme(value: string | undefined): Theme {

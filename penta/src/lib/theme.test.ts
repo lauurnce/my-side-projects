@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { oppositeTheme, parseTheme, switchTheme, themeCookie } from "@/lib/theme";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { oppositeTheme, parseTheme, switchTheme, themeBootScript, themeCookie } from "@/lib/theme";
 
 function rootWithTheme(theme?: string) {
   const root = document.createElement("html");
@@ -63,5 +63,44 @@ describe("switchTheme", () => {
 
     expect(switchTheme(root, blockedJar)).toBe("dark");
     expect(root.dataset.theme).toBe("dark");
+  });
+});
+
+describe("themeBootScript", () => {
+  function bootWithCookie(cookie: string) {
+    vi.spyOn(document, "cookie", "get").mockReturnValue(cookie);
+    document.documentElement.dataset.theme = "light";
+    new Function(themeBootScript)();
+    return document.documentElement.dataset.theme;
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete document.documentElement.dataset.theme;
+  });
+
+  it("leaves a new visitor on light", () => {
+    expect(bootWithCookie("")).toBe("light");
+  });
+
+  it("sets dark from the saved cookie", () => {
+    expect(bootWithCookie("penta-theme=dark")).toBe("dark");
+    expect(bootWithCookie("session=abc; penta-theme=dark; other=1")).toBe("dark");
+  });
+
+  it.each(["penta-theme=light", "penta-theme=darker", "xpenta-theme=dark", "penta-theme=DARK"])(
+    "stays light for %j",
+    (cookie) => {
+      expect(bootWithCookie(cookie)).toBe("light");
+    },
+  );
+
+  it("stays light when cookies cannot be read", () => {
+    vi.spyOn(document, "cookie", "get").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    document.documentElement.dataset.theme = "light";
+    new Function(themeBootScript)();
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 });
