@@ -1,0 +1,105 @@
+:root,
+[data-theme="light"] {
+  --bg: #F5F0E6;
+  --bg-rgb: 245, 240, 230;
+  --bg-deep: #EBE1CF;
+  --shell: #D9CDB8;
+  --dim: #8C7F6A;
+  --fg: #800000;
+  --fg-rgb: 128, 0, 0;
+  --fg-muted: #94433D;
+  --fg-soft: #B56C66;
+  --fg-inv: #FCF7EC;
+  --fg-inv-2: #F1E3CF;
+  --fg-inv-rgb: 252, 247, 236;
+  --surface: #FFFFFF;
+  --chip-soft: #E3D5BC;
+  --idle: #D3C3A9;
+  --thumb-on: #FFFFFF;
+  --accent-mark: #A87400;
+  --accent-edge: #A87400;
+  --pill-idle: rgba(128, 0, 0, 0.06);
+  --field: rgba(128, 0, 0, 0.04);
+  --scrim-rgb: 245, 240, 230;
+  --tag-rgb: 128, 0, 0;
+  --plate-shadow: radial-gradient(closest-side, rgba(74, 10, 15, 0.3), rgba(74, 10, 15, 0));
+  --panel-shadow: rgba(74, 10, 15, 0.18);
+  --grain-blend: multiply;
+
+  --card: #E4CC95;
+  --ink: #2B0609;
+  --ink-rgb: 43, 6, 9;
+  --ink-2: #4A0A0F;
+  --on-ink: #FCF7EC;
+  --accent: #FFD700;
+  --plate-mid: #A84444;
+  --plate-face: linear-gradient(135deg, rgba(252, 247, 236, 0.96), rgba(228, 204, 149, 0.9) 62%, rgba(241, 227, 207, 0.94));
+
+  --font-display: var(--face-display), "Arial Narrow", Impact, sans-serif;
+  --font-body: var(--face-body), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--face-mono), ui-monospace, Menlo, monospace;
+  --font-tag: var(--face-tag), "Marker Felt", cursive;
+
+  --display-xl: 168px;
+  --display-l: 96px;
+  --display-m: 56px;
+  --display-s: 30px;
+  --label: 11px;
+  --body: 16px;
+
+  --gutter: 64px;
+  --clip: 22px;
+  --radius-pill: 999px;
+  --radius-plate: 26px;
+  --stage-max: 960px;
+}
+
+[data-theme="dark"] {
+  --bg: #800000;
+  --bg-rgb: 128, 0, 0;
+  --bg-deep: #4A0A0F;
+  --shell: #2B0609;
+  --dim: #2B0609;
+  --fg: #FCF7EC;
+  --fg-rgb: 252, 247, 236;
+  --fg-muted: #F1E3CF;
+  --fg-soft: #E4CC95;
+  --fg-inv: #2B0609;
+  --fg-inv-2: #4A0A0F;
+  --fg-inv-rgb: 43, 6, 9;
+  --surface: #F1E3CF;
+  --chip-soft: #F1E3CF;
+  --idle: #A84444;
+  --thumb-on: #FCF7EC;
+  --accent-mark: #FFD700;
+  --accent-edge: #FFD700;
+  --pill-idle: rgba(43, 6, 9, 0.35);
+  --field: rgba(43, 6, 9, 0.25);
+  --scrim-rgb: 43, 6, 9;
+  --tag-rgb: 252, 247, 236;
+  --plate-shadow: radial-gradient(closest-side, rgba(43, 6, 9, 0.6), rgba(43, 6, 9, 0));
+  --panel-shadow: rgba(43, 6, 9, 0.45);
+  --grain-blend: overlay;
+}
+
+.clip-card {
+  clip-path: polygon(0 0, calc(100% - var(--clip)) 0, 100% var(--clip), 100% 100%, var(--clip) 100%, 0 calc(100% - var(--clip)));
+}
+
+.spray-tag {
+  font-family: var(--font-tag);
+  color: rgba(var(--tag-rgb), 0.82);
+  text-shadow: 0 0 4px rgba(var(--tag-rgb), 0.75), 0 0 14px rgba(var(--tag-rgb), 0.5), 0 0 38px rgba(var(--tag-rgb), 0.35),
+    3px 2px 1px rgba(var(--tag-rgb), 0.25), -2px -3px 2px rgba(var(--tag-rgb), 0.2);
+  filter: blur(0.5px);
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("/design/grain.png");
+  background-size: 220px 220px;
+  opacity: 0.55;
+  mix-blend-mode: var(--grain-blend);
+  pointer-events: none;
+}
