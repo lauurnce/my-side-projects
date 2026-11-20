@@ -1,0 +1,27 @@
+.barcode {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.bars {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 30px;
+}
+
+.bar {
+  display: block;
+  background: var(--fg);
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--fg);
+}
