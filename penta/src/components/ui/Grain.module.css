@@ -1,0 +1,9 @@
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("/design/grain.png");
+  background-size: 220px 220px;
+  opacity: 0.55;
+  mix-blend-mode: var(--grain-blend);
+  pointer-events: none;
+}
