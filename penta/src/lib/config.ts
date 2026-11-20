@@ -1,4 +1,4 @@
-const megabyte = 1024 * 1024;
+export const megabyte = 1024 * 1024;
 
 const pdf = "application/pdf";
 const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";

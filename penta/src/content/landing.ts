@@ -1,3 +1,5 @@
+import { megabyte, submissionUpload } from "@/lib/config";
+
 export const heroContent = {
   brand: { tag: "Penta", name: "Penta, home", href: "/" },
   meta: ["AY 2026–27 · 1st sem", "BSIT · PUP", "INTE 301 · SIA"],
@@ -117,7 +119,7 @@ export const panelsContent = {
         icon: "M7 3 H14 L18 7 V21 H7 Z M14 3 V7 H18 M12.5 18 V11 M10 13.5 L12.5 11 L15 13.5",
         kind: "Upload · COMP 015",
         title: "Chapter 3 draft",
-        meta: "DOCX or PDF · 25 MB",
+        meta: `DOCX or PDF · ${submissionUpload.maxBytes / megabyte} MB`,
         status: "late",
         statusText: "Late · 2 days",
       },
