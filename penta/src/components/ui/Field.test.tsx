@@ -51,4 +51,15 @@ describe("Field", () => {
     render(<Field label="School email" error="Error: Use your school email" />);
     expect(screen.getByText("Error: Use your school email")).toBeTruthy();
   });
+
+  it("keeps the caller description and adds the error to it", () => {
+    render(<Field label="School email" error="Use your school email" aria-describedby="email-hint" />);
+    const error = screen.getByText("Error: Use your school email");
+    expect(screen.getByLabelText(/School email/).getAttribute("aria-describedby")).toBe(`email-hint ${error.id}`);
+  });
+
+  it("keeps the caller description when there is no error", () => {
+    render(<Field label="School email" aria-describedby="email-hint" />);
+    expect(screen.getByLabelText(/School email/).getAttribute("aria-describedby")).toBe("email-hint");
+  });
 });

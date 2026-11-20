@@ -13,6 +13,7 @@ function errorText(error: string) {
 
 export function Field({ label, error, className, ...input }: FieldProps) {
   const errorId = useId();
+  const describedBy = [input["aria-describedby"], errorId].filter(Boolean).join(" ");
   const inputClass = [styles.input, className].filter(Boolean).join(" ");
 
   if (!error) {
@@ -27,7 +28,7 @@ export function Field({ label, error, className, ...input }: FieldProps) {
   return (
     <label className={styles.field}>
       <span className={styles.label}>{label}</span>
-      <input {...input} className={inputClass} aria-invalid="true" aria-describedby={errorId} />
+      <input {...input} className={inputClass} aria-invalid="true" aria-describedby={describedBy} />
       <span id={errorId} className={styles.error}>
         {errorText(error)}
       </span>
