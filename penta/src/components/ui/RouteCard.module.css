@@ -1,0 +1,66 @@
+.link {
+  --ring: var(--ink);
+  display: block;
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline-offset: -6px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 250px;
+  padding: 22px;
+  background: var(--card);
+  color: var(--ink);
+  clip-path: polygon(0 0, calc(100% - var(--clip)) 0, 100% var(--clip), 100% 100%, var(--clip) 100%, 0 calc(100% - var(--clip)));
+}
+
+.row,
+.counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.row {
+  color: var(--ink-2);
+}
+
+.counts > span {
+  position: relative;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.track {
+  display: block;
+  height: 6px;
+  background: rgba(var(--ink-rgb), 0.18);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
