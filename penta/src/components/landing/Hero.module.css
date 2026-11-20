@@ -1,0 +1,6 @@
+.hero {
+  --h: 0;
+  position: relative;
+  min-height: 960px;
+  overflow: hidden;
+}

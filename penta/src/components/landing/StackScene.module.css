@@ -1,0 +1,15 @@
+.stack {
+  --d1: 1;
+  --d2: 1;
+  --d3: 1;
+  position: relative;
+  height: 2600px;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: min(100vh, 960px);
+  height: min(100svh, 960px);
+  overflow: hidden;
+}
