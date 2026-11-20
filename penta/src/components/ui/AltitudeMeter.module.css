@@ -1,0 +1,60 @@
+.meter {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 200px;
+  padding: 22px;
+  border: 1px solid rgba(var(--fg-rgb), 0.35);
+  color: var(--fg);
+}
+
+.scale {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--fg);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.marker {
+  position: absolute;
+  right: -6px;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  background: var(--fg);
+  transform: rotate(45deg);
+}
+
+.text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.number {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 64px;
+  line-height: 0.9;
+}
+
+.note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
