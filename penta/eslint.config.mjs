@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "next-env.d.ts",
     ".kit/**",
+    "src/lib/database.types.ts",
   ]),
 ]);
 
