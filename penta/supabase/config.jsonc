@@ -1,0 +1,10 @@
+{
+  "$schema": "https://supabase.com/schemas/config/v1.json",
+  "project_id": "penta",
+  "db": {
+    "major_version": 17
+  },
+  "storage": {
+    "file_size_limit": "50MiB"
+  }
+}
