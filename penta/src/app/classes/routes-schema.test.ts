@@ -110,6 +110,13 @@ describe("message mapping", () => {
     );
   });
 
+  it("names the linked deck when a lesson delete is refused by one", () => {
+    const error = { code: "23503", message: 'violates foreign key constraint "decks_lesson_id_fkey" on table "decks"' };
+    expect(writeErrorMessage(error, routeMessages.lessonHasProgress)).toBe(
+      "A deck is linked to this lesson. Unlink or delete the deck first.",
+    );
+  });
+
   it("treats zero rows without an error as gone", () => {
     expect(writeErrorMessage(null)).toBe("That item is no longer here. Reload the page.");
   });

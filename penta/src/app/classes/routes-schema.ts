@@ -10,6 +10,7 @@ export const routeMessages = {
   lessonLimit: "A module can have 60 lessons at most.",
   moduleHasLessons: "Delete or unpublish its lessons first. A module with lessons cannot be deleted.",
   lessonHasProgress: "Students have completed this lesson, so it cannot be deleted. Unpublish it instead.",
+  lessonHasDeck: "A deck is linked to this lesson. Unlink or delete the deck first.",
   saveConflict: "This lesson was changed in another tab, or it no longer exists. Copy your text, then reload.",
   checkFields: "Check the marked fields, then save again.",
   saved: "Saved",
@@ -96,6 +97,7 @@ export function writeErrorMessage(error: WriteError, restrictedMessage: string =
   if (!error) return routeMessages.gone;
   if (error.code === "P0001" && error.message?.includes("module_limit")) return routeMessages.moduleLimit;
   if (error.code === "P0001" && error.message?.includes("lesson_limit")) return routeMessages.lessonLimit;
+  if (error.code === "23503" && error.message?.includes("decks_lesson_id_fkey")) return routeMessages.lessonHasDeck;
   if (error.code === "23503") return restrictedMessage;
   if (error.code === "23514") return routeMessages.rejectedText;
   if (error.code === "42501") return routeMessages.refused;
