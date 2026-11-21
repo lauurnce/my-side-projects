@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import {
+  classAltitude,
+  firstUnfinished,
+  outlineFor,
+  progressCount,
+  type ClassOutline,
+  type OutlineLesson,
+  type RouteProgress,
+} from "@/lib/routes";
 
 type Tables = Database["public"]["Tables"];
 type ClassRow = Pick<Tables["classes"]["Row"], "id" | "code" | "title" | "section" | "term" | "teacher_id">;
@@ -70,4 +79,44 @@ export async function isClassOwner(
 ): Promise<boolean> {
   const { data } = await supabase.from("classes").select("teacher_id").eq("id", classId).maybeSingle();
   return data?.teacher_id === userId;
+}
+
+export type ClassProgress = RouteProgress & {
+  drafts: number;
+  meters: number;
+  next: OutlineLesson | null;
+};
+
+export function classProgress(outline: ClassOutline): ClassProgress {
+  const progress = progressCount(outline);
+  const lessonCount = outline.modules.reduce((sum, moduleItem) => sum + moduleItem.lessons.length, 0);
+  return {
+    ...progress,
+    drafts: lessonCount - progress.published,
+    meters: classAltitude(progress),
+    next: firstUnfinished(outline),
+  };
+}
+
+export function withProgress<Item extends { id: string }>(
+  classes: Item[],
+  outlines: ClassOutline[],
+): (Item & ClassProgress)[] {
+  return classes.map((item) => ({ ...item, ...classProgress(outlineFor(outlines, item.id)) }));
+}
+
+export function nextUp<Item extends { title: string; next: OutlineLesson | null }>(
+  classes: Item[],
+): (Item & { next: OutlineLesson }) | null {
+  const unfinished = classes.filter((item): item is Item & { next: OutlineLesson } => item.next !== null);
+  return unfinished.sort((first, second) => first.title.localeCompare(second.title, "en"))[0] ?? null;
+}
+
+export function progressPercent({ done, published }: RouteProgress): number {
+  if (published <= 0) return 0;
+  return Math.round((Math.min(Math.max(done, 0), published) / published) * 100);
+}
+
+export function formatMeters(meters: number): string {
+  return meters.toLocaleString("en-US");
 }
