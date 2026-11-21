@@ -1,4 +1,6 @@
 import type { CurrentUser } from "@/lib/auth";
+import { withProgress } from "@/lib/classes";
+import { loadOutlines } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { ClassList, type ClassListItem } from "./teacher/ClassList";
@@ -16,23 +18,28 @@ async function loadClasses(teacherId: string): Promise<ClassListItem[] | null> {
   if (error) return null;
   if (classes.length === 0) return [];
 
-  const { data: enrollments, error: enrollmentsError } = await supabase
-    .from("enrollments")
-    .select("class_id")
-    .in(
-      "class_id",
-      classes.map((item) => item.id),
-    );
+  const [{ data: enrollments, error: enrollmentsError }, outlines] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("class_id")
+      .in(
+        "class_id",
+        classes.map((item) => item.id),
+      ),
+    loadOutlines(supabase, teacherId),
+  ]);
   if (enrollmentsError) return null;
 
   const counts = countByClass(enrollments);
-  return classes.map((item) => ({
+  return withProgress(classes, outlines).map((item) => ({
     id: item.id,
     code: item.code,
     title: item.title,
     section: item.section,
     term: item.term,
     studentCount: counts.get(item.id) ?? 0,
+    published: item.published,
+    drafts: item.drafts,
   }));
 }
 

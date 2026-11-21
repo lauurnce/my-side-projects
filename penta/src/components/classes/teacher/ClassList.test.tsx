@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { ClassList } from "./ClassList";
+import { ClassList, lessonCounts } from "./ClassList";
 import { JoinCodeBox } from "./JoinCodeBox";
 
 afterEach(cleanup);
@@ -13,6 +13,8 @@ const classes = [
     section: "BSIT 3-3",
     term: "1st Sem AY 2026-27",
     studentCount: 1,
+    published: 4,
+    drafts: 1,
   },
   {
     id: "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
@@ -21,6 +23,8 @@ const classes = [
     section: "",
     term: "",
     studentCount: 32,
+    published: 0,
+    drafts: 0,
   },
 ];
 
@@ -53,6 +57,23 @@ describe("ClassList", () => {
     expect(text).not.toContain("[");
     expect(text).toContain("No term set");
     expect(text).toContain("32 students");
+  });
+});
+
+describe("lesson counts", () => {
+  it("shows published and draft counts on each card and keeps the student count", () => {
+    render(<ClassList classes={classes} />);
+    const [first, second] = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(first).toContain("4 published · 1 draft");
+    expect(first).not.toContain("1 drafts");
+    expect(first).toContain("1 student");
+    expect(second).toContain("0 published · 0 drafts");
+    expect(second).toContain("32 students");
+  });
+
+  it("words the counts", () => {
+    expect(lessonCounts(12, 3)).toBe("12 published · 3 drafts");
+    expect(lessonCounts(1, 1)).toBe("1 published · 1 draft");
   });
 });
 
