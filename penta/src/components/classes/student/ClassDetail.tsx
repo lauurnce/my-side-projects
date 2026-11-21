@@ -1,23 +1,25 @@
 import Link from "next/link";
 import { BracketLabel } from "@/components/ui/BracketLabel";
+import { classProgress } from "@/lib/classes";
+import type { ClassOutline } from "@/lib/routes";
+import { ContinueBlock, OutlineList, ProgressBlock } from "./ClassOutline";
 import styles from "./student.module.css";
 
 export type ClassDetailProps = {
+  classId: string;
   code: string;
   section: string;
   term: string;
   title: string;
   teacherName: string;
   joinedOn: string | null;
+  outline: ClassOutline;
 };
 
-const comingLater = [
-  { layer: "Layer 01", name: "Lessons", text: "Nothing here yet. Lessons arrive in a later update." },
-  { layer: "Layer 02", name: "Decks", text: "Nothing here yet. Decks arrive in a later update." },
-  { layer: "Layer 03", name: "Activities", text: "Nothing here yet. Activities arrive in a later update." },
-];
+export function ClassDetail({ classId, code, section, term, title, teacherName, joinedOn, outline }: ClassDetailProps) {
+  const progress = classProgress(outline);
+  const hasLessons = progress.published > 0;
 
-export function ClassDetail({ code, section, term, title, teacherName, joinedOn }: ClassDetailProps) {
   return (
     <div className={styles.page}>
       <Link className={styles.back} href="/classes">
@@ -43,19 +45,14 @@ export function ClassDetail({ code, section, term, title, teacherName, joinedOn 
           ) : null}
         </dl>
       </header>
-      <div className={styles.grid}>
-        {comingLater.map((later) => (
-          <section key={later.name} className={styles.later}>
-            <span className={styles.laterLabel}>
-              <span aria-hidden="true">[ </span>
-              {later.layer}
-              <span aria-hidden="true"> ]</span>
-            </span>
-            <h2 className={styles.laterTitle}>{later.name}</h2>
-            <p className={styles.laterText}>{later.text}</p>
-          </section>
-        ))}
-      </div>
+      {hasLessons ? (
+        <div className={styles.status}>
+          <ProgressBlock {...progress} />
+          <ContinueBlock classId={classId} next={progress.next} />
+        </div>
+      ) : null}
+      <OutlineList classId={classId} outline={outline} />
+      <p className={styles.later}>Decks and activities arrive in a later update.</p>
     </div>
   );
 }
