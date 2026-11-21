@@ -29,3 +29,18 @@ export const routeLimits = {
   lessonMinutesMax: 600,
   summitMeters: 3000,
 } as const;
+
+export const deckLimits = {
+  budgetBytes: 700 * megabyte,
+  decksPerClass: 40,
+  unfinishedPerTeacher: 3,
+  titleLength: 120,
+  slidesMax: 300,
+  slowLoadBytes: 20 * megabyte,
+  nearlyFullRatio: 0.9,
+  zipDirectoryMaxBytes: 4 * megabyte,
+  zipTailBytes: 64 * 1024,
+  viewUrlSeconds: 60 * 60,
+  downloadUrlSeconds: 60,
+  seenAfterMilliseconds: 1000,
+} as const;
