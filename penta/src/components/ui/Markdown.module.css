@@ -1,0 +1,101 @@
+.markdown {
+  min-width: 0;
+  max-width: 68ch;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 1.6em 0 0.5em;
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.markdown h2 {
+  font-size: 40px;
+}
+
+.markdown h3 {
+  font-size: 30px;
+}
+
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-size: 22px;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown blockquote,
+.markdown pre {
+  margin: 0 0 1em;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 1.4em;
+}
+
+.markdown li + li {
+  margin-top: 0.3em;
+}
+
+.markdown blockquote {
+  padding-left: 16px;
+  border-left: 2px solid var(--fg);
+  color: var(--fg-muted);
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.markdown :not(pre) > code {
+  padding: 1px 5px;
+  background: var(--field);
+}
+
+.markdown pre {
+  max-width: 100%;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid rgba(var(--fg-rgb), 0.35);
+  background: var(--field);
+  overflow-wrap: normal;
+}
+
+.markdown hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 1px solid rgba(var(--fg-rgb), 0.35);
+}
+
+.markdown a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.host {
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
