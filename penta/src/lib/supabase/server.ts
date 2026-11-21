@@ -2,7 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/lib/database.types";
 
-export const sessionCookieOptions = { secure: process.env.NODE_ENV === "production" };
+export const sessionCookieOptions = {
+  secure: process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://") ?? false,
+};
 
 export async function createClient() {
   const cookieStore = await cookies();
