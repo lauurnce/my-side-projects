@@ -4,17 +4,49 @@ import { HubHero, HubLayers, type HubClass } from "@/components/hub/Hub";
 
 afterEach(cleanup);
 
-const sampleClass = (index: number): HubClass => ({
+const sampleClass = (index: number, progress: Partial<HubClass> = {}): HubClass => ({
   id: `class-${index}`,
   code: `COMP 01${index}`,
   title: `Class ${index}`,
   section: "BSIT 3-3",
+  done: 0,
+  published: 0,
+  drafts: 0,
+  meters: 0,
+  next: null,
+  ...progress,
 });
 
+const nextLesson = { id: "lesson-9", moduleId: "m1", title: "Message queues", estMinutes: 10, published: true, done: false };
+const halfway = sampleClass(1, { done: 2, published: 4, meters: 1500, next: nextLesson });
+const finished = sampleClass(2, { done: 3, published: 3, meters: 3000 });
+
 describe("HubHero", () => {
-  it("shows the altitude headline at 0 m", () => {
+  it("shows a student the mean altitude in the headline and the meter", () => {
+    render(<HubHero role="student" classes={[halfway, finished]} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*2,250 m/);
+    expect(screen.getByText("Your altitude").parentElement?.textContent).toContain("2,250 m");
+    expect(screen.getByText("Your altitude is the average across your classes.")).toBeTruthy();
+  });
+
+  it("shows a student with nothing 0 m and says why", () => {
     render(<HubHero role="student" classes={[]} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*0 m/);
+    expect(screen.getByText("Altitude starts counting when your classes have lessons.")).toBeTruthy();
+    expect(screen.getByText("Your altitude")).toBeTruthy();
+  });
+
+  it("shows a teacher the class count and no altitude", () => {
+    render(<HubHero role="teacher" classes={[sampleClass(1, { published: 4, drafts: 1 }), sampleClass(2, { published: 2 })]} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You teach\s*2 classes/);
+    expect(screen.getByText("6 published and 1 draft across your classes.")).toBeTruthy();
+    expect(screen.queryByText("Your altitude")).toBeNull();
+    expect(screen.queryByText(/\d m$/)).toBeNull();
+  });
+
+  it("words one class for a teacher", () => {
+    render(<HubHero role="teacher" classes={[sampleClass(1)]} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You teach\s*1 class$/);
   });
 
   it("sends a student with no classes to join one", () => {
@@ -51,19 +83,65 @@ describe("HubLayers", () => {
     expect(screen.getByText("Enter a join code from your teacher.")).toBeTruthy();
     expect(screen.getByText("No decks yet")).toBeTruthy();
     expect(screen.getByText("Nothing due")).toBeTruthy();
+    expect(screen.queryByText("Continue where you left off")).toBeNull();
   });
 
-  it("links each real class to its page", () => {
-    render(<HubLayers role="teacher" classes={[sampleClass(1), sampleClass(2)]} />);
+  it("shows a student real progress on each route card", () => {
+    render(<HubLayers role="student" classes={[halfway, finished]} />);
+    const cards = within(screen.getByRole("region", { name: "Routes" })).getAllByRole("listitem");
+    expect(cards[0].textContent).toContain("Lesson 2 of 4");
+    expect(cards[0].textContent).toContain("1,500 meters");
+    expect(cards[1].textContent).toContain("Lesson 3 of 3");
+    expect(cards[1].textContent).toContain("3,000 meters");
+    expect(within(cards[0]).getByRole("link").getAttribute("href")).toBe("/classes/class-1");
+  });
+
+  it("offers a student the next unfinished lesson", () => {
+    render(<HubLayers role="student" classes={[finished, halfway]} />);
+    const routes = screen.getByRole("region", { name: "Routes" });
+    expect(within(routes).getByText("Continue where you left off")).toBeTruthy();
+    const link = within(routes).getByRole("link", { name: /Next lesson/ });
+    expect(link.getAttribute("href")).toBe("/classes/class-1/lessons/lesson-9");
+    expect(link.textContent).toContain("Message queues");
+    expect(within(routes).getByText("COMP 011", { selector: "div > span" })).toBeTruthy();
+  });
+
+  it("tells a student who finished everything they are up to date", () => {
+    render(<HubLayers role="student" classes={[finished]} />);
+    expect(screen.getByText("You are up to date.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Next lesson/ })).toBeNull();
+  });
+
+  it("hides the continue card when no class has lessons", () => {
+    render(<HubLayers role="student" classes={[sampleClass(1), sampleClass(2)]} />);
+    expect(screen.queryByText("Continue where you left off")).toBeNull();
+    expect(screen.queryByText("You are up to date.")).toBeNull();
+    expect(screen.getAllByText("Lesson 0 of 0")).toHaveLength(2);
+  });
+
+  it("shows a teacher published and draft counts with no altitude or continue card", () => {
+    const classes = [sampleClass(1, { published: 4, drafts: 1, next: nextLesson }), sampleClass(2)];
+    render(<HubLayers role="teacher" classes={classes} />);
     const routes = screen.getByRole("region", { name: "Routes" });
     const links = within(routes).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/classes/class-1", "/classes/class-2"]);
+    expect(links[0].textContent).toContain("4 published · 1 draft");
+    expect(links[1].textContent).toContain("0 published · 0 drafts");
+    expect(routes.textContent).not.toMatch(/meters|Lesson \d|Continue/);
   });
 
   it("shows three classes and a link to the rest", () => {
-    render(<HubLayers role="teacher" classes={[1, 2, 3, 4, 5].map(sampleClass)} />);
+    render(<HubLayers role="teacher" classes={[1, 2, 3, 4, 5].map((index) => sampleClass(index))} />);
     const routes = screen.getByRole("region", { name: "Routes" });
     expect(within(routes).getAllByRole("listitem")).toHaveLength(3);
     expect(within(routes).getByRole("link", { name: "See all 5 classes" }).getAttribute("href")).toBe("/classes");
+  });
+
+  it("continues a class beyond the three shown", () => {
+    const classes = [finished, sampleClass(3), sampleClass(4), sampleClass(5, { published: 1, next: nextLesson })];
+    render(<HubLayers role="student" classes={classes} />);
+    expect(screen.getByRole("link", { name: /Next lesson/ }).getAttribute("href")).toBe(
+      "/classes/class-5/lessons/lesson-9",
+    );
   });
 });

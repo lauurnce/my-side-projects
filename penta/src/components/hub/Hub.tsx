@@ -7,9 +7,11 @@ import { Grain } from "@/components/ui/Grain";
 import { OctagonCTA } from "@/components/ui/OctagonCTA";
 import { RouteCard } from "@/components/ui/RouteCard";
 import type { Role } from "@/lib/auth";
+import { formatMeters, nextUp, type ClassProgress } from "@/lib/classes";
+import { hubAltitude } from "@/lib/routes";
 import styles from "./Hub.module.css";
 
-export type HubClass = {
+export type HubClass = ClassProgress & {
   id: string;
   code: string;
   title: string;
@@ -32,8 +34,34 @@ function classCount(count: number): string {
   return count === 1 ? "1 class" : `${count} classes`;
 }
 
+function draftCount(count: number): string {
+  return count === 1 ? "1 draft" : `${count} drafts`;
+}
+
+function sum(classes: HubClass[], key: "published" | "drafts"): number {
+  return classes.reduce((total, item) => total + item[key], 0);
+}
+
+function heroCopy(role: Role, classes: HubClass[]): { lines: [string, string]; lead: string } {
+  const published = sum(classes, "published");
+  if (role === "teacher") {
+    return {
+      lines: ["You teach", classCount(classes.length)],
+      lead: `${published} published and ${draftCount(sum(classes, "drafts"))} across your classes.`,
+    };
+  }
+  return {
+    lines: ["You’re at", `${formatMeters(hubAltitude(classes))} m`],
+    lead:
+      published > 0
+        ? "Your altitude is the average across your classes."
+        : "Altitude starts counting when your classes have lessons.",
+  };
+}
+
 export function HubHero({ role, classes }: HubProps) {
   const hasClasses = classes.length > 0;
+  const { lines, lead } = heroCopy(role, classes);
 
   return (
     <section className={styles.hero}>
@@ -44,24 +72,100 @@ export function HubHero({ role, classes }: HubProps) {
           <BracketLabel>{classCount(classes.length)}</BracketLabel>
         </p>
         <h1 className={styles.headline}>
-          <span>You&rsquo;re at</span> <span>0 m</span>
+          <span>{lines[0]}</span> <span>{lines[1]}</span>
         </h1>
-        <p className={styles.lead}>Altitude starts counting when your classes have lessons.</p>
+        <p className={styles.lead}>{lead}</p>
         <OctagonCTA
           href="/classes"
           eyebrow="Layer 01 · Routes"
           title={hasClasses ? "Open classes" : routesCopy[role].action}
         />
       </div>
-      <div className={styles.meter}>
-        <AltitudeMeter meters={0} note="Lessons, decks and activities each add meters. Summit = 3,000 m per term." />
-      </div>
+      {role === "student" ? (
+        <div className={styles.meter}>
+          <AltitudeMeter
+            meters={hubAltitude(classes)}
+            note="Every finished lesson adds meters. Summit = 3,000 m per term."
+          />
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+function ContinueCard({ classes }: { classes: HubClass[] }) {
+  const target = nextUp(classes);
+
+  return (
+    <div className={styles.feature}>
+      <div className={`building-image ${styles.building}`} aria-hidden="true" />
+      <Grain />
+      <div className={styles.scrim} aria-hidden="true" />
+      <div className={styles.featureText}>
+        <BracketLabel>Continue where you left off</BracketLabel>
+        {target ? (
+          <>
+            <span className={styles.featureCode}>{target.code}</span>
+            <span className={styles.featureName}>{target.title}</span>
+          </>
+        ) : (
+          <span className={styles.featureCode}>You are up to date.</span>
+        )}
+      </div>
+      {target ? (
+        <div className={styles.featureAction}>
+          <OctagonCTA
+            href={`/classes/${target.id}/lessons/${target.next.id}`}
+            eyebrow="Next lesson"
+            title={target.next.title}
+            size={72}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TeacherCard({ item }: { item: HubClass }) {
+  return (
+    <Link className={styles.teacherLink} href={`/classes/${item.id}`}>
+      <span className={styles.teacherCard}>
+        <span className={styles.teacherRow}>
+          <span>{item.code}</span>
+          {item.section ? (
+            <span>
+              <span aria-hidden="true">[ </span>
+              {item.section}
+              <span aria-hidden="true"> ]</span>
+            </span>
+          ) : null}
+        </span>
+        <span className={styles.teacherTitle}>{item.title}</span>
+        <span className={`${styles.teacherRow} ${styles.teacherFoot}`}>
+          {item.published} published · {draftCount(item.drafts)}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function StudentCard({ item }: { item: HubClass }) {
+  return (
+    <RouteCard
+      href={`/classes/${item.id}`}
+      code={item.code}
+      section={item.section || "Class"}
+      title={item.title}
+      lessonsDone={item.done}
+      lessonsTotal={item.published}
+      meters={item.meters}
+    />
   );
 }
 
 function HubRoutes({ role, classes }: HubProps) {
   const shown = classes.slice(0, shownClassLimit);
+  const showContinue = role === "student" && sum(classes, "published") > 0;
 
   return (
     <Panel id="routes" cover={1}>
@@ -83,21 +187,16 @@ function HubRoutes({ role, classes }: HubProps) {
           </Link>
         </div>
       ) : (
-        <ul className={styles.cards}>
-          {shown.map((item) => (
-            <li key={item.id}>
-              <RouteCard
-                href={`/classes/${item.id}`}
-                code={item.code}
-                section={item.section || "Class"}
-                title={item.title}
-                lessonsDone={0}
-                lessonsTotal={0}
-                meters={0}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className={showContinue ? styles.routes : undefined}>
+          {showContinue ? <ContinueCard classes={classes} /> : null}
+          <ul className={styles.cards}>
+            {shown.map((item) => (
+              <li key={item.id} className={styles.cell}>
+                {role === "teacher" ? <TeacherCard item={item} /> : <StudentCard item={item} />}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {classes.length > shownClassLimit ? (
         <Link href="/classes" className={styles.textLink}>
