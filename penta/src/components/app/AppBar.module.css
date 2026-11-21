@@ -1,0 +1,113 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 20px var(--gutter);
+  border-bottom: 1px solid var(--fg-muted);
+  line-height: normal;
+}
+
+.brand {
+  position: relative;
+  font-size: 30px;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.brand::after {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-underline-offset: 6px;
+  white-space: nowrap;
+}
+
+.identity {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.signOut {
+  display: flex;
+}
+
+.signOutButton {
+  position: relative;
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--fg-inv);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.signOutButton::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
+}
+
+@media (max-width: 760px) {
+  .bar {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 16px 20px;
+  }
+
+  .brand {
+    font-size: 26px;
+  }
+
+  .signOutButton {
+    padding: 0 13px;
+  }
+
+  .actions {
+    margin-left: auto;
+  }
+
+  .identity {
+    order: 1;
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+}
