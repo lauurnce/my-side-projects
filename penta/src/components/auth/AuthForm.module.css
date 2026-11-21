@@ -1,0 +1,53 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 2px solid var(--fg);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.message:empty {
+  display: none;
+}
+
+.submit.submit {
+  align-self: flex-start;
+  min-width: 168px;
+  height: 48px;
+  padding: 0 28px;
+  font-size: 12px;
+}
+
+.switch {
+  margin: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--fg-muted);
+  font-size: 15px;
+  color: var(--fg-muted);
+}
+
+.switch a {
+  display: inline-block;
+  padding: 12px 0;
+  font-weight: 600;
+  text-underline-offset: 4px;
+}
