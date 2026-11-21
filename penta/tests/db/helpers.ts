@@ -17,6 +17,9 @@ const createdUserIds: string[] = [];
 
 export const refused = "42501";
 export const checkFailed = "23514";
+export const foreignKeyFailed = "23503";
+export const duplicateKey = "23505";
+export const limitReached = "P0001";
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
 export const admin = createClient<Database>(url, serviceRoleKey, sessionless);
@@ -106,6 +109,98 @@ export async function createWorld() {
   return { teacher, otherTeacher, studentA, studentB, outsider, classroom };
 }
 
+export async function createRouteWorld() {
+  const [world, otherStudent] = await Promise.all([createWorld(), createActor("other-student")]);
+  const otherClassroom = await createClass(world.otherTeacher.id, "Web Development");
+  await enroll(otherClassroom.id, otherStudent.id);
+  return { ...world, otherStudent, otherClassroom };
+}
+
+export async function addModule(classId: string, title = "Week 1") {
+  const { data, error } = await admin
+    .from("modules")
+    .insert({ class_id: classId, title })
+    .select("id, class_id, title, position, created_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function addLesson(moduleId: string, title = "Backups", published = false) {
+  const { data, error } = await admin
+    .from("lessons")
+    .insert({ module_id: moduleId, title, body_md: "Take a full backup first.", est_minutes: 10 })
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (published) await setPublished(data.id, true);
+  return readLesson(data.id);
+}
+
+export async function setPublished(lessonId: string, published: boolean) {
+  const { error } = await admin
+    .from("lessons")
+    .update({ published_at: published ? new Date().toISOString() : null })
+    .eq("id", lessonId);
+  if (error) throw error;
+}
+
+export async function readModule(moduleId: string) {
+  const { data, error } = await admin
+    .from("modules")
+    .select("id, class_id, title, position, created_at")
+    .eq("id", moduleId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function readLesson(lessonId: string) {
+  const { data, error } = await admin
+    .from("lessons")
+    .select("id, module_id, title, body_md, position, est_minutes, published_at, revision, created_at, updated_at")
+    .eq("id", lessonId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function modulePositions(classId: string) {
+  const { data, error } = await admin.from("modules").select("id, position").eq("class_id", classId).order("position");
+  if (error) throw error;
+  return data;
+}
+
+export async function lessonPositions(moduleId: string) {
+  const { data, error } = await admin.from("lessons").select("id, position").eq("module_id", moduleId).order("position");
+  if (error) throw error;
+  return data;
+}
+
+export async function countModules(classId: string): Promise<number> {
+  const { count, error } = await admin.from("modules").select("id", { count: "exact", head: true }).eq("class_id", classId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function countLessons(moduleId: string): Promise<number> {
+  const { count, error } = await admin.from("lessons").select("id", { count: "exact", head: true }).eq("module_id", moduleId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function markDone(lessonId: string, studentId: string) {
+  const { error } = await admin.from("lesson_progress").insert({ lesson_id: lessonId, student_id: studentId });
+  if (error) throw error;
+}
+
+export async function readProgress(lessonId: string, studentId?: string) {
+  const query = admin.from("lesson_progress").select("lesson_id, student_id, completed_at").eq("lesson_id", lessonId);
+  const { data, error } = await (studentId ? query.eq("student_id", studentId) : query);
+  if (error) throw error;
+  return data;
+}
+
 export async function join(client: Client, code: string) {
   const { data, error } = await client.rpc("join_class", { code });
   return { result: data as JoinResult | null, error };
@@ -132,10 +227,44 @@ export async function sweepTestUsers() {
 
 async function removeUsers(userIds: string[]) {
   if (userIds.length === 0) return;
+  await removeRoutes(userIds);
   const classes = await admin.from("classes").delete().in("teacher_id", userIds);
   if (classes.error) throw classes.error;
   for (const userId of userIds) {
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) throw error;
   }
+}
+
+function chunksOf(ids: string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let start = 0; start < ids.length; start += 50) chunks.push(ids.slice(start, start + 50));
+  return chunks;
+}
+
+async function idsWhere(table: "classes" | "modules" | "lessons", column: string, parentIds: string[]): Promise<string[]> {
+  const found: string[] = [];
+  for (const chunk of chunksOf(parentIds)) {
+    const { data, error } = await admin.from(table).select("id").in(column, chunk);
+    if (error) throw error;
+    found.push(...data.map((row) => row.id));
+  }
+  return found;
+}
+
+async function deleteWhere(table: "lesson_progress" | "lessons" | "modules", column: string, parentIds: string[]) {
+  for (const chunk of chunksOf(parentIds)) {
+    const { error } = await admin.from(table).delete().in(column, chunk);
+    if (error) throw error;
+  }
+}
+
+async function removeRoutes(userIds: string[]) {
+  const classIds = await idsWhere("classes", "teacher_id", userIds);
+  const moduleIds = await idsWhere("modules", "class_id", classIds);
+  const lessonIds = await idsWhere("lessons", "module_id", moduleIds);
+  await deleteWhere("lesson_progress", "student_id", userIds);
+  await deleteWhere("lesson_progress", "lesson_id", lessonIds);
+  await deleteWhere("lessons", "module_id", moduleIds);
+  await deleteWhere("modules", "class_id", classIds);
 }
