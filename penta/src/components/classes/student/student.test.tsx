@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ClassOutline } from "@/lib/routes";
 import { ClassDetail } from "./ClassDetail";
 import { ClassList } from "./ClassList";
 import { ClassesHeader, classCountLabel } from "./ClassesHeader";
+import { ContinueBlock, OutlineList, ProgressBlock } from "./ClassOutline";
 import { JoinForm } from "./JoinForm";
 
 afterEach(cleanup);
@@ -15,6 +17,9 @@ const classes = [
     section: "BSIT 3-1",
     term: "1st Sem 2026",
     teacherName: "Jose Cruz",
+    done: 7,
+    published: 12,
+    meters: 1750,
   },
   {
     id: "0f3f8e0a-52a7-4b6c-8a44-6f0b0f0f9d22",
@@ -23,8 +28,29 @@ const classes = [
     section: "",
     term: "",
     teacherName: "Teacher",
+    done: 0,
+    published: 0,
+    meters: 0,
   },
 ];
+
+const classId = "7b0f6a52-1c1d-4f6e-9d55-0d6d3a1f2c11";
+
+function lesson(id: string, title: string, state: "done" | "todo" | "draft", estMinutes = 10) {
+  return { id, moduleId: "m", title, estMinutes, published: state !== "draft", done: state === "done" };
+}
+
+const outline: ClassOutline = {
+  classId,
+  modules: [
+    { id: "m1", classId, title: "Foundations", lessons: [lesson("l1", "What is a system", "done"), lesson("l2", "Hidden draft", "draft")] },
+    { id: "m2", classId, title: "Drafts only", lessons: [lesson("l3", "Not ready", "draft")] },
+    { id: "m3", classId, title: "No lessons", lessons: [] },
+    { id: "m4", classId, title: "Integration", lessons: [lesson("l4", "Message queues", "todo", 25), lesson("l5", "Adapters", "todo")] },
+  ],
+};
+
+const emptyOutline: ClassOutline = { classId, modules: [] };
 
 const idle = async () => ({});
 
@@ -65,7 +91,17 @@ describe("ClassList", () => {
     for (const text of ["INTE 301", "BSIT 3-1", "1st Sem 2026", "Architecture 1", "Teacher Jose Cruz"]) {
       expect(card).toContain(text);
     }
-    expect(card).not.toMatch(/Lesson/);
+  });
+
+  it("shows real progress and altitude on a card", () => {
+    const { container } = render(<ClassList classes={classes} />);
+    const [first, second] = screen.getAllByRole("link");
+    expect(first.textContent).toContain("7 of 12 lessons");
+    expect(first.textContent).toContain("1,750 meters");
+    expect(second.textContent).toContain("0 of 0 lessons");
+    expect(second.textContent).toContain("0 meters");
+    const fills = [...container.querySelectorAll<HTMLElement>("[data-fill]")].map((fill) => fill.style.width);
+    expect(fills).toEqual(["58%", "0%"]);
   });
 
   it("leaves out an empty section and term", () => {
@@ -125,6 +161,8 @@ describe("ClassDetail", () => {
     title: "Architecture 1",
     teacherName: "Jose Cruz",
     joinedOn: "November 27, 2026",
+    classId,
+    outline,
   };
 
   it("shows the title as the one h1 with code, section, term and teacher", () => {
@@ -137,15 +175,32 @@ describe("ClassDetail", () => {
     }
   });
 
-  it("shows honest empty states for lessons, decks and activities", () => {
+  it("shows progress, the next lesson and the outline when lessons exist", () => {
     render(<ClassDetail {...detail} />);
+    expect(screen.getByText("1 of 3 lessons done")).toBeTruthy();
+    expect(screen.getByText("1,000 meters")).toBeTruthy();
+    const next = screen.getByRole("link", { name: /Continue where you left off/ });
+    expect(next.getAttribute("href")).toBe(`/classes/${classId}/lessons/l4`);
+    expect(next.textContent).toContain("Message queues");
     expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
-      "Lessons",
-      "Decks",
-      "Activities",
+      "Foundations",
+      "Integration",
     ]);
-    expect(screen.getByText("Nothing here yet. Lessons arrive in a later update.")).toBeTruthy();
-    expect(screen.getAllByText(/^Nothing here yet\./)).toHaveLength(3);
+  });
+
+  it("shows one empty state and no progress when nothing is published", () => {
+    render(<ClassDetail {...detail} outline={emptyOutline} />);
+    expect(screen.getByText("No lessons yet. Your teacher has not published any.")).toBeTruthy();
+    expect(screen.queryByText(/lessons done/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull();
+    expect(screen.queryByText("All lessons done.")).toBeNull();
+    expect(screen.queryAllByRole("heading", { level: 2 })).toHaveLength(0);
+  });
+
+  it("keeps one quiet line for decks and activities", () => {
+    render(<ClassDetail {...detail} />);
+    expect(screen.getAllByText("Decks and activities arrive in a later update.")).toHaveLength(1);
+    expect(screen.queryByText(/^Nothing here yet\./)).toBeNull();
   });
 
   it("links back to the class list and shows no join code", () => {
@@ -157,5 +212,92 @@ describe("ClassDetail", () => {
   it("skips the joined line when the date cannot be read", () => {
     render(<ClassDetail {...detail} joinedOn={null} />);
     expect(screen.queryByText(/Joined on/)).toBeNull();
+  });
+});
+
+describe("ProgressBlock", () => {
+  it("shows the count, the altitude in words and a decorative bar", () => {
+    const { container } = render(<ProgressBlock done={7} published={12} meters={1750} />);
+    const block = screen.getByRole("region", { name: "Progress" });
+    expect(block.textContent).toContain("7 of 12 lessons done");
+    expect(screen.getByText("1,750 m").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText("1,750 meters").className).toBe("visually-hidden");
+    const fill = container.querySelector<HTMLElement>("[data-fill]");
+    expect(fill?.style.width).toBe("58%");
+    expect(fill?.parentElement?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("clamps the bar", () => {
+    const { container } = render(<ProgressBlock done={9} published={3} meters={3000} />);
+    expect(container.querySelector<HTMLElement>("[data-fill]")?.style.width).toBe("100%");
+  });
+});
+
+describe("ContinueBlock", () => {
+  it("links to the next lesson", () => {
+    render(<ContinueBlock classId={classId} next={lesson("l4", "Message queues", "todo")} />);
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("href")).toBe(`/classes/${classId}/lessons/l4`);
+    expect(link.textContent).toContain("Continue where you left off");
+    expect(link.textContent).toContain("Message queues");
+  });
+
+  it("says when every lesson is done", () => {
+    render(<ContinueBlock classId={classId} next={null} />);
+    expect(screen.getByText("All lessons done.")).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("OutlineList", () => {
+  it("hides modules with no published lessons and numbers the rest", () => {
+    render(<OutlineList classId={classId} outline={outline} />);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Foundations",
+      "Integration",
+    ]);
+    expect(screen.getByText("Module 01")).toBeTruthy();
+    expect(screen.getByText("Module 02")).toBeTruthy();
+    expect(screen.queryByText("Module 03")).toBeNull();
+    expect(screen.queryByText("Drafts only")).toBeNull();
+    expect(screen.queryByText("Hidden draft")).toBeNull();
+  });
+
+  it("links each published lesson in order", () => {
+    render(<OutlineList classId={classId} outline={outline} />);
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(
+      ["l1", "l4", "l5"].map((id) => `/classes/${classId}/lessons/${id}`),
+    );
+  });
+
+  it("gives each lesson a status word, minutes and title, with no gold chip", () => {
+    const { container } = render(<OutlineList classId={classId} outline={outline} />);
+    const [done, todo] = screen.getAllByRole("link");
+    expect(done.textContent).toBe("Done10 minWhat is a system");
+    expect(todo.textContent).toBe("To do25 minMessage queues");
+    const statuses = [...container.querySelectorAll("[data-status]")].map((chip) => chip.getAttribute("data-status"));
+    expect(statuses).toEqual(["graded", "due", "due"]);
+  });
+
+  it("names each module section by its heading", () => {
+    render(<OutlineList classId={classId} outline={outline} />);
+    expect(screen.getByRole("region", { name: "Integration" })).toBeTruthy();
+  });
+
+  it("shows the empty state for no modules and for drafts only", () => {
+    const draftsOnly = { classId, modules: [outline.modules[1], outline.modules[2]] };
+    for (const empty of [emptyOutline, draftsOnly]) {
+      render(<OutlineList classId={classId} outline={empty} />);
+      expect(screen.getByText("No lessons yet. Your teacher has not published any.")).toBeTruthy();
+      expect(screen.queryByRole("link")).toBeNull();
+      cleanup();
+    }
+  });
+
+  it("renders a lesson title with markup as text", () => {
+    const risky = { classId, modules: [{ ...outline.modules[0], lessons: [lesson("x", "<img src=x onerror=alert(1)>", "todo")] }] };
+    const { container } = render(<OutlineList classId={classId} outline={risky} />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
   });
 });

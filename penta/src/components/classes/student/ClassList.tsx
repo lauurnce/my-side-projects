@@ -1,8 +1,7 @@
-import type { StudentClassSummary } from "@/lib/classes";
-import { ClassCard } from "./ClassCard";
+import { ClassCard, type ClassCardProps } from "./ClassCard";
 import styles from "./student.module.css";
 
-export function ClassList({ classes }: { classes: StudentClassSummary[] }) {
+export function ClassList({ classes }: { classes: ClassCardProps[] }) {
   if (classes.length === 0) {
     return <p className={styles.empty}>No classes yet. Enter a join code from your teacher.</p>;
   }

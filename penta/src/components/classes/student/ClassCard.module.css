@@ -22,6 +22,7 @@
 }
 
 .row,
+.counts,
 .foot {
   display: flex;
   flex-wrap: wrap;
@@ -39,6 +40,8 @@
 }
 
 .title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 40px;
@@ -46,8 +49,34 @@
   text-transform: uppercase;
 }
 
-.foot {
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: auto;
+}
+
+.track {
+  display: block;
+  height: 6px;
+  background: rgba(var(--ink-rgb), 0.18);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+
+.counts {
+  color: var(--ink);
+}
+
+.counts > span {
+  position: relative;
+}
+
+.foot {
   padding-top: 14px;
   padding-left: var(--clip);
   border-top: 1px solid rgba(var(--ink-rgb), 0.3);
