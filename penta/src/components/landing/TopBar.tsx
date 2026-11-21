@@ -18,7 +18,7 @@ export function TopBar() {
       </div>
       <div className={styles.actions}>
         <ThemeToggle />
-        <Link href={login.href} prefetch={false} className={styles.login}>
+        <Link href={login.href} className={styles.login}>
           {login.label}
         </Link>
       </div>
