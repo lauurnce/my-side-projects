@@ -89,6 +89,72 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"lesson_progress": {
+                  Row: {
+                    "completed_at": string,"lesson_id": string,"student_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "completed_at"?: string,"lesson_id": string,"student_id": string
+                  }
+                  Update: {
+                    "completed_at"?: string,"lesson_id"?: string,"student_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "lesson_progress_lesson_id_fkey"
+      columns: ["lesson_id"]
+isOneToOne: false
+      referencedRelation: "lessons"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lesson_progress_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"lessons": {
+                  Row: {
+                    "body_md": string,"created_at": string,"est_minutes": number,"id": string,"module_id": string,"position": number,"published_at": string | null,"revision": number,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body_md"?: string,"created_at"?: string,"est_minutes"?: number,"id"?: string,"module_id": string,"position"?: number,"published_at"?: string | null,"revision"?: number,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "body_md"?: string,"created_at"?: string,"est_minutes"?: number,"id"?: string,"module_id"?: string,"position"?: number,"published_at"?: string | null,"revision"?: number,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "lessons_module_id_fkey"
+      columns: ["module_id"]
+isOneToOne: false
+      referencedRelation: "modules"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"modules": {
+                  Row: {
+                    "class_id": string,"created_at": string,"id": string,"position": number,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_id": string,"created_at"?: string,"id"?: string,"position"?: number,"title": string
+                  }
+                  Update: {
+                    "class_id"?: string,"created_at"?: string,"id"?: string,"position"?: number,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "modules_class_id_fkey"
+      columns: ["class_id"]
+isOneToOne: false
+      referencedRelation: "classes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "created_at": string,"full_name": string,"id": string,"role": string
@@ -114,6 +180,12 @@ isOneToOne: false
                            },
 "join_class":
 { Args: { "code": string }; Returns: Json
+                           },
+"move_lesson":
+{ Args: { "step": number,"target": string }; Returns: string
+                           },
+"move_module":
+{ Args: { "step": number,"target": string }; Returns: string
                            },
 "remove_student":
 { Args: { "target_class": string,"target_student": string }; Returns: boolean
