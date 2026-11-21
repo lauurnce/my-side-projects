@@ -18,8 +18,8 @@ create table public.decks (
   constraint decks_ready_has_slides check (ready_at is null or slide_count is not null),
   constraint decks_pdf_path_from_ids check (pdf_path = class_id::text || '/' || id::text || '/slides.pdf'),
   constraint decks_original_path_from_ids check (
-    (kind = 'pdf' and original_path is null)
-    or (kind = 'native' and original_path = class_id::text || '/' || id::text || '/original.pptx')
+    original_path is not distinct from
+      case when kind = 'native' then class_id::text || '/' || id::text || '/original.pptx' end
   )
 );
 
