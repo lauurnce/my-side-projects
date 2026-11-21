@@ -9,6 +9,7 @@ import { countLabel, toRosterRows, type RosterRow } from "./teacher/helpers";
 import { JoinCodeBox } from "./teacher/JoinCodeBox";
 import { RemovalNotice } from "./teacher/RemovalNotice";
 import { Roster } from "./teacher/Roster";
+import { TeacherOutline } from "./teacher/TeacherOutline";
 import styles from "./teacher/teacher.module.css";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -61,6 +62,7 @@ export async function TeacherClass({ user, classId }: { user: CurrentUser; class
         </div>
         <h1 className={styles.title}>{classRow.title}</h1>
       </header>
+      <TeacherOutline user={user} classId={classRow.id} />
       <JoinCodeBox code={joinCode ?? null} />
       <section className={styles.section} aria-labelledby="roster-title">
         <div className={styles.sectionHead}>
