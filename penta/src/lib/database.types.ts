@@ -43,6 +43,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"deck_views": {
+                  Row: {
+                    "deck_id": string,"slide_no": number,"student_id": string,"viewed_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "deck_id": string,"slide_no": number,"student_id": string,"viewed_at"?: string
+                  }
+                  Update: {
+                    "deck_id"?: string,"slide_no"?: number,"student_id"?: string,"viewed_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "deck_views_deck_id_fkey"
+      columns: ["deck_id"]
+isOneToOne: false
+      referencedRelation: "decks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "deck_views_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"decks": {
+                  Row: {
+                    "class_id": string,"created_at": string,"created_by": string,"id": string,"kind": string,"lesson_id": string | null,"original_path": string | null,"pdf_path": string,"ready_at": string | null,"size_bytes": number,"slide_count": number | null,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_id": string,"created_at"?: string,"created_by": string,"id"?: string,"kind": string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path": string,"ready_at"?: string | null,"size_bytes": number,"slide_count"?: number | null,"title": string
+                  }
+                  Update: {
+                    "class_id"?: string,"created_at"?: string,"created_by"?: string,"id"?: string,"kind"?: string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path"?: string,"ready_at"?: string | null,"size_bytes"?: number,"slide_count"?: number | null,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "decks_class_id_fkey"
+      columns: ["class_id"]
+isOneToOne: false
+      referencedRelation: "classes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "decks_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "decks_lesson_id_fkey"
+      columns: ["lesson_id"]
+isOneToOne: false
+      referencedRelation: "lessons"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"enrollments": {
                   Row: {
                     "class_id": string,"joined_at": string,"student_id": string
@@ -178,6 +236,9 @@ isOneToOne: false
             "class_join_code":
 { Args: { "target_class": string }; Returns: string
                            },
+"complete_deck":
+{ Args: { "real_bytes": number,"slides": number,"target_deck": string }; Returns: string
+                           },
 "join_class":
 { Args: { "code": string }; Returns: Json
                            },
@@ -189,6 +250,15 @@ isOneToOne: false
                            },
 "remove_student":
 { Args: { "target_class": string,"target_student": string }; Returns: boolean
+                           },
+"reserve_deck":
+{ Args: { "deck_kind": string,"deck_title": string,"declared_bytes": number,"target_class": string,"target_lesson": string }; Returns: Json
+                           },
+"storage_usage":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"sweep_decks":
+{ Args: Record<PropertyKey, never>; Returns: string[]
                            }
           }
           Enums: {
