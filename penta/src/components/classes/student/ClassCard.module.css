@@ -1,0 +1,64 @@
+.link {
+  --ring: var(--ink);
+  display: block;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline-offset: -6px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 220px;
+  padding: 22px;
+  background: var(--card);
+  color: var(--ink);
+  clip-path: polygon(0 0, calc(100% - var(--clip)) 0, 100% var(--clip), 100% 100%, var(--clip) 100%, 0 calc(100% - var(--clip)));
+  transition: transform 180ms ease-out;
+}
+
+.row,
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.row {
+  padding-right: var(--clip);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.foot {
+  margin-top: auto;
+  padding-top: 14px;
+  padding-left: var(--clip);
+  border-top: 1px solid rgba(var(--ink-rgb), 0.3);
+}
+
+.teacher {
+  color: var(--ink);
+}
+
+@media (hover: hover) {
+  .link:hover .card {
+    transform: translateY(-3px);
+  }
+}

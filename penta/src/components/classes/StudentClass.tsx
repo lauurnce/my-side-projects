@@ -1,9 +1,38 @@
+import { notFound } from "next/navigation";
+import { formatManilaDate } from "@/app/classes/student-join";
 import type { CurrentUser } from "@/lib/auth";
+import { unknownTeacherName } from "@/lib/classes";
+import { createClient } from "@/lib/supabase/server";
+import { ClassDetail } from "./student/ClassDetail";
 
 export async function StudentClass({ user, classId }: { user: CurrentUser; classId: string }) {
+  const supabase = await createClient();
+  const { data: enrolledClass } = await supabase
+    .from("classes")
+    .select("id, code, title, section, term, teacher_id")
+    .eq("id", classId)
+    .maybeSingle();
+  if (!enrolledClass) notFound();
+
+  const [{ data: teacher }, { data: enrollment }] = await Promise.all([
+    supabase.from("profiles").select("full_name").eq("id", enrolledClass.teacher_id).maybeSingle(),
+    supabase
+      .from("enrollments")
+      .select("joined_at")
+      .eq("class_id", classId)
+      .eq("student_id", user.id)
+      .maybeSingle(),
+  ]);
+  if (!enrollment) notFound();
+
   return (
-    <p>
-      {user.fullName} {classId}
-    </p>
+    <ClassDetail
+      code={enrolledClass.code}
+      section={enrolledClass.section}
+      term={enrolledClass.term}
+      title={enrolledClass.title}
+      teacherName={teacher?.full_name || unknownTeacherName}
+      joinedOn={formatManilaDate(enrollment.joined_at)}
+    />
   );
 }
