@@ -62,3 +62,12 @@ export async function listTeacherClasses(
     .order("title");
   return data ?? [];
 }
+
+export async function isClassOwner(
+  supabase: SupabaseClient<Database>,
+  classId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await supabase.from("classes").select("teacher_id").eq("id", classId).maybeSingle();
+  return data?.teacher_id === userId;
+}
