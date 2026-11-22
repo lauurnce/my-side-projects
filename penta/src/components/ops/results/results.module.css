@@ -1,0 +1,260 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 44px var(--gutter) 96px;
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-underline-offset: 4px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+}
+
+.title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--display-l);
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.summary span + span {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--display-s);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.note {
+  max-width: 640px;
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty,
+.notice {
+  max-width: 640px;
+  margin: 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--fg-muted);
+  border-bottom: 1px solid var(--fg-muted);
+  font-size: 18px;
+}
+
+.notice {
+  padding: 16px 18px;
+  border: 2px solid var(--fg);
+}
+
+.scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border-top: 1px solid var(--fg-muted);
+}
+
+.scroll:focus-visible {
+  outline-offset: 2px;
+}
+
+.table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.caption {
+  padding: 12px 0;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.table th,
+.table td {
+  padding: 12px 20px 12px 0;
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  min-width: 160px;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.none {
+  color: var(--fg-muted);
+}
+
+.items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--fg-muted);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.3);
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.promptBox {
+  min-width: 0;
+}
+
+.promptSummary {
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.promptSummary::-webkit-details-marker {
+  display: none;
+}
+
+.prompt {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.promptBox[open] .prompt {
+  display: block;
+  overflow: visible;
+  white-space: pre-wrap;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.itemCount {
+  margin: 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  display: block;
+  height: 6px;
+  background: rgba(var(--fg-rgb), 0.18);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--fg);
+}
+
+@media (max-width: 760px) {
+  .page {
+    gap: 28px;
+    padding: 28px 20px 64px;
+  }
+
+  .title {
+    font-size: var(--display-m);
+  }
+
+  .items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
