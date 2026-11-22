@@ -236,6 +236,28 @@ describe("ClassDetail", () => {
     expect(section.queryByText(/No decks yet/)).toBeNull();
   });
 
+  it("marks a live deck and tells the student how to join", () => {
+    const decks: DeckSummary[] = [
+      { id: "d1", classId, lessonId: null, title: "Queues in pictures", kind: "pdf", slideCount: 24, sizeBytes: 9, ready: true, viewedCount: 6 },
+      { id: "d2", classId, lessonId: null, title: "Course intro", kind: "pdf", slideCount: 1, sizeBytes: 9, ready: true, viewedCount: 0 },
+    ];
+    const live = [{ deckId: "d2", classId, sessionId: "s1", slide: 1 }];
+    render(<ClassDetail {...detail} decks={decks} live={live} />);
+    const section = within(screen.getByRole("region", { name: "Decks" }));
+    expect(section.getByText(/^Live now:/).textContent).toBe("Live now: Course intro. Open it and press Join live.");
+    expect(section.getByRole("link", { name: "Course intro" }).getAttribute("href")).toBe("/decks/d2");
+    expect(section.getAllByText("LIVE")).toHaveLength(1);
+  });
+
+  it("shows no live line when no session runs", () => {
+    const decks: DeckSummary[] = [
+      { id: "d1", classId, lessonId: null, title: "Queues in pictures", kind: "pdf", slideCount: 24, sizeBytes: 9, ready: true, viewedCount: 6 },
+    ];
+    render(<ClassDetail {...detail} decks={decks} />);
+    expect(screen.queryByText(/Live now/)).toBeNull();
+    expect(screen.queryByText("LIVE")).toBeNull();
+  });
+
   it("links back to the class list and shows no join code", () => {
     render(<ClassDetail {...detail} />);
     expect(screen.getByRole("link", { name: "Back to your classes" }).getAttribute("href")).toBe("/classes");
