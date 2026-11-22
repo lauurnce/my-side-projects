@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { HubHero, HubLayers, type HubClass } from "@/components/hub/Hub";
+import type { DeckSummary } from "@/lib/decks";
 
 afterEach(cleanup);
 
@@ -15,6 +16,19 @@ const sampleClass = (index: number, progress: Partial<HubClass> = {}): HubClass 
   meters: 0,
   next: null,
   ...progress,
+});
+
+const sampleDeck = (index: number, overrides: Partial<DeckSummary> = {}): DeckSummary => ({
+  id: `deck-${index}`,
+  classId: "class-1",
+  lessonId: null,
+  title: `Deck ${index}`,
+  kind: "pdf",
+  slideCount: 24,
+  sizeBytes: 1000,
+  ready: true,
+  viewedCount: 0,
+  ...overrides,
 });
 
 const nextLesson = { id: "lesson-9", moduleId: "m1", title: "Message queues", estMinutes: 10, published: true, done: false };
@@ -82,8 +96,55 @@ describe("HubLayers", () => {
     expect(screen.getByText("No classes yet")).toBeTruthy();
     expect(screen.getByText("Enter a join code from your teacher.")).toBeTruthy();
     expect(screen.getByText("No decks yet")).toBeTruthy();
+    expect(screen.getByText("0 decks")).toBeTruthy();
     expect(screen.getByText("Nothing due")).toBeTruthy();
     expect(screen.queryByText("Continue where you left off")).toBeNull();
+  });
+
+  it("shows a student real decks with the class code and the totals", () => {
+    const decks = [sampleDeck(1, { viewedCount: 9 }), sampleDeck(2, { classId: "class-2", slideCount: 72, viewedCount: 22 })];
+    render(<HubLayers role="student" classes={[halfway, finished]} decks={decks} />);
+    const panel = within(screen.getByRole("region", { name: "Decks" }));
+    expect(panel.getByText("2 decks")).toBeTruthy();
+    const links = panel.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/deck-1", "/decks/deck-2"]);
+    expect(links[0].textContent).toContain("COMP 011");
+    expect(links[0].textContent).toContain("Deck 1");
+    expect(links[1].textContent).toContain("COMP 012");
+    expect(panel.getByText("Viewed 31 of 96 slides")).toBeTruthy();
+    expect(panel.queryByText("No decks yet")).toBeNull();
+    expect(panel.queryByText("See all in your classes")).toBeNull();
+  });
+
+  it("shows six decks and a link to the rest", () => {
+    const decks = [1, 2, 3, 4, 5, 6, 7].map((index) => sampleDeck(index));
+    render(<HubLayers role="student" classes={[halfway]} decks={decks} />);
+    const panel = within(screen.getByRole("region", { name: "Decks" }));
+    expect(panel.getByText("7 decks")).toBeTruthy();
+    expect(panel.getAllByRole("listitem")).toHaveLength(6);
+    expect(panel.getByRole("link", { name: "See all in your classes" }).getAttribute("href")).toBe("/classes");
+    expect(panel.getByText("Viewed 0 of 168 slides")).toBeTruthy();
+  });
+
+  it("shows a teacher only ready decks as a list with no viewed line", () => {
+    const decks = [sampleDeck(1), sampleDeck(2, { ready: false, slideCount: 0 }), sampleDeck(3, { kind: "native" })];
+    render(<HubLayers role="teacher" classes={[halfway]} decks={decks} />);
+    const region = screen.getByRole("region", { name: "Decks" });
+    const panel = within(region);
+    expect(panel.getByText("2 decks")).toBeTruthy();
+    const links = panel.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/deck-1", "/decks/deck-3"]);
+    expect(links[1].textContent).toBe("Deck 324 slides · PPTXCOMP 011");
+    expect(region.textContent).not.toMatch(/Viewed/);
+  });
+
+  it("keeps the empty state when a teacher has only unfinished uploads", () => {
+    render(<HubLayers role="teacher" classes={[halfway]} decks={[sampleDeck(1, { ready: false })]} />);
+    const panel = within(screen.getByRole("region", { name: "Decks" }));
+    expect(panel.getByText("0 decks")).toBeTruthy();
+    expect(panel.getByText("No decks yet")).toBeTruthy();
+    expect(panel.getByText("Decks show up here when a teacher uploads one to a class.")).toBeTruthy();
+    expect(panel.queryByRole("link")).toBeNull();
   });
 
   it("shows a student real progress on each route card", () => {

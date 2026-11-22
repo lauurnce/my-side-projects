@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { deckCountLabel, readyDecks } from "@/components/decks/library/helpers";
+import { HubDeckList } from "@/components/decks/library/HubDeckList";
 import { Panel, Panels } from "@/components/landing/Panels";
 import panelStyles from "@/components/landing/Panels.module.css";
 import { AltitudeMeter } from "@/components/ui/AltitudeMeter";
@@ -7,6 +9,7 @@ import { Grain } from "@/components/ui/Grain";
 import { OctagonCTA } from "@/components/ui/OctagonCTA";
 import { RouteCard } from "@/components/ui/RouteCard";
 import type { Role } from "@/lib/auth";
+import type { DeckSummary } from "@/lib/decks";
 import { formatMeters, nextUp, type ClassProgress } from "@/lib/classes";
 import { hubAltitude } from "@/lib/routes";
 import styles from "./Hub.module.css";
@@ -21,6 +24,10 @@ export type HubClass = ClassProgress & {
 type HubProps = {
   role: Role;
   classes: HubClass[];
+};
+
+type HubLayersProps = HubProps & {
+  decks?: DeckSummary[];
 };
 
 const shownClassLimit = 3;
@@ -207,7 +214,9 @@ function HubRoutes({ role, classes }: HubProps) {
   );
 }
 
-function HubDecks() {
+function HubDecks({ role, classes, decks }: HubProps & { decks: DeckSummary[] }) {
+  const ready = readyDecks(decks);
+
   return (
     <Panel id="decks" cover={2} deep>
       <div className={panelStyles.head}>
@@ -216,13 +225,17 @@ function HubDecks() {
         </h2>
         <p className={panelStyles.labels}>
           <BracketLabel>Layer 02 · Presentations</BracketLabel>
-          <BracketLabel>0 decks</BracketLabel>
+          <BracketLabel>{deckCountLabel(ready.length)}</BracketLabel>
         </p>
       </div>
-      <div className={styles.empty}>
-        <p className={styles.emptyTitle}>No decks yet</p>
-        <p className={styles.emptyText}>Decks show up here when a teacher uploads one to a class.</p>
-      </div>
+      {ready.length === 0 ? (
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>No decks yet</p>
+          <p className={styles.emptyText}>Decks show up here when a teacher uploads one to a class.</p>
+        </div>
+      ) : (
+        <HubDeckList role={role} decks={ready} classes={classes} />
+      )}
     </Panel>
   );
 }
@@ -247,11 +260,11 @@ function HubOps() {
   );
 }
 
-export function HubLayers(props: HubProps) {
+export function HubLayers({ role, classes, decks = [] }: HubLayersProps) {
   return (
     <Panels>
-      <HubRoutes {...props} />
-      <HubDecks />
+      <HubRoutes role={role} classes={classes} />
+      <HubDecks role={role} classes={classes} decks={decks} />
       <HubOps />
     </Panels>
   );
