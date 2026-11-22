@@ -23,7 +23,45 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "classes": {
+            "activities": {
+                  Row: {
+                    "attempt_limit": number,"class_id": string,"created_at": string,"created_by": string,"due_at": string | null,"id": string,"instructions_md": string,"lesson_id": string | null,"points": number,"published_at": string | null,"requires_deck_id": string | null,"show_answers": string,"time_limit_min": number | null,"title": string,"type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attempt_limit"?: number,"class_id": string,"created_at"?: string,"created_by"?: string,"due_at"?: string | null,"id"?: string,"instructions_md"?: string,"lesson_id"?: string | null,"points"?: number,"published_at"?: string | null,"requires_deck_id"?: string | null,"show_answers"?: string,"time_limit_min"?: number | null,"title": string,"type"?: string
+                  }
+                  Update: {
+                    "attempt_limit"?: number,"class_id"?: string,"created_at"?: string,"created_by"?: string,"due_at"?: string | null,"id"?: string,"instructions_md"?: string,"lesson_id"?: string | null,"points"?: number,"published_at"?: string | null,"requires_deck_id"?: string | null,"show_answers"?: string,"time_limit_min"?: number | null,"title"?: string,"type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "activities_class_id_fkey"
+      columns: ["class_id"]
+isOneToOne: false
+      referencedRelation: "classes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activities_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activities_lesson_id_fkey"
+      columns: ["lesson_id"]
+isOneToOne: false
+      referencedRelation: "lessons"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "activities_requires_deck_id_fkey"
+      columns: ["requires_deck_id"]
+isOneToOne: false
+      referencedRelation: "decks"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"classes": {
                   Row: {
                     "code": string,"created_at": string,"id": string,"join_code": string,"section": string,"teacher_id": string,"term": string,"title": string
                   }
@@ -253,13 +291,111 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"quiz_answer_keys": {
+                  Row: {
+                    "answers": NonNullable<Json>,"question_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answers": NonNullable<Json>,"question_id": string
+                  }
+                  Update: {
+                    "answers"?: NonNullable<Json>,"question_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quiz_answer_keys_question_id_fkey"
+      columns: ["question_id"]
+isOneToOne: true
+      referencedRelation: "quiz_questions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"quiz_attempt_answers": {
+                  Row: {
+                    "answer": Json | null,"attempt_id": string,"is_correct": boolean | null,"question_id": string,"saved_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answer"?: Json | null,"attempt_id": string,"is_correct"?: boolean | null,"question_id": string,"saved_at"?: string
+                  }
+                  Update: {
+                    "answer"?: Json | null,"attempt_id"?: string,"is_correct"?: boolean | null,"question_id"?: string,"saved_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quiz_attempt_answers_attempt_id_fkey"
+      columns: ["attempt_id"]
+isOneToOne: false
+      referencedRelation: "quiz_attempts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "quiz_attempt_answers_question_id_fkey"
+      columns: ["question_id"]
+isOneToOne: false
+      referencedRelation: "quiz_questions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"quiz_attempts": {
+                  Row: {
+                    "activity_id": string,"answers_seen_at": string | null,"attempt_no": number,"expires_at": string | null,"id": string,"max_score": number,"score": number | null,"started_at": string,"student_id": string,"submitted_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id": string,"answers_seen_at"?: string | null,"attempt_no": number,"expires_at"?: string | null,"id"?: string,"max_score": number,"score"?: number | null,"started_at"?: string,"student_id": string,"submitted_at"?: string | null
+                  }
+                  Update: {
+                    "activity_id"?: string,"answers_seen_at"?: string | null,"attempt_no"?: number,"expires_at"?: string | null,"id"?: string,"max_score"?: number,"score"?: number | null,"started_at"?: string,"student_id"?: string,"submitted_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quiz_attempts_activity_id_fkey"
+      columns: ["activity_id"]
+isOneToOne: false
+      referencedRelation: "activities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "quiz_attempts_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"quiz_questions": {
+                  Row: {
+                    "activity_id": string,"id": string,"kind": string,"options": Json | null,"points": number,"position": number,"prompt": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id": string,"id"?: string,"kind": string,"options"?: Json | null,"points"?: number,"position": number,"prompt": string
+                  }
+                  Update: {
+                    "activity_id"?: string,"id"?: string,"kind"?: string,"options"?: Json | null,"points"?: number,"position"?: number,"prompt"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quiz_questions_activity_id_fkey"
+      columns: ["activity_id"]
+isOneToOne: false
+      referencedRelation: "activities"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
-            "class_join_code":
+            "attempt_paper":
+{ Args: { "target_attempt": string }; Returns: Json
+                           },
+"attempt_review":
+{ Args: { "target_attempt": string }; Returns: Json
+                           },
+"class_join_code":
 { Args: { "target_class": string }; Returns: string
                            },
 "complete_deck":
@@ -268,8 +404,14 @@ isOneToOne: false
 "deck_finished":
 { Args: { "target_deck": string,"target_student": string }; Returns: boolean
                            },
+"delete_quiz_question":
+{ Args: { "target_question": string }; Returns: string
+                           },
 "end_live":
 { Args: { "target_session": string }; Returns: string
+                           },
+"grade_check":
+{ Args: { "answer": Json,"key_answers": Json,"question_kind": string }; Returns: boolean
                            },
 "join_class":
 { Args: { "code": string }; Returns: Json
@@ -291,17 +433,43 @@ isOneToOne: false
 "move_module":
 { Args: { "step": number,"target": string }; Returns: string
                            },
+"move_quiz_question":
+{ Args: { "step": number,"target_question": string }; Returns: string
+                           },
+"quiz_keys":
+{ Args: { "target_activity": string }; Returns: {
+              "answers": Json,"question_id": string
+            }[]
+                           },
+"rekey_quiz_question":
+{ Args: { "key_answers": Json,"target_question": string }; Returns: Json
+                           },
 "remove_student":
 { Args: { "target_class": string,"target_student": string }; Returns: boolean
                            },
 "reserve_deck":
 { Args: { "deck_kind": string,"deck_title": string,"declared_bytes": number,"target_class": string,"target_lesson": string }; Returns: Json
                            },
+"save_answer":
+{ Args: { "answer": Json,"target_attempt": string,"target_question": string }; Returns: Json
+                           },
+"save_quiz_question":
+{ Args: { "key_answers": Json,"question_kind": string,"question_options": Json,"question_points": number,"question_prompt": string,"target_activity": string,"target_question": string }; Returns: Json
+                           },
+"settle_attempts":
+{ Args: { "target_activity": string }; Returns: number
+                           },
+"start_attempt":
+{ Args: { "target_activity": string }; Returns: Json
+                           },
 "start_live":
 { Args: { "slide": number,"target_deck": string }; Returns: Json
                            },
 "storage_usage":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"submit_attempt":
+{ Args: { "answers": Json,"target_attempt": string }; Returns: Json
                            },
 "sweep_decks":
 { Args: Record<PropertyKey, never>; Returns: string[]
