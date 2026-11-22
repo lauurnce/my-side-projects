@@ -193,6 +193,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"live_sessions": {
+                  Row: {
+                    "active_at": string,"current_slide": number,"deck_id": string,"ended_at": string | null,"id": string,"revision": number,"started_at": string,"teacher_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active_at"?: string,"current_slide": number,"deck_id": string,"ended_at"?: string | null,"id"?: string,"revision"?: number,"started_at"?: string,"teacher_id": string
+                  }
+                  Update: {
+                    "active_at"?: string,"current_slide"?: number,"deck_id"?: string,"ended_at"?: string | null,"id"?: string,"revision"?: number,"started_at"?: string,"teacher_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "live_sessions_deck_id_fkey"
+      columns: ["deck_id"]
+isOneToOne: false
+      referencedRelation: "decks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "live_sessions_teacher_id_fkey"
+      columns: ["teacher_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"modules": {
                   Row: {
                     "class_id": string,"created_at": string,"id": string,"position": number,"title": string
@@ -239,11 +265,28 @@ isOneToOne: false
 "complete_deck":
 { Args: { "real_bytes": number,"slides": number,"target_deck": string }; Returns: string
                            },
+"deck_finished":
+{ Args: { "target_deck": string,"target_student": string }; Returns: boolean
+                           },
+"end_live":
+{ Args: { "target_session": string }; Returns: string
+                           },
 "join_class":
 { Args: { "code": string }; Returns: Json
                            },
+"live_now":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "class_id": string,"current_slide": number,"deck_id": string,"revision": number,"session_id": string
+            }[]
+                           },
+"live_state":
+{ Args: { "target_deck": string }; Returns: Json
+                           },
 "move_lesson":
 { Args: { "step": number,"target": string }; Returns: string
+                           },
+"move_live":
+{ Args: { "slide": number,"target_session": string }; Returns: Json
                            },
 "move_module":
 { Args: { "step": number,"target": string }; Returns: string
@@ -254,11 +297,17 @@ isOneToOne: false
 "reserve_deck":
 { Args: { "deck_kind": string,"deck_title": string,"declared_bytes": number,"target_class": string,"target_lesson": string }; Returns: Json
                            },
+"start_live":
+{ Args: { "slide": number,"target_deck": string }; Returns: Json
+                           },
 "storage_usage":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "sweep_decks":
 { Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"touch_live":
+{ Args: { "target_session": string }; Returns: string
                            }
           }
           Enums: {
