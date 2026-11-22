@@ -7,9 +7,10 @@ export type DeckGridProps = {
   decks: DeckSummary[];
   eyebrowFor: (deck: DeckSummary) => string;
   compact?: boolean;
+  liveIds?: ReadonlySet<string>;
 };
 
-export function DeckGrid({ decks, eyebrowFor, compact }: DeckGridProps) {
+export function DeckGrid({ decks, eyebrowFor, compact, liveIds }: DeckGridProps) {
   return (
     <ul className={compact ? `${styles.grid} ${styles.compact}` : styles.grid}>
       {decks.map((deck) => (
@@ -21,6 +22,7 @@ export function DeckGrid({ decks, eyebrowFor, compact }: DeckGridProps) {
             slideCount={deck.slideCount}
             format={deckFormat(deck.kind)}
             viewedCount={deck.viewedCount}
+            live={liveIds?.has(deck.id)}
           />
         </li>
       ))}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckSummary } from "@/lib/decks";
+import type { LiveDeck } from "@/lib/live";
 import type { ClassOutline } from "@/lib/routes";
 import {
   classCodes,
@@ -7,6 +8,10 @@ import {
   deckEyebrow,
   deckHref,
   lessonDecks,
+  liveByTitle,
+  liveDeckIds,
+  liveFirst,
+  moreLiveLabel,
   readyDecks,
   slideCountLabel,
   viewedTotalsLabel,
@@ -122,5 +127,66 @@ describe("viewedTotalsLabel", () => {
   it("words one slide and none", () => {
     expect(viewedTotalsLabel([deck("a", { slideCount: 1, viewedCount: 1 })])).toBe("Viewed 1 of 1 slide");
     expect(viewedTotalsLabel([])).toBe("Viewed 0 of 0 slides");
+  });
+});
+
+describe("liveDeckIds", () => {
+  it("collects the deck ids of the running sessions", () => {
+    const live: LiveDeck[] = [
+      { deckId: "a", classId: "c1", sessionId: "s1", slide: 3 },
+      { deckId: "c", classId: "c2", sessionId: "s2", slide: 1 },
+    ];
+    const ids = liveDeckIds(live);
+    expect(ids).toBeInstanceOf(Set);
+    expect([...ids]).toEqual(["a", "c"]);
+    expect(ids.has("b")).toBe(false);
+  });
+
+  it("is empty with no session and counts a deck once", () => {
+    expect(liveDeckIds([]).size).toBe(0);
+    expect(liveDeckIds([{ deckId: "a" }, { deckId: "a" }]).size).toBe(1);
+  });
+});
+
+describe("liveFirst", () => {
+  const decks = ["a", "b", "c", "d", "e"].map((id) => deck(id));
+
+  it("puts live decks first and keeps the rest in their order", () => {
+    expect(liveFirst(decks, new Set(["d", "b"])).map((item) => item.id)).toEqual(["b", "d", "a", "c", "e"]);
+  });
+
+  it("changes nothing when no deck is live", () => {
+    expect(liveFirst(decks, new Set()).map((item) => item.id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(liveFirst(decks, new Set(["gone"])).map((item) => item.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("does not change the list it was given", () => {
+    liveFirst(decks, new Set(["e"]));
+    expect(decks.map((item) => item.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+});
+
+describe("liveByTitle", () => {
+  it("keeps the ready live decks, sorted by title", () => {
+    const decks = [
+      deck("a", { title: "Queues" }),
+      deck("b", { title: "Brokers" }),
+      deck("c", { title: "Adapters", ready: false }),
+      deck("d", { title: "Topics" }),
+    ];
+    expect(liveByTitle(decks, new Set(["a", "b", "c"])).map((item) => item.title)).toEqual(["Brokers", "Queues"]);
+    expect(liveByTitle(decks, new Set())).toEqual([]);
+  });
+});
+
+describe("moreLiveLabel", () => {
+  it("words the decks beyond the first", () => {
+    expect(moreLiveLabel(2)).toBe("and 2 more");
+    expect(moreLiveLabel(1)).toBe("and 1 more");
+  });
+
+  it("says nothing when there is no other", () => {
+    expect(moreLiveLabel(0)).toBe("");
+    expect(moreLiveLabel(-1)).toBe("");
   });
 });

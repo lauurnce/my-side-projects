@@ -47,3 +47,21 @@ export function viewedTotalsLabel(decks: Pick<DeckSummary, "viewedCount" | "slid
   const slides = decks.reduce((total, deck) => total + deck.slideCount, 0);
   return `Viewed ${viewed} of ${slides} ${slides === 1 ? "slide" : "slides"}`;
 }
+
+export function liveDeckIds(live: { deckId: string }[]): Set<string> {
+  return new Set(live.map((item) => item.deckId));
+}
+
+export function liveFirst<Deck extends { id: string }>(decks: Deck[], liveIds: ReadonlySet<string>): Deck[] {
+  return [...decks.filter((deck) => liveIds.has(deck.id)), ...decks.filter((deck) => !liveIds.has(deck.id))];
+}
+
+export function liveByTitle(decks: DeckSummary[], liveIds: ReadonlySet<string>): DeckSummary[] {
+  return readyDecks(decks)
+    .filter((deck) => liveIds.has(deck.id))
+    .sort((first, second) => first.title.localeCompare(second.title));
+}
+
+export function moreLiveLabel(extra: number): string {
+  return extra > 0 ? `and ${extra} more` : "";
+}

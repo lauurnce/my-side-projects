@@ -7,9 +7,10 @@ import styles from "./library.module.css";
 export type LessonDeckProps = {
   decks: DeckSummary[];
   lessonTitle: string;
+  liveIds?: ReadonlySet<string>;
 };
 
-export function LessonDeck({ decks, lessonTitle }: LessonDeckProps) {
+export function LessonDeck({ decks, lessonTitle, liveIds }: LessonDeckProps) {
   if (decks.length === 0) return null;
 
   return (
@@ -20,7 +21,7 @@ export function LessonDeck({ decks, lessonTitle }: LessonDeckProps) {
         </h2>
         <BracketLabel>{deckCountLabel(decks.length)}</BracketLabel>
       </div>
-      <DeckGrid decks={decks} eyebrowFor={() => lessonTitle} />
+      <DeckGrid decks={decks} eyebrowFor={() => lessonTitle} liveIds={liveIds} />
     </section>
   );
 }
