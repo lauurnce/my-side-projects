@@ -1,14 +1,30 @@
 import Link from "next/link";
 import {
+  classCodes,
   deckCountLabel,
   deckHref,
   liveByTitle,
   liveDeckIds,
   moreLiveLabel,
   readyDecks,
+  unknownClassCode,
 } from "@/components/decks/library/helpers";
 import { HubDeckList } from "@/components/decks/library/HubDeckList";
 import { Panel, Panels } from "@/components/landing/Panels";
+import {
+  activityCountLabel,
+  dueCount,
+  dueCountLabel,
+  hubOpsLimit,
+  hubOrder,
+  nextDue,
+  nextDueText,
+  opsHref,
+  opsItems,
+  type OpsData,
+  type OpsItem,
+} from "@/components/ops/list/helpers";
+import { OpsCards } from "@/components/ops/list/OpsCards";
 import panelStyles from "@/components/landing/Panels.module.css";
 import { AltitudeMeter } from "@/components/ui/AltitudeMeter";
 import { BracketLabel } from "@/components/ui/BracketLabel";
@@ -38,7 +54,10 @@ type HubProps = {
 type HubLiveProps = HubProps & {
   decks?: DeckSummary[];
   live?: LiveDeck[];
+  ops?: OpsData;
 };
+
+const noOps: OpsData = { activities: [], attempts: [], now: 0 };
 
 const shownClassLimit = 3;
 
@@ -97,7 +116,19 @@ function LiveRow({ role, decks }: { role: Role; decks: DeckSummary[] }) {
   );
 }
 
-export function HubHero({ role, classes, decks = [], live = [] }: HubLiveProps) {
+function DueRow({ item }: { item: OpsItem | null }) {
+  if (!item) return null;
+
+  return (
+    <p className={styles.liveRow}>
+      <Link href={opsHref(item.activity.id)} className={styles.dueLink}>
+        {nextDueText(item)}
+      </Link>
+    </p>
+  );
+}
+
+export function HubHero({ role, classes, decks = [], live = [], ops = noOps }: HubLiveProps) {
   const hasClasses = classes.length > 0;
   const { lines, lead } = heroCopy(role, classes);
 
@@ -114,6 +145,7 @@ export function HubHero({ role, classes, decks = [], live = [] }: HubLiveProps) 
         </h1>
         <p className={styles.lead}>{lead}</p>
         <LiveRow role={role} decks={liveByTitle(decks, liveDeckIds(live))} />
+        {role === "student" ? <DueRow item={nextDue(opsItems(ops))} /> : null}
         <OctagonCTA
           href="/classes"
           eyebrow="Layer 01 · Routes"
@@ -274,7 +306,40 @@ function HubDecks({ role, classes, decks, liveIds }: HubProps & { decks: DeckSum
   );
 }
 
-function HubOps() {
+function OpsEmpty() {
+  return (
+    <div className={styles.empty}>
+      <p className={styles.emptyTitle}>Nothing due</p>
+      <p className={styles.emptyText}>Quizzes, uploads and threads show up here when a class has them.</p>
+    </div>
+  );
+}
+
+function TeacherOpsRows({ ops, codeFor }: { ops: OpsData; codeFor: (classId: string) => string }) {
+  return (
+    <ul className={styles.opsRows}>
+      {[...ops.activities].reverse().slice(0, hubOpsLimit).map((activity) => (
+        <li key={activity.id} className={styles.cell}>
+          <Link className={styles.opsRow} href={opsHref(activity.id)}>
+            <span className={styles.opsRowTitle}>{activity.title}</span>
+            <span className={styles.opsRowMeta}>
+              <span>{codeFor(activity.classId)}</span>
+              <span>{activity.publishedAt === null ? "Draft" : "Published"}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function HubOps({ role, classes, ops }: HubProps & { ops: OpsData }) {
+  const codes = classCodes(classes);
+  const codeFor = (classId: string) => codes.get(classId) ?? unknownClassCode;
+  const items = role === "student" ? opsItems(ops) : [];
+  const total = role === "student" ? items.length : ops.activities.length;
+  const countLabel = role === "student" ? dueCountLabel(dueCount(items)) : activityCountLabel(total);
+
   return (
     <Panel id="ops">
       <div className={panelStyles.head}>
@@ -283,23 +348,33 @@ function HubOps() {
         </h2>
         <p className={panelStyles.labels}>
           <BracketLabel>Layer 03 · Activities</BracketLabel>
-          <BracketLabel>0 due</BracketLabel>
+          <BracketLabel>{countLabel}</BracketLabel>
         </p>
       </div>
-      <div className={styles.empty}>
-        <p className={styles.emptyTitle}>Nothing due</p>
-        <p className={styles.emptyText}>Quizzes, uploads and threads show up here when a class has them.</p>
-      </div>
+      {total === 0 ? <OpsEmpty /> : null}
+      {total > 0 && role === "student" ? (
+        <OpsCards
+          items={hubOrder(items).slice(0, hubOpsLimit)}
+          codeFor={(item) => codeFor(item.activity.classId)}
+          compact
+        />
+      ) : null}
+      {total > 0 && role === "teacher" ? <TeacherOpsRows ops={ops} codeFor={codeFor} /> : null}
+      {total > hubOpsLimit ? (
+        <Link href="/classes" className={styles.textLink}>
+          See all in your classes
+        </Link>
+      ) : null}
     </Panel>
   );
 }
 
-export function HubLayers({ role, classes, decks = [], live = [] }: HubLiveProps) {
+export function HubLayers({ role, classes, decks = [], live = [], ops = noOps }: HubLiveProps) {
   return (
     <Panels>
       <HubRoutes role={role} classes={classes} />
       <HubDecks role={role} classes={classes} decks={decks} liveIds={liveDeckIds(live)} />
-      <HubOps />
+      <HubOps role={role} classes={classes} ops={ops} />
     </Panels>
   );
 }

@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { HubHero, HubLayers, type HubClass } from "@/components/hub/Hub";
+import { attemptOn, fixedNow, openOn, pastDue, quiz } from "@/components/ops/list/fixtures";
 import type { DeckSummary } from "@/lib/decks";
 
 afterEach(cleanup);
@@ -305,5 +306,124 @@ describe("HubLayers", () => {
     expect(container.querySelector('[data-status="live"]')).toBeNull();
     expect(screen.queryByText("LIVE")).toBeNull();
     expect(screen.queryByText("Live now")).toBeNull();
+  });
+});
+
+const opsActivities = [
+  quiz("closed", { title: "Gateways", dueAt: pastDue }),
+  quiz("done", { title: "Topics", classId: "class-2" }),
+  quiz("later", { title: "Adapters", dueAt: "2026-12-05T15:59:00.000Z" }),
+  quiz("undated", { title: "Patterns", dueAt: null }),
+  quiz("soon", { title: "Message brokers" }),
+  quiz("running", { title: "Queues" }),
+  quiz("draft", { title: "Unpublished quiz", publishedAt: null }),
+];
+const studentOps = { activities: opsActivities, attempts: [attemptOn("done"), openOn("running")], now: fixedNow };
+
+describe("HubHero next due row", () => {
+  it("links a student to the open activity with the nearest due date", () => {
+    render(<HubHero role="student" classes={[halfway]} ops={studentOps} />);
+    const link = screen.getByRole("link", { name: "Next due: Message brokers, Nov 28, 11:59 PM" });
+    expect(link.getAttribute("href")).toBe("/ops/soon");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("shows no row without an open activity that has a due date", () => {
+    const ops = { ...studentOps, activities: opsActivities.filter((item) => !["soon", "later"].includes(item.id)) };
+    render(<HubHero role="student" classes={[halfway]} ops={ops} />);
+    expect(screen.queryByText(/Next due/)).toBeNull();
+    cleanup();
+    render(<HubHero role="student" classes={[halfway]} />);
+    expect(screen.queryByText(/Next due/)).toBeNull();
+  });
+
+  it("shows no row to a teacher", () => {
+    render(<HubHero role="teacher" classes={[halfway]} ops={{ ...studentOps, attempts: [] }} />);
+    expect(screen.queryByText(/Next due/)).toBeNull();
+  });
+});
+
+describe("HubLayers Ops panel", () => {
+  it("shows a student the due count and five cards in order, with the class code", () => {
+    render(<HubLayers role="student" classes={[halfway, finished]} ops={studentOps} />);
+    const region = screen.getByRole("region", { name: "Ops" });
+    const panel = within(region);
+    expect(panel.getByText("4 due")).toBeTruthy();
+    const links = panel.getAllByRole("link").filter((link) => link.getAttribute("href")?.startsWith("/ops/"));
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/ops/running",
+      "/ops/soon",
+      "/ops/later",
+      "/ops/undated",
+      "/ops/done",
+    ]);
+    expect(links[0].textContent).toContain("Quiz · COMP 011");
+    expect(links[4].textContent).toContain("Quiz · COMP 012");
+    expect(links.map((link) => link.querySelector("[data-status]")?.textContent)).toEqual([
+      "In progress",
+      "Due Nov 28, 11:59 PM",
+      "Due Dec 5, 11:59 PM",
+      "No due date",
+      "Graded · 4 of 5",
+    ]);
+    expect(links.map((link) => link.querySelector("[data-status]")?.getAttribute("data-status"))).toEqual([
+      "submitted",
+      "due",
+      "due",
+      "due",
+      "graded",
+    ]);
+    expect(panel.getByRole("link", { name: "See all in your classes" }).getAttribute("href")).toBe("/classes");
+    expect(panel.queryByText("Nothing due")).toBeNull();
+    expect(panel.queryByText("Unpublished quiz")).toBeNull();
+    expect(region.querySelector('[data-status="late"]')).toBeNull();
+  });
+
+  it("shows no link to the rest with five or fewer", () => {
+    const ops = { ...studentOps, activities: opsActivities.slice(0, 5) };
+    render(<HubLayers role="student" classes={[halfway]} ops={ops} />);
+    const panel = within(screen.getByRole("region", { name: "Ops" }));
+    expect(panel.getAllByRole("listitem")).toHaveLength(5);
+    expect(panel.queryByRole("link", { name: "See all in your classes" })).toBeNull();
+  });
+
+  it("keeps the empty state when a student only has drafts in the data", () => {
+    const ops = { ...studentOps, activities: [opsActivities[6]] };
+    render(<HubLayers role="student" classes={[halfway]} ops={ops} />);
+    const panel = within(screen.getByRole("region", { name: "Ops" }));
+    expect(panel.getByText("0 due")).toBeTruthy();
+    expect(panel.getByText("Nothing due")).toBeTruthy();
+    expect(panel.getByText("Quizzes, uploads and threads show up here when a class has them.")).toBeTruthy();
+    expect(panel.queryByRole("link")).toBeNull();
+  });
+
+  it("shows a teacher a compact list with drafts, newest first, and no attempt chips", () => {
+    const ops = { activities: opsActivities.slice(3), attempts: [], now: fixedNow };
+    render(<HubLayers role="teacher" classes={[halfway, finished]} ops={ops} />);
+    const region = screen.getByRole("region", { name: "Ops" });
+    const panel = within(region);
+    expect(panel.getByText("4 activities")).toBeTruthy();
+    const links = panel.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/ops/draft",
+      "/ops/running",
+      "/ops/soon",
+      "/ops/undated",
+    ]);
+    expect(links[0].textContent).toBe("Unpublished quizCOMP 011Draft");
+    expect(links[1].textContent).toBe("QueuesCOMP 011Published");
+    expect(region.querySelector("[data-status]")).toBeNull();
+    expect(panel.queryByText("Nothing due")).toBeNull();
+  });
+
+  it("links a teacher to the rest past five and keeps the empty state with none", () => {
+    render(<HubLayers role="teacher" classes={[halfway]} ops={{ ...studentOps, attempts: [] }} />);
+    const panel = within(screen.getByRole("region", { name: "Ops" }));
+    expect(panel.getByText("7 activities")).toBeTruthy();
+    expect(panel.getAllByRole("listitem")).toHaveLength(5);
+    expect(panel.getByRole("link", { name: "See all in your classes" }).getAttribute("href")).toBe("/classes");
+    cleanup();
+    render(<HubLayers role="teacher" classes={[halfway]} />);
+    expect(within(screen.getByRole("region", { name: "Ops" })).getByText("Nothing due")).toBeTruthy();
   });
 });
