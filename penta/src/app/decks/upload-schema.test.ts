@@ -4,6 +4,7 @@ import { deckFileMessages } from "@/lib/deck-file";
 import {
   chosenFilesMessage,
   completionStep,
+  deckDeleteErrorMessage,
   deckIntentSchema,
   deckMessages,
   deckTargetSchema,
@@ -254,6 +255,14 @@ describe("lesson link", () => {
     expect(lessonLinkErrorMessage({ code: "23514" })).toBe(deckMessages.badLesson);
     expect(lessonLinkErrorMessage({ code: "42501" })).toBe(deckMessages.refused);
     expect(lessonLinkErrorMessage({ code: "XX000" })).toBe(deckMessages.failed);
+  });
+});
+
+describe("deck delete", () => {
+  it("says a quiz requires the deck when the delete is restricted", () => {
+    expect(deckDeleteErrorMessage({ code: "23503" })).toBe("A quiz requires this deck. Remove the requirement first.");
+    expect(deckDeleteErrorMessage({ code: "XX000" })).toBe(deckMessages.failed);
+    expect(deckDeleteErrorMessage(null)).toBe(deckMessages.failed);
   });
 });
 

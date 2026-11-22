@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   chosenFilesMessage,
   completionStep,
+  deckDeleteErrorMessage,
   deckIntentSchema,
   deckMessages,
   deckTargetSchema,
@@ -165,7 +166,7 @@ export async function deleteDeck(formData: FormData): Promise<DeckActionState> {
   if (!deck) return alertState(deckMessages.gone);
 
   const { data, error } = await createAdminClient().from("decks").delete().eq("id", deck.id).select("id");
-  if (error) return alertState(deckMessages.failed);
+  if (error) return alertState(deckDeleteErrorMessage(error));
   if (!data.length) return alertState(deckMessages.gone);
 
   await removeDeckFiles(deck);

@@ -19,6 +19,7 @@ export const deckMessages = {
   incomplete: "The upload did not finish. Try again.",
   largerThanDeclared: "The uploaded file is larger than the file you chose. Upload it again.",
   tooManyPages: `This PDF has too many pages. A deck can have ${deckLimits.slidesMax} at most.`,
+  requiredByQuiz: "A quiz requires this deck. Remove the requirement first.",
   deleted: "Deck deleted",
   linkSaved: "Lesson link saved",
   linkRemoved: "Lesson link removed",
@@ -135,6 +136,10 @@ type WriteError = { code?: string } | null;
 
 export function reserveErrorMessage(error: WriteError): string {
   return error?.code === "23514" ? deckMessages.rejectedTitle : deckMessages.failed;
+}
+
+export function deckDeleteErrorMessage(error: WriteError): string {
+  return error?.code === "23503" ? deckMessages.requiredByQuiz : deckMessages.failed;
 }
 
 export function lessonLinkErrorMessage(error: WriteError): string {
