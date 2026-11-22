@@ -1,5 +1,7 @@
 import { setLessonDone } from "@/app/classes/lesson-actions";
+import { lessonDecks } from "@/components/decks/library/helpers";
 import type { CurrentUser } from "@/lib/auth";
+import { loadClassDecks } from "@/lib/decks";
 import { lessonNeighbours, loadClassOutline, progressCount, type LessonDetail } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { isLessonDone, lessonPlace } from "./reader/helpers";
@@ -13,7 +15,10 @@ export type LessonReaderProps = {
 
 export async function LessonReader({ user, lesson, isOwner }: LessonReaderProps) {
   const supabase = await createClient();
-  const outline = await loadClassOutline(supabase, lesson.classId, user.id);
+  const [outline, decks] = await Promise.all([
+    loadClassOutline(supabase, lesson.classId, user.id),
+    loadClassDecks(supabase, lesson.classId, user.id),
+  ]);
   const { previous, next } = lessonNeighbours(outline, lesson.id);
 
   return (
@@ -25,6 +30,7 @@ export async function LessonReader({ user, lesson, isOwner }: LessonReaderProps)
       previous={previous}
       next={next}
       progress={progressCount(outline)}
+      decks={lessonDecks(decks, lesson.id)}
       action={setLessonDone}
     />
   );

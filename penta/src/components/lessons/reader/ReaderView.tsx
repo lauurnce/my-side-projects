@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { LessonDoneAction } from "@/app/classes/lesson-messages";
+import { LessonDeck } from "@/components/decks/library/LessonDeck";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { Markdown } from "@/components/ui/Markdown";
 import { StatusChip } from "@/components/ui/StatusChip";
+import type { DeckSummary } from "@/lib/decks";
 import type { LessonDetail, OutlineLesson, RouteProgress } from "@/lib/routes";
 import { DoneControls } from "./DoneControls";
 import {
@@ -24,6 +26,7 @@ export type ReaderViewProps = {
   previous: OutlineLesson | null;
   next: OutlineLesson | null;
   progress: RouteProgress;
+  decks: DeckSummary[];
   action: LessonDoneAction;
 };
 
@@ -60,7 +63,17 @@ function NeighbourLink({
   );
 }
 
-export function ReaderView({ lesson, isOwner, done, place, previous, next, progress, action }: ReaderViewProps) {
+export function ReaderView({
+  lesson,
+  isOwner,
+  done,
+  place,
+  previous,
+  next,
+  progress,
+  decks,
+  action,
+}: ReaderViewProps) {
   return (
     <article className={styles.page}>
       <Link className={styles.back} href={classHref(lesson.classId)}>
@@ -82,6 +95,7 @@ export function ReaderView({ lesson, isOwner, done, place, previous, next, progr
           <p className={styles.empty}>This lesson has no text yet.</p>
         )}
       </div>
+      <LessonDeck decks={decks} lessonTitle={lesson.title} />
       {isOwner ? null : (
         <section className={styles.progress} aria-label="Your progress">
           <DoneControls lessonId={lesson.id} done={done} action={action} />

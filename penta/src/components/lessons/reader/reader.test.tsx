@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { idleLessonDoneState } from "@/app/classes/lesson-messages";
+import type { DeckSummary } from "@/lib/decks";
 import type { LessonDetail, OutlineLesson } from "@/lib/routes";
 import { ReaderView, type ReaderViewProps } from "./ReaderView";
 
@@ -27,6 +28,10 @@ function neighbour(id: string, title: string): OutlineLesson {
   return { id, moduleId: "m1", title, estMinutes: 5, published: true, done: false };
 }
 
+function deck(id: string, title: string, viewedCount: number): DeckSummary {
+  return { id, classId, lessonId, title, kind: "pdf", slideCount: 24, sizeBytes: 9, ready: true, viewedCount };
+}
+
 const idle = async () => idleLessonDoneState;
 
 function view(overrides: Partial<ReaderViewProps> = {}) {
@@ -39,6 +44,7 @@ function view(overrides: Partial<ReaderViewProps> = {}) {
       previous={neighbour(previousId, "Why integrate")}
       next={neighbour(nextId, "Retries")}
       progress={{ done: 3, published: 5 }}
+      decks={[]}
       action={idle}
       {...overrides}
     />
@@ -132,6 +138,34 @@ describe("ReaderView", () => {
     expect(screen.queryByRole("button")).toBeNull();
     const links = within(screen.getByRole("navigation", { name: "Lessons" })).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual(["Back to the class"]);
+  });
+
+  it("shows nothing about slides when the lesson has no deck", () => {
+    render(view());
+    expect(screen.queryByText("Slides for this lesson")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Slides for this lesson" })).toBeNull();
+  });
+
+  it("shows the decks of the lesson under the body", () => {
+    render(view({ decks: [deck("d1", "Queues in pictures", 6), deck("d2", "Broker tour", 0)] }));
+    const block = screen.getByRole("region", { name: "Slides for this lesson" });
+    const links = within(block).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/d1", "/decks/d2"]);
+    expect(links[0].textContent).toContain("Queues in pictures");
+    expect(links[0].textContent).toContain("24 slides · PDF");
+    expect(links[0].textContent).toContain("Viewed 6 / 24");
+    const body = screen.getByText("A queue holds work until a worker is free.");
+    expect(body.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const progress = screen.getByRole("region", { name: "Your progress" });
+    expect(block.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("shows the decks to the owner who previews the lesson", () => {
+    render(view({ isOwner: true, decks: [deck("d1", "Queues in pictures", 0)] }));
+    const block = screen.getByRole("region", { name: "Slides for this lesson" });
+    expect(within(block).getByRole("link").getAttribute("href")).toBe("/decks/d1");
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("never uses the gold chips", () => {
