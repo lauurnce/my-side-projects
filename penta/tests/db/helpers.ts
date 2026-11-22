@@ -1,7 +1,7 @@
 import "./guard";
 import { randomInt, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../../src/lib/database.types";
+import type { Database, Json } from "../../src/lib/database.types";
 
 export type Client = SupabaseClient<Database>;
 export type Actor = { id: string; email: string; client: Client };
@@ -12,6 +12,21 @@ export type DeckKind = "pdf" | "native";
 export type LiveAnswer = { status: string; session_id?: string; revision?: number };
 export type LiveStateAnswer = { session_id: string | null; current_slide: number | null; revision: number; running: boolean };
 export type SessionOptions = { slide?: number; activeMinutesAgo?: number; ended?: boolean };
+export type QuizReply = { status: string; [field: string]: Json | undefined };
+export type QuestionKind = "mcq" | "tf" | "ident";
+export type QuestionSpec = { kind: QuestionKind | string; key: Json; prompt?: string | null; options?: Json; points?: number | null };
+export type QuizOptions = {
+  title?: string;
+  instructions?: string;
+  lessonId?: string | null;
+  deckId?: string | null;
+  dueAt?: string | null;
+  attemptLimit?: number;
+  timeLimitMin?: number | null;
+  showAnswers?: "after_submit" | "after_due" | "never";
+};
+export type AttemptPatch = Database["public"]["Tables"]["quiz_attempts"]["Update"];
+export type ActivityPatch = Database["public"]["Tables"]["activities"]["Update"];
 export type DeckOptions = {
   title?: string;
   kind?: DeckKind;
@@ -40,6 +55,10 @@ export const pptxType = "application/vnd.openxmlformats-officedocument.presentat
 export const deckColumns =
   "id, class_id, lesson_id, title, kind, pdf_path, original_path, slide_count, size_bytes, created_by, created_at, ready_at";
 export const sessionColumns = "id, deck_id, teacher_id, current_slide, revision, started_at, active_at, ended_at";
+export const activityColumns =
+  "id, class_id, lesson_id, type, title, instructions_md, points, due_at, published_at, requires_deck_id, attempt_limit, time_limit_min, show_answers, created_by, created_at";
+export const attemptColumns =
+  "id, activity_id, student_id, attempt_no, started_at, expires_at, submitted_at, score, max_score, answers_seen_at";
 export const noLiveState: LiveStateAnswer = { session_id: null, current_slide: null, revision: 0, running: false };
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
@@ -347,6 +366,179 @@ export async function endedSession(client: Client, deckId: string, slide = 1): P
   return sessionId;
 }
 
+export function secondsFromNow(seconds: number): string {
+  return new Date(Date.now() + seconds * 1000).toISOString();
+}
+
+export function quizRow(classId: string, options: QuizOptions = {}) {
+  return {
+    class_id: classId,
+    title: options.title ?? `Quiz ${randomUUID().slice(0, 8)}`,
+    instructions_md: options.instructions ?? "Answer every question.",
+    lesson_id: options.lessonId ?? null,
+    requires_deck_id: options.deckId ?? null,
+    due_at: options.dueAt ?? null,
+    attempt_limit: options.attemptLimit ?? 1,
+    time_limit_min: options.timeLimitMin ?? null,
+    show_answers: options.showAnswers ?? "never",
+  };
+}
+
+export async function draftQuiz(teacher: Actor, classId: string, options: QuizOptions = {}) {
+  const { data, error } = await teacher.client
+    .from("activities")
+    .insert(quizRow(classId, options))
+    .select(activityColumns)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function saveQuestion(client: Client, activityId: string, spec: QuestionSpec, questionId: string | null = null) {
+  const { data, error } = await client.rpc("save_quiz_question", {
+    target_activity: activityId,
+    target_question: questionId as string,
+    question_kind: spec.kind,
+    question_prompt: (spec.prompt === undefined ? "Which answer is right?" : spec.prompt) as string,
+    question_options: spec.options ?? null,
+    question_points: (spec.points === undefined ? 1 : spec.points) as number,
+    key_answers: spec.key,
+  });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function addQuestion(teacher: Actor, activityId: string, spec: QuestionSpec): Promise<string> {
+  const { result, error } = await saveQuestion(teacher.client, activityId, spec);
+  if (error || result?.status !== "saved") throw new Error(`save_quiz_question answered ${result?.status ?? error?.code}`);
+  return result.question_id as string;
+}
+
+export async function publishQuiz(client: Client, activityId: string, at = new Date().toISOString()) {
+  return client.from("activities").update({ published_at: at }).eq("id", activityId).select(activityColumns);
+}
+
+export async function readActivity(activityId: string) {
+  const { data, error } = await admin.from("activities").select(activityColumns).eq("id", activityId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function setActivity(activityId: string, patch: ActivityPatch) {
+  const { error } = await admin.from("activities").update(patch).eq("id", activityId);
+  if (error) throw error;
+}
+
+export async function addQuiz(teacher: Actor, classId: string, questions: QuestionSpec[], options: QuizOptions = {}) {
+  const draft = await draftQuiz(teacher, classId, options);
+  const questionIds: string[] = [];
+  for (const spec of questions) questionIds.push(await addQuestion(teacher, draft.id, spec));
+  const published = await publishQuiz(teacher.client, draft.id);
+  if (published.error || published.data.length !== 1) throw new Error("the quiz was not published");
+  return { activity: published.data[0], questionIds };
+}
+
+export async function readQuestions(activityId: string) {
+  const { data, error } = await admin
+    .from("quiz_questions")
+    .select("id, activity_id, kind, prompt, options, points, position")
+    .eq("activity_id", activityId)
+    .order("position");
+  if (error) throw error;
+  return data;
+}
+
+export async function readKey(questionId: string): Promise<Json | undefined> {
+  const { data, error } = await admin.from("quiz_answer_keys").select("answers").eq("question_id", questionId).maybeSingle();
+  if (error) throw error;
+  return data?.answers;
+}
+
+export async function startAttempt(client: Client, activityId: string) {
+  const { data, error } = await client.rpc("start_attempt", { target_activity: activityId });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function startedAttempt(client: Client, activityId: string): Promise<string> {
+  const { result, error } = await startAttempt(client, activityId);
+  if (error || result?.status !== "started") throw new Error(`start_attempt answered ${result?.status ?? error?.code}`);
+  return result.attempt_id as string;
+}
+
+export async function attemptPaper(client: Client, attemptId: string) {
+  const { data, error } = await client.rpc("attempt_paper", { target_attempt: attemptId });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function saveAnswer(client: Client, attemptId: string, questionId: string, answer: Json) {
+  const { data, error } = await client.rpc("save_answer", {
+    target_attempt: attemptId,
+    target_question: questionId,
+    answer,
+  });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function submitAttempt(client: Client, attemptId: string, answers: Json = {}) {
+  const { data, error } = await client.rpc("submit_attempt", { target_attempt: attemptId, answers });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function attemptReview(client: Client, attemptId: string) {
+  const { data, error } = await client.rpc("attempt_review", { target_attempt: attemptId });
+  return { result: data as QuizReply | null, error };
+}
+
+export async function readAttempt(attemptId: string) {
+  const { data, error } = await admin.from("quiz_attempts").select(attemptColumns).eq("id", attemptId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function readAttempts(activityId: string, studentId?: string) {
+  const query = admin.from("quiz_attempts").select(attemptColumns).eq("activity_id", activityId).order("attempt_no");
+  const { data, error } = await (studentId ? query.eq("student_id", studentId) : query);
+  if (error) throw error;
+  return data;
+}
+
+export async function readAnswers(attemptId: string) {
+  const { data, error } = await admin
+    .from("quiz_attempt_answers")
+    .select("attempt_id, question_id, answer, is_correct, saved_at")
+    .eq("attempt_id", attemptId)
+    .order("question_id");
+  if (error) throw error;
+  return data;
+}
+
+export async function setAttempt(attemptId: string, patch: AttemptPatch) {
+  const { error } = await admin.from("quiz_attempts").update(patch).eq("id", attemptId);
+  if (error) throw error;
+}
+
+export async function finishDeck(deckId: string, studentId: string, slideCount: number) {
+  const first = Date.now() - 3600 * 1000;
+  const rows = Array.from({ length: slideCount }, (_, index) => ({
+    deck_id: deckId,
+    student_id: studentId,
+    slide_no: index + 1,
+    viewed_at: new Date(first + index * 1000).toISOString(),
+  }));
+  const { error } = await admin.from("deck_views").insert(rows);
+  if (error) throw error;
+}
+
+export async function removeFromClass(teacher: Actor, classId: string, studentId: string) {
+  const { data, error } = await teacher.client.rpc("remove_student", { target_class: classId, target_student: studentId });
+  if (error || data !== true) throw new Error("remove_student did not remove the student");
+}
+
+export async function enrolledStudent(classId: string, name = "student"): Promise<Actor> {
+  const student = await createActor(name);
+  await enroll(classId, student.id);
+  return student;
+}
+
 export async function storeDeckFile(path: string, bytes: Uint8Array, contentType = pdfType) {
   const { error } = await admin.storage.from(deckBucket).upload(path, bytes, { contentType, upsert: false });
   if (error) throw error;
@@ -433,7 +625,7 @@ function chunksOf(ids: string[]): string[][] {
   return chunks;
 }
 
-async function idsWhere(table: "classes" | "modules" | "lessons", column: string, parentIds: string[]): Promise<string[]> {
+async function idsWhere(table: "classes" | "modules" | "lessons" | "activities", column: string, parentIds: string[]): Promise<string[]> {
   const found: string[] = [];
   for (const chunk of chunksOf(parentIds)) {
     const { data, error } = await admin.from(table).select("id").in(column, chunk);
@@ -443,7 +635,9 @@ async function idsWhere(table: "classes" | "modules" | "lessons", column: string
   return found;
 }
 
-async function deleteWhere(table: "lesson_progress" | "lessons" | "modules" | "decks" | "live_sessions", column: string, parentIds: string[]) {
+type Removable = "lesson_progress" | "lessons" | "modules" | "decks" | "live_sessions" | "quiz_attempts" | "activities";
+
+async function deleteWhere(table: Removable, column: string, parentIds: string[]) {
   for (const chunk of chunksOf(parentIds)) {
     const { error } = await admin.from(table).delete().in(column, chunk);
     if (error) throw error;
@@ -454,6 +648,13 @@ async function removeRoutes(userIds: string[]) {
   const classIds = await idsWhere("classes", "teacher_id", userIds);
   const moduleIds = await idsWhere("modules", "class_id", classIds);
   const lessonIds = await idsWhere("lessons", "module_id", moduleIds);
+  const activityIds = [
+    ...(await idsWhere("activities", "class_id", classIds)),
+    ...(await idsWhere("activities", "created_by", userIds)),
+  ];
+  await deleteWhere("quiz_attempts", "activity_id", activityIds);
+  await deleteWhere("quiz_attempts", "student_id", userIds);
+  await deleteWhere("activities", "id", activityIds);
   await removeDecks(classIds);
   await deleteWhere("decks", "created_by", userIds);
   await deleteWhere("live_sessions", "teacher_id", userIds);
