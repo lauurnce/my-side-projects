@@ -161,6 +161,19 @@ describe("ReaderView", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
+  it("marks the deck of the lesson that is live", () => {
+    const live = [{ deckId: "d2", classId, sessionId: "s1", slide: 4 }];
+    render(view({ decks: [deck("d1", "Queues in pictures", 6), deck("d2", "Broker tour", 0)], live }));
+    const links = within(screen.getByRole("region", { name: "Slides for this lesson" })).getAllByRole("link");
+    expect(links[0].textContent).not.toContain("LIVE");
+    expect(links[1].textContent).toContain("LIVE");
+  });
+
+  it("marks no deck live without a session", () => {
+    render(view({ decks: [deck("d1", "Queues in pictures", 6)] }));
+    expect(screen.queryByText("LIVE")).toBeNull();
+  });
+
   it("shows the decks to the owner who previews the lesson", () => {
     render(view({ isOwner: true, decks: [deck("d1", "Queues in pictures", 0)] }));
     const block = screen.getByRole("region", { name: "Slides for this lesson" });

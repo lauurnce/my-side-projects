@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { LessonDoneAction } from "@/app/classes/lesson-messages";
+import { liveDeckIds } from "@/components/decks/library/helpers";
 import { LessonDeck } from "@/components/decks/library/LessonDeck";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { Markdown } from "@/components/ui/Markdown";
 import { StatusChip } from "@/components/ui/StatusChip";
 import type { DeckSummary } from "@/lib/decks";
+import type { LiveDeck } from "@/lib/live";
 import type { LessonDetail, OutlineLesson, RouteProgress } from "@/lib/routes";
 import { DoneControls } from "./DoneControls";
 import {
@@ -27,6 +29,7 @@ export type ReaderViewProps = {
   next: OutlineLesson | null;
   progress: RouteProgress;
   decks: DeckSummary[];
+  live?: LiveDeck[];
   action: LessonDoneAction;
 };
 
@@ -72,6 +75,7 @@ export function ReaderView({
   next,
   progress,
   decks,
+  live = [],
   action,
 }: ReaderViewProps) {
   return (
@@ -95,7 +99,7 @@ export function ReaderView({
           <p className={styles.empty}>This lesson has no text yet.</p>
         )}
       </div>
-      <LessonDeck decks={decks} lessonTitle={lesson.title} />
+      <LessonDeck decks={decks} lessonTitle={lesson.title} liveIds={liveDeckIds(live)} />
       {isOwner ? null : (
         <section className={styles.progress} aria-label="Your progress">
           <DoneControls lessonId={lesson.id} done={done} action={action} />
