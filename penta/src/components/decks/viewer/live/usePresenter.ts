@@ -34,6 +34,7 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
   const supabase = useMemo(() => createClient(), []);
   const [busy, setBusy] = useState(false);
   const [unsent, setUnsent] = useState(false);
+  const [settled, setSettled] = useState(0);
   const session = useRef(live.sessionId);
   const ownRevision = useRef(0);
   const queue = useRef<MoveQueue | null>(null);
@@ -55,6 +56,7 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
       },
       onSent: (_slide, revision) => {
         ownRevision.current = Math.max(ownRevision.current, revision);
+        setSettled((count) => count + 1);
       },
       onEnded: () => void read(),
       onUnsent: setUnsent,
@@ -71,7 +73,7 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
     if (queue.current && !queue.current.idle()) return;
     ownRevision.current = live.revision;
     adopt(live.slide);
-  }, [presenting, live, slide, adopt]);
+  }, [presenting, live, slide, adopt, settled]);
 
   useEffect(() => {
     if (!presenting) return;
