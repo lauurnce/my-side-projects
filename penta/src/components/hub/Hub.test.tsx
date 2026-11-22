@@ -81,6 +81,64 @@ describe("HubHero", () => {
   });
 });
 
+const liveOn = (deckId: string) => ({ deckId, classId: "class-1", sessionId: `session-${deckId}`, slide: 2 });
+
+describe("HubHero live row", () => {
+  it("offers a student the live deck", () => {
+    const decks = [sampleDeck(1), sampleDeck(2, { title: "Broker tour" })];
+    render(<HubHero role="student" classes={[halfway]} decks={decks} live={[liveOn("deck-2")]} />);
+    const link = screen.getByRole("link", { name: "Join live" });
+    expect(link.getAttribute("href")).toBe("/decks/deck-2");
+    const rowText = link.parentElement?.textContent;
+    expect(rowText).toContain("Live");
+    expect(rowText).toContain("Broker tour");
+    expect(rowText).not.toMatch(/more/);
+    expect(link.parentElement?.querySelector('[data-status="live"]')?.textContent).toBe("Live");
+    expect(screen.queryByRole("link", { name: "Open the presenter view" })).toBeNull();
+  });
+
+  it("offers a teacher the presenter view", () => {
+    render(<HubHero role="teacher" classes={[halfway]} decks={[sampleDeck(1)]} live={[liveOn("deck-1")]} />);
+    expect(screen.getByRole("link", { name: "Open the presenter view" }).getAttribute("href")).toBe("/decks/deck-1");
+    expect(screen.queryByRole("link", { name: "Join live" })).toBeNull();
+  });
+
+  it("shows the first live deck by title and counts the others", () => {
+    const decks = [
+      sampleDeck(1, { title: "Queues" }),
+      sampleDeck(2, { title: "Topics" }),
+      sampleDeck(3, { title: "Brokers" }),
+      sampleDeck(4, { title: "Adapters" }),
+    ];
+    render(
+      <HubHero
+        role="student"
+        classes={[halfway]}
+        decks={decks}
+        live={[liveOn("deck-1"), liveOn("deck-2"), liveOn("deck-3")]}
+      />,
+    );
+    const links = screen.getAllByRole("link", { name: "Join live" });
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("href")).toBe("/decks/deck-3");
+    expect(links[0].parentElement?.textContent).toContain("Brokers");
+    expect(screen.getByText("and 2 more")).toBeTruthy();
+  });
+
+  it("shows no live row without a session, for an unknown deck or one that is not ready", () => {
+    const decks = [sampleDeck(1), sampleDeck(2, { ready: false })];
+    const { container } = render(<HubHero role="student" classes={[halfway]} decks={decks} />);
+    expect(container.querySelector('[data-status="live"]')).toBeNull();
+    cleanup();
+    const other = render(
+      <HubHero role="student" classes={[halfway]} decks={decks} live={[liveOn("deck-2"), liveOn("deck-9")]} />,
+    );
+    expect(other.container.querySelector('[data-status="live"]')).toBeNull();
+    expect(screen.queryByRole("link", { name: "Join live" })).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+});
+
 describe("HubLayers", () => {
   it("has the three layers as headings", () => {
     render(<HubLayers role="student" classes={[]} />);
@@ -204,5 +262,48 @@ describe("HubLayers", () => {
     expect(screen.getByRole("link", { name: /Next lesson/ }).getAttribute("href")).toBe(
       "/classes/class-5/lessons/lesson-9",
     );
+  });
+
+  it("says Live now in the Decks head and marks the live thumb", () => {
+    const decks = [sampleDeck(1), sampleDeck(2)];
+    render(<HubLayers role="student" classes={[halfway]} decks={decks} live={[liveOn("deck-2")]} />);
+    const region = screen.getByRole("region", { name: "Decks" });
+    const panel = within(region);
+    expect(panel.getByText("Live now").closest("[data-status]")?.getAttribute("data-status")).toBe("live");
+    expect(region.querySelectorAll('[data-status="live"]')).toHaveLength(1);
+    const links = panel.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/deck-2", "/decks/deck-1"]);
+    expect(links[0].textContent).toContain("LIVE");
+    expect(links[1].textContent).not.toContain("LIVE");
+    expect(within(screen.getByRole("region", { name: "Routes" })).queryByText("Live now")).toBeNull();
+  });
+
+  it("keeps a live deck among the six shown", () => {
+    const decks = [1, 2, 3, 4, 5, 6, 7, 8].map((index) => sampleDeck(index));
+    render(<HubLayers role="student" classes={[halfway]} decks={decks} live={[liveOn("deck-8")]} />);
+    const items = within(screen.getByRole("region", { name: "Decks" })).getAllByRole("listitem");
+    expect(items).toHaveLength(6);
+    expect(within(items[0]).getByRole("link").getAttribute("href")).toBe("/decks/deck-8");
+    expect(items[0].textContent).toContain("LIVE");
+  });
+
+  it("shows a teacher Live now and a Live chip on the row", () => {
+    render(<HubLayers role="teacher" classes={[halfway]} decks={[sampleDeck(1), sampleDeck(2)]} live={[liveOn("deck-2")]} />);
+    const panel = within(screen.getByRole("region", { name: "Decks" }));
+    expect(panel.getByText("Live now")).toBeTruthy();
+    const links = panel.getAllByRole("link");
+    expect(links[0].getAttribute("href")).toBe("/decks/deck-2");
+    expect(within(links[0]).getByText("Live")).toBeTruthy();
+    expect(within(links[1]).queryByText("Live")).toBeNull();
+  });
+
+  it("shows no live marker when no deck is live or the live deck is not ready", () => {
+    const decks = [sampleDeck(1), sampleDeck(2, { ready: false })];
+    const { container } = render(
+      <HubLayers role="student" classes={[halfway]} decks={decks} live={[liveOn("deck-2")]} />,
+    );
+    expect(container.querySelector('[data-status="live"]')).toBeNull();
+    expect(screen.queryByText("LIVE")).toBeNull();
+    expect(screen.queryByText("Live now")).toBeNull();
   });
 });

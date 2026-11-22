@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { deckCountLabel, readyDecks } from "@/components/decks/library/helpers";
+import {
+  deckCountLabel,
+  deckHref,
+  liveByTitle,
+  liveDeckIds,
+  moreLiveLabel,
+  readyDecks,
+} from "@/components/decks/library/helpers";
 import { HubDeckList } from "@/components/decks/library/HubDeckList";
 import { Panel, Panels } from "@/components/landing/Panels";
 import panelStyles from "@/components/landing/Panels.module.css";
@@ -8,9 +15,11 @@ import { BracketLabel } from "@/components/ui/BracketLabel";
 import { Grain } from "@/components/ui/Grain";
 import { OctagonCTA } from "@/components/ui/OctagonCTA";
 import { RouteCard } from "@/components/ui/RouteCard";
+import { StatusChip } from "@/components/ui/StatusChip";
 import type { Role } from "@/lib/auth";
 import type { DeckSummary } from "@/lib/decks";
 import { formatMeters, nextUp, type ClassProgress } from "@/lib/classes";
+import type { LiveDeck } from "@/lib/live";
 import { hubAltitude } from "@/lib/routes";
 import styles from "./Hub.module.css";
 
@@ -26,11 +35,17 @@ type HubProps = {
   classes: HubClass[];
 };
 
-type HubLayersProps = HubProps & {
+type HubLiveProps = HubProps & {
   decks?: DeckSummary[];
+  live?: LiveDeck[];
 };
 
 const shownClassLimit = 3;
+
+const liveLinkText: Record<Role, string> = {
+  student: "Join live",
+  teacher: "Open the presenter view",
+};
 
 const routesCopy: Record<Role, { action: string; empty: string }> = {
   student: { action: "Join a class", empty: "Enter a join code from your teacher." },
@@ -66,7 +81,23 @@ function heroCopy(role: Role, classes: HubClass[]): { lines: [string, string]; l
   };
 }
 
-export function HubHero({ role, classes }: HubProps) {
+function LiveRow({ role, decks }: { role: Role; decks: DeckSummary[] }) {
+  const [first, ...others] = decks;
+  if (!first) return null;
+
+  return (
+    <p className={styles.liveRow}>
+      <StatusChip status="live">Live</StatusChip>
+      <span className={styles.liveTitle}>{first.title}</span>
+      {others.length > 0 ? <span className={styles.liveMore}>{moreLiveLabel(others.length)}</span> : null}
+      <Link href={deckHref(first.id)} className={styles.liveLink}>
+        {liveLinkText[role]}
+      </Link>
+    </p>
+  );
+}
+
+export function HubHero({ role, classes, decks = [], live = [] }: HubLiveProps) {
   const hasClasses = classes.length > 0;
   const { lines, lead } = heroCopy(role, classes);
 
@@ -82,6 +113,7 @@ export function HubHero({ role, classes }: HubProps) {
           <span>{lines[0]}</span> <span>{lines[1]}</span>
         </h1>
         <p className={styles.lead}>{lead}</p>
+        <LiveRow role={role} decks={liveByTitle(decks, liveDeckIds(live))} />
         <OctagonCTA
           href="/classes"
           eyebrow="Layer 01 · Routes"
@@ -214,8 +246,9 @@ function HubRoutes({ role, classes }: HubProps) {
   );
 }
 
-function HubDecks({ role, classes, decks }: HubProps & { decks: DeckSummary[] }) {
+function HubDecks({ role, classes, decks, liveIds }: HubProps & { decks: DeckSummary[]; liveIds: Set<string> }) {
   const ready = readyDecks(decks);
+  const anyLive = ready.some((deck) => liveIds.has(deck.id));
 
   return (
     <Panel id="decks" cover={2} deep>
@@ -227,6 +260,7 @@ function HubDecks({ role, classes, decks }: HubProps & { decks: DeckSummary[] })
           <BracketLabel>Layer 02 · Presentations</BracketLabel>
           <BracketLabel>{deckCountLabel(ready.length)}</BracketLabel>
         </p>
+        {anyLive ? <StatusChip status="live">Live now</StatusChip> : null}
       </div>
       {ready.length === 0 ? (
         <div className={styles.empty}>
@@ -234,7 +268,7 @@ function HubDecks({ role, classes, decks }: HubProps & { decks: DeckSummary[] })
           <p className={styles.emptyText}>Decks show up here when a teacher uploads one to a class.</p>
         </div>
       ) : (
-        <HubDeckList role={role} decks={ready} classes={classes} />
+        <HubDeckList role={role} decks={ready} classes={classes} liveIds={liveIds} />
       )}
     </Panel>
   );
@@ -260,11 +294,11 @@ function HubOps() {
   );
 }
 
-export function HubLayers({ role, classes, decks = [] }: HubLayersProps) {
+export function HubLayers({ role, classes, decks = [], live = [] }: HubLiveProps) {
   return (
     <Panels>
       <HubRoutes role={role} classes={classes} />
-      <HubDecks role={role} classes={classes} decks={decks} />
+      <HubDecks role={role} classes={classes} decks={decks} liveIds={liveDeckIds(live)} />
       <HubOps />
     </Panels>
   );
