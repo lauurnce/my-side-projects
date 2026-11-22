@@ -59,7 +59,14 @@ beforeEach(() => {
 
 describe("proxy matcher", () => {
   it("covers only the guarded and the guest pages", () => {
-    expect(config.matcher).toEqual(["/hub/:path*", "/classes/:path*", "/decks/:path*", "/login", "/signup"]);
+    expect(config.matcher).toEqual([
+      "/hub/:path*",
+      "/classes/:path*",
+      "/decks/:path*",
+      "/ops/:path*",
+      "/login",
+      "/signup",
+    ]);
   });
 });
 
@@ -85,6 +92,16 @@ describe("proxy without a user", () => {
     const download = await proxy(requestFor("/decks/abc/download"));
     expect(page.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fdecks%2Fabc");
     expect(download.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fdecks%2Fabc%2Fdownload");
+  });
+
+  it("redirects a quiz and an attempt to the login page", async () => {
+    sessionIs(signedOut);
+    const quiz = await proxy(requestFor("/ops/abc"));
+    const attempt = await proxy(requestFor("/ops/abc/attempt/def"));
+    expect(quiz.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fops%2Fabc");
+    expect(attempt.headers.get("location")).toBe(
+      "http://localhost:3000/login?next=%2Fops%2Fabc%2Fattempt%2Fdef",
+    );
   });
 
   it("treats a rejected token as no user", async () => {
