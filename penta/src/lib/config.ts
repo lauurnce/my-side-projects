@@ -44,3 +44,21 @@ export const deckLimits = {
   downloadUrlSeconds: 60,
   seenAfterMilliseconds: 1000,
 } as const;
+
+export const liveLimits = {
+  pollDownMilliseconds: 3000,
+  pollUpMilliseconds: 15000,
+  pollIdleMilliseconds: 20000,
+  pollJitterRatio: 0.2,
+  lookJitterMilliseconds: 200,
+  outOfTouchMilliseconds: 15000,
+  moveGapMilliseconds: 400,
+  moveTimeoutMilliseconds: 5000,
+  moveRetryMilliseconds: 1000,
+  unsentNoticeMilliseconds: 2000,
+  heartbeatMilliseconds: 5 * 60 * 1000,
+  leaseMinutes: 30,
+  rejoinMilliseconds: 2000,
+  presenceDebounceMilliseconds: 1500,
+  seenJitterMilliseconds: 500,
+} as const;
