@@ -23,7 +23,14 @@ type Controls = {
 export type DeckListProps = Controls & {
   decks: DeckSummary[];
   lessons: LessonGroup[];
+  liveDeckIds?: string[];
   state: DeckActionState;
+};
+
+type DeckRowProps = Controls & {
+  deck: DeckSummary;
+  lessons: LessonGroup[];
+  live: boolean;
 };
 
 function DeckFields({ intent, deckId }: { intent: DeckIntent; deckId: string }) {
@@ -35,17 +42,20 @@ function DeckFields({ intent, deckId }: { intent: DeckIntent; deckId: string }) 
   );
 }
 
-function DeckRow({ deck, lessons, formAction, pending }: Controls & { deck: DeckSummary; lessons: LessonGroup[] }) {
+function DeckRow({ deck, lessons, live, formAction, pending }: DeckRowProps) {
   return (
     <li className={styles.deck}>
       <div className={styles.deckInfo}>
-        {deck.ready ? (
-          <Link className={styles.deckTitle} href={deckPath(deck.id)}>
-            {deck.title}
-          </Link>
-        ) : (
-          <p className={styles.deckTitle}>{deck.title}</p>
-        )}
+        <div className={styles.titleRow}>
+          {deck.ready ? (
+            <Link className={styles.deckTitle} href={deckPath(deck.id)}>
+              {deck.title}
+            </Link>
+          ) : (
+            <p className={styles.deckTitle}>{deck.title}</p>
+          )}
+          {live && <StatusChip status="live">Live</StatusChip>}
+        </div>
         <div className={styles.metaRow}>
           {!deck.ready && <StatusChip status="due">Not finished</StatusChip>}
           <p className={styles.meta}>{deckMeta(deck)}</p>
@@ -95,7 +105,7 @@ function DeckRow({ deck, lessons, formAction, pending }: Controls & { deck: Deck
   );
 }
 
-export function DeckList({ decks, lessons, state, formAction, pending }: DeckListProps) {
+export function DeckList({ decks, lessons, liveDeckIds = [], state, formAction, pending }: DeckListProps) {
   return (
     <>
       {state.message && (
@@ -108,7 +118,14 @@ export function DeckList({ decks, lessons, state, formAction, pending }: DeckLis
       ) : (
         <ul className={styles.list} aria-label="Decks in this class">
           {decks.map((deck) => (
-            <DeckRow key={deck.id} deck={deck} lessons={lessons} formAction={formAction} pending={pending} />
+            <DeckRow
+              key={deck.id}
+              deck={deck}
+              lessons={lessons}
+              live={liveDeckIds.includes(deck.id)}
+              formAction={formAction}
+              pending={pending}
+            />
           ))}
         </ul>
       )}

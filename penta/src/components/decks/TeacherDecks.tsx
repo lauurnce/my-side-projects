@@ -3,6 +3,7 @@ import teacherStyles from "@/components/classes/teacher/teacher.module.css";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import type { CurrentUser } from "@/lib/auth";
 import { loadClassDecks, loadStorageUsage, usageLevel } from "@/lib/decks";
+import { loadLiveDecks } from "@/lib/live";
 import { loadClassOutline } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { DeckBoard } from "./teacher/DeckBoard";
@@ -17,10 +18,11 @@ export type TeacherDecksProps = {
 
 export async function TeacherDecks({ user, classId }: TeacherDecksProps) {
   const supabase = await createClient();
-  const [decks, usage, outline] = await Promise.all([
+  const [decks, usage, outline, live] = await Promise.all([
     loadClassDecks(supabase, classId, user.id),
     loadStorageUsage(supabase),
     loadClassOutline(supabase, classId, user.id),
+    loadLiveDecks(supabase),
   ]);
   const lessons = lessonGroups(outline);
   const storageFull = usage !== null && usageLevel(usage) === "full";
@@ -35,7 +37,12 @@ export async function TeacherDecks({ user, classId }: TeacherDecksProps) {
       </div>
       <StorageMeter usage={usage} />
       <DeckUploadForm classId={classId} lessons={lessons} storageFull={storageFull} />
-      <DeckBoard decks={decks} lessons={lessons} action={runDeckAction} />
+      <DeckBoard
+        decks={decks}
+        lessons={lessons}
+        liveDeckIds={live.map((item) => item.deckId)}
+        action={runDeckAction}
+      />
     </section>
   );
 }

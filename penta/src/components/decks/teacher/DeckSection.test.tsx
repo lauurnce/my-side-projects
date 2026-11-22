@@ -256,3 +256,29 @@ describe("deck list", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 });
+
+describe("live chip in the deck list", () => {
+  it("shows Live next to the title of a deck with a running session", () => {
+    const { container } = render(
+      <DeckList
+        decks={[readyDeck, nativeDeck]}
+        lessons={lessons}
+        liveDeckIds={[nativeId]}
+        state={{}}
+        formAction={() => {}}
+        pending={false}
+      />,
+    );
+    const chip = row("Queues workshop").getByText("Live");
+    expect(chip.closest("[data-status]")?.getAttribute("data-status")).toBe("live");
+    expect(chip.parentElement?.contains(screen.getByRole("link", { name: "Queues workshop" }))).toBe(true);
+    expect(row("Brokers in practice").queryByText("Live")).toBeNull();
+    expect(container.querySelectorAll('[data-status="live"]')).toHaveLength(1);
+  });
+
+  it("shows no Live chip without a session", () => {
+    const { container } = renderList([readyDeck, pendingDeck, nativeDeck]);
+    expect(container.querySelector('[data-status="live"]')).toBeNull();
+    expect(screen.queryByText("Live")).toBeNull();
+  });
+});

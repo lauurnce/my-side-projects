@@ -11,13 +11,23 @@ export type DeckAction = (previousState: DeckActionState, formData: FormData) =>
 export type DeckBoardProps = {
   decks: DeckSummary[];
   lessons: LessonGroup[];
+  liveDeckIds?: string[];
   action: DeckAction;
 };
 
 const initialState: DeckActionState = {};
 
-export function DeckBoard({ decks, lessons, action }: DeckBoardProps) {
+export function DeckBoard({ decks, lessons, liveDeckIds, action }: DeckBoardProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
 
-  return <DeckList decks={decks} lessons={lessons} state={state} formAction={formAction} pending={pending} />;
+  return (
+    <DeckList
+      decks={decks}
+      lessons={lessons}
+      liveDeckIds={liveDeckIds}
+      state={state}
+      formAction={formAction}
+      pending={pending}
+    />
+  );
 }

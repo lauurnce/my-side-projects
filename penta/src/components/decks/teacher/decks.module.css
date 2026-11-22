@@ -229,6 +229,15 @@
   min-width: 0;
 }
 
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .deckTitle {
   display: inline-flex;
   align-items: center;
