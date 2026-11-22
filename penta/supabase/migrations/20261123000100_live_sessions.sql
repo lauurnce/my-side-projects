@@ -28,6 +28,7 @@ using (private.teaches_deck(deck_id) or private.reads_deck(deck_id));
 create function private.stamp_live_revision()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 begin
