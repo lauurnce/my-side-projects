@@ -62,3 +62,22 @@ export const liveLimits = {
   presenceDebounceMilliseconds: 1500,
   seenJitterMilliseconds: 500,
 } as const;
+
+export const quizLimits = {
+  titleLength: 160,
+  instructionsLength: 10000,
+  promptLength: 2000,
+  optionLength: 300,
+  optionsMin: 2,
+  optionsMax: 6,
+  acceptedAnswersMax: 10,
+  answerLength: 200,
+  questionPointsMax: 100,
+  questionsPerQuiz: 100,
+  attemptLimitMax: 10,
+  timeLimitMaxMinutes: 300,
+  graceSeconds: 15,
+  revealAfterDueSeconds: 60,
+  saveDebounceMilliseconds: 600,
+  timerNoticesMinutes: [10, 5, 1],
+} as const;
