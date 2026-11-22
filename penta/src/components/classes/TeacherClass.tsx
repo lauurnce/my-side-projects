@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { removeStudent } from "@/app/classes/teacher-actions";
 import { TeacherDecks } from "@/components/decks/TeacherDecks";
+import { TeacherOps } from "@/components/ops/TeacherOps";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import type { CurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -65,6 +66,7 @@ export async function TeacherClass({ user, classId }: { user: CurrentUser; class
       </header>
       <TeacherOutline user={user} classId={classRow.id} />
       <TeacherDecks user={user} classId={classRow.id} />
+      <TeacherOps user={user} classId={classRow.id} />
       <JoinCodeBox code={joinCode ?? null} />
       <section className={styles.section} aria-labelledby="roster-title">
         <div className={styles.sectionHead}>
