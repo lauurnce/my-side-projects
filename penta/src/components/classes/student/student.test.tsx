@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import type { DeckSummary } from "@/lib/decks";
 import type { ClassOutline } from "@/lib/routes";
 import { ClassDetail } from "./ClassDetail";
 import { ClassList } from "./ClassList";
@@ -163,6 +164,7 @@ describe("ClassDetail", () => {
     joinedOn: "November 27, 2026",
     classId,
     outline,
+    decks: [] as DeckSummary[],
   };
 
   it("shows the title as the one h1 with code, section, term and teacher", () => {
@@ -185,6 +187,7 @@ describe("ClassDetail", () => {
     expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
       "Foundations",
       "Integration",
+      "Decks",
     ]);
   });
 
@@ -194,13 +197,43 @@ describe("ClassDetail", () => {
     expect(screen.queryByText(/lessons done/)).toBeNull();
     expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull();
     expect(screen.queryByText("All lessons done.")).toBeNull();
-    expect(screen.queryAllByRole("heading", { level: 2 })).toHaveLength(0);
+    expect(screen.queryAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Decks"]);
   });
 
-  it("keeps one quiet line for decks and activities", () => {
+  it("keeps one quiet line for activities", () => {
     render(<ClassDetail {...detail} />);
-    expect(screen.getAllByText("Decks and activities arrive in a later update.")).toHaveLength(1);
+    expect(screen.getAllByText("Activities arrive in a later update.")).toHaveLength(1);
+    expect(screen.queryByText(/Decks and activities/)).toBeNull();
     expect(screen.queryByText(/^Nothing here yet\./)).toBeNull();
+  });
+
+  it("shows the deck section after the outline, empty at first", () => {
+    render(<ClassDetail {...detail} />);
+    const section = screen.getByRole("region", { name: "Decks" });
+    expect(section.textContent).toContain("0 decks");
+    expect(section.textContent).toContain("No decks yet. Decks show up here when your teacher uploads one.");
+    const outlineSection = screen.getByRole("region", { name: "Integration" });
+    expect(outlineSection.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("links each deck with the lesson title or the class code above it", () => {
+    const decks: DeckSummary[] = [
+      { id: "d1", classId, lessonId: "l4", title: "Queues in pictures", kind: "pdf", slideCount: 24, sizeBytes: 9, ready: true, viewedCount: 6 },
+      { id: "d2", classId, lessonId: "l2", title: "Draft companion", kind: "native", slideCount: 8, sizeBytes: 9, ready: true, viewedCount: 0 },
+      { id: "d3", classId, lessonId: null, title: "Course intro", kind: "pdf", slideCount: 1, sizeBytes: 9, ready: true, viewedCount: 0 },
+    ];
+    render(<ClassDetail {...detail} decks={decks} />);
+    const section = within(screen.getByRole("region", { name: "Decks" }));
+    expect(section.getByText("3 decks")).toBeTruthy();
+    const links = section.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/d1", "/decks/d2", "/decks/d3"]);
+    expect(links[0].textContent).toContain("Message queues");
+    expect(links[0].textContent).toContain("Viewed 6 / 24");
+    expect(links[1].textContent).toContain("INTE 301");
+    expect(links[1].textContent).not.toContain("Hidden draft");
+    expect(links[1].textContent).toContain("8 slides · PPTX");
+    expect(links[2].textContent).toContain("INTE 301");
+    expect(section.queryByText(/No decks yet/)).toBeNull();
   });
 
   it("links back to the class list and shows no join code", () => {

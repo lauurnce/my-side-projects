@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { DeckLibrary } from "@/components/decks/library/DeckLibrary";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { classProgress } from "@/lib/classes";
+import type { DeckSummary } from "@/lib/decks";
 import type { ClassOutline } from "@/lib/routes";
 import { ContinueBlock, OutlineList, ProgressBlock } from "./ClassOutline";
 import styles from "./student.module.css";
@@ -14,9 +16,20 @@ export type ClassDetailProps = {
   teacherName: string;
   joinedOn: string | null;
   outline: ClassOutline;
+  decks: DeckSummary[];
 };
 
-export function ClassDetail({ classId, code, section, term, title, teacherName, joinedOn, outline }: ClassDetailProps) {
+export function ClassDetail({
+  classId,
+  code,
+  section,
+  term,
+  title,
+  teacherName,
+  joinedOn,
+  outline,
+  decks,
+}: ClassDetailProps) {
   const progress = classProgress(outline);
   const hasLessons = progress.published > 0;
 
@@ -52,7 +65,8 @@ export function ClassDetail({ classId, code, section, term, title, teacherName, 
         </div>
       ) : null}
       <OutlineList classId={classId} outline={outline} />
-      <p className={styles.later}>Decks and activities arrive in a later update.</p>
+      <DeckLibrary decks={decks} classCode={code} outline={outline} />
+      <p className={styles.later}>Activities arrive in a later update.</p>
     </div>
   );
 }

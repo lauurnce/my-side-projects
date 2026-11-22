@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { formatManilaDate } from "@/app/classes/student-join";
 import type { CurrentUser } from "@/lib/auth";
 import { unknownTeacherName } from "@/lib/classes";
+import { loadClassDecks } from "@/lib/decks";
 import { loadClassOutline } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { ClassDetail } from "./student/ClassDetail";
@@ -15,7 +16,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
     .maybeSingle();
   if (!enrolledClass) notFound();
 
-  const [{ data: teacher }, { data: enrollment }, outline] = await Promise.all([
+  const [{ data: teacher }, { data: enrollment }, outline, decks] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", enrolledClass.teacher_id).maybeSingle(),
     supabase
       .from("enrollments")
@@ -24,6 +25,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
       .eq("student_id", user.id)
       .maybeSingle(),
     loadClassOutline(supabase, classId, user.id),
+    loadClassDecks(supabase, classId, user.id),
   ]);
   if (!enrollment) notFound();
 
@@ -37,6 +39,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
       teacherName={teacher?.full_name || unknownTeacherName}
       joinedOn={formatManilaDate(enrollment.joined_at)}
       outline={outline}
+      decks={decks}
     />
   );
 }
