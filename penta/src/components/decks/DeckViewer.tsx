@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { deckFormat, type DeckDetail } from "@/lib/decks";
+import type { LiveState } from "@/lib/live";
 import { SlideDeck } from "./viewer/SlideDeck";
 import styles from "./viewer/viewer.module.css";
 
 export type DeckSource = { url: string; length: number };
+
+export type DeckViewerIdentity = { id: string; isOwner: boolean };
 
 export type DeckViewerProps = {
   deck: DeckDetail;
   source: DeckSource | null;
   viewedSlides: number[];
   recordsViews: boolean;
+  viewer: DeckViewerIdentity;
+  initialLive: LiveState;
 };
 
-export function DeckViewer({ deck, source, viewedSlides, recordsViews }: DeckViewerProps) {
+export function DeckViewer({ deck, source, viewedSlides, recordsViews, viewer, initialLive }: DeckViewerProps) {
   const format = deckFormat(deck.kind);
 
   return (
@@ -33,7 +38,14 @@ export function DeckViewer({ deck, source, viewedSlides, recordsViews }: DeckVie
         </header>
 
         {source ? (
-          <SlideDeck deck={deck} source={source} viewedSlides={viewedSlides} recordsViews={recordsViews} />
+          <SlideDeck
+            deck={deck}
+            source={source}
+            viewedSlides={viewedSlides}
+            recordsViews={recordsViews}
+            viewer={viewer}
+            initialLive={initialLive}
+          />
         ) : (
           <p className={styles.notice}>This deck is not available right now. Try again in a moment.</p>
         )}

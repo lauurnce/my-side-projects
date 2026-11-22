@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { DeckDetail } from "@/lib/decks";
+import { noLive } from "@/lib/live";
 import { DeckViewer, type DeckViewerProps } from "../DeckViewer";
 
 const fake = vi.hoisted(() => ({
@@ -65,9 +66,23 @@ vi.mock("@/lib/pdf-client", () => {
 });
 
 vi.mock("@/app/decks/view-actions", () => ({
-  recordSlideView: (input: unknown) => fake.recordSlideView(input),
   refreshDeckSource: (input: unknown) => fake.refreshDeckSource(input),
 }));
+
+vi.mock("@/lib/supabase/client", () => {
+  const noSession = { session_id: null, current_slide: null, revision: 0, running: false };
+  const client = {
+    from: () => ({
+      upsert: async (row: { deck_id: string; slide_no: number }) => {
+        const result = (await fake.recordSlideView({ deckId: row.deck_id, slideNo: row.slide_no })) as { ok: boolean };
+        return { error: result.ok ? null : { code: "42501" } };
+      },
+    }),
+    rpc: async () => ({ data: noSession, error: null }),
+    removeChannel: async () => "ok",
+  };
+  return { createClient: () => client };
+});
 
 class InstantResizeObserver {
   callback: ResizeObserverCallback;
@@ -101,7 +116,17 @@ const deck: DeckDetail = {
 const source = { url: "https://storage.test/signed", length: 300000 };
 
 function view(overrides: Partial<DeckViewerProps> = {}) {
-  return <DeckViewer deck={deck} source={source} viewedSlides={[1, 2]} recordsViews {...overrides} />;
+  return (
+    <DeckViewer
+      deck={deck}
+      source={source}
+      viewedSlides={[1, 2]}
+      recordsViews
+      viewer={{ id: "student-1", isOwner: false }}
+      initialLive={noLive}
+      {...overrides}
+    />
+  );
 }
 
 function region() {

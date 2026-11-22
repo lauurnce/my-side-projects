@@ -1,7 +1,13 @@
-import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { recordSlideView } from "@/app/decks/view-actions";
-import type { DeckSource } from "@/components/decks/DeckViewer";
+import { useCallback, useEffect, useMemo, useReducer, useRef, type KeyboardEvent, type PointerEvent } from "react";
+import type { DeckSource, DeckViewerIdentity } from "@/components/decks/DeckViewer";
+import { liveLimits } from "@/lib/config";
 import type { DeckDetail } from "@/lib/decks";
+import { followReducer, type LiveState } from "@/lib/live";
+import { createClient } from "@/lib/supabase/client";
+import { FollowBar } from "./live/FollowBar";
+import { PresenterBar } from "./live/PresenterBar";
+import { useLiveSession } from "./live/useLiveSession";
+import { usePresenter } from "./live/usePresenter";
 import { clampSlide, isTypingTarget, slideAnnouncement, slideForKey, swipeStep } from "./helpers";
 import { SlideStrip } from "./SlideStrip";
 import { useDeckDocument } from "./useDeckDocument";
@@ -14,6 +20,8 @@ export type SlideDeckProps = {
   source: DeckSource;
   viewedSlides: number[];
   recordsViews: boolean;
+  viewer: DeckViewerIdentity;
+  initialLive: LiveState;
 };
 
 function ArrowIcon({ path }: { path: string }) {
@@ -24,11 +32,25 @@ function ArrowIcon({ path }: { path: string }) {
   );
 }
 
-export function SlideDeck({ deck, source, viewedSlides, recordsViews }: SlideDeckProps) {
+export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, initialLive }: SlideDeckProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const [wanted, setWanted] = useState(1);
+  const supabase = useMemo(() => createClient(), []);
+  const isOwner = viewer.isOwner;
+  const [follow, dispatch] = useReducer(followReducer, {
+    wanted: isOwner && initialLive.running ? initialLive.slide : 1,
+    following: false,
+    joined: false,
+  });
+  const wanted = follow.wanted;
+  const following = useRef(false);
+  const { live, link, lastReadAt, followers, read, setFollowing } = useLiveSession({
+    deckId: deck.id,
+    initial: initialLive,
+    userId: viewer.id,
+    isOwner,
+  });
 
   const { status, doc, annotationMode, fail, retry } = useDeckDocument(deck.id, source);
   const total = doc?.numPages ?? Math.max(deck.slideCount, 1);
@@ -37,9 +59,21 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews }: SlideDec
   const { painted, text } = useSlideCanvas({ doc, annotationMode, slide, box, canvasRef, onError: fail });
 
   const deckId = deck.id;
+  const viewerId = viewer.id;
   const record = useCallback(
-    (slideNo: number) => recordSlideView({ deckId, slideNo }).then((result) => result.ok),
-    [deckId],
+    async (slideNo: number) => {
+      if (following.current) {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * liveLimits.seenJitterMilliseconds));
+      }
+      const { error } = await supabase
+        .from("deck_views")
+        .upsert(
+          { deck_id: deckId, student_id: viewerId, slide_no: slideNo },
+          { onConflict: "deck_id,student_id,slide_no", ignoreDuplicates: true },
+        );
+      return !error;
+    },
+    [supabase, deckId, viewerId],
   );
   const seen = useSeenSlides({
     enabled: recordsViews,
@@ -50,7 +84,23 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews }: SlideDec
     record,
   });
 
-  const goTo = (next: number) => setWanted(clampSlide(next, total));
+  const adopt = useCallback((next: number) => dispatch({ type: "move", slide: next }), []);
+  const presenter = usePresenter({ deckId, enabled: isOwner, live, slide, read, adopt });
+
+  useEffect(() => {
+    if (!isOwner) dispatch({ type: "live", live });
+  }, [isOwner, live]);
+
+  useEffect(() => {
+    following.current = follow.following;
+    if (!isOwner) setFollowing(follow.following);
+  }, [isOwner, follow.following, setFollowing]);
+
+  const goTo = (next: number) => {
+    const target = clampSlide(next, total);
+    dispatch({ type: "move", slide: target });
+    presenter.move(target);
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -85,6 +135,30 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews }: SlideDec
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
+      {isOwner ? (
+        <PresenterBar
+          presenting={presenter.presenting}
+          busy={presenter.busy}
+          ready={doc !== null}
+          followers={followers}
+          link={link}
+          unsent={presenter.unsent}
+          lastReadAt={lastReadAt}
+          onPresent={presenter.present}
+          onEnd={presenter.end}
+        />
+      ) : (
+        <FollowBar
+          running={live.running}
+          following={follow.following}
+          joined={follow.joined}
+          link={link}
+          lastReadAt={lastReadAt}
+          liveSlide={live.slide}
+          onJoin={() => dispatch({ type: "join", slide: live.slide })}
+          onBrowse={() => dispatch({ type: "browse" })}
+        />
+      )}
       <p className={styles.meta}>
         <span>
           Slide {slide} / {total}
