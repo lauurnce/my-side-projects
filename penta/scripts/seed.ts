@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { buildPdf, buildPptx } from "../tests/fixtures/deck-files.ts";
 import type { Database } from "../src/lib/database.types.ts";
 import { formatJoinCode } from "../src/lib/join-code.ts";
 import { assertLocalSupabase } from "../src/lib/supabase/local.ts";
@@ -150,6 +151,30 @@ const sampleLessons = [
     ].join("\n"),
   },
 ];
+const deckBucket = "decks";
+const pdfType = "application/pdf";
+const pptxType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const sampleDecks = [
+  {
+    id: "5e9a0000-0000-4000-8000-0000000d0001",
+    title: "Roles and privileges: slides",
+    kind: "pdf",
+    lesson_id: sampleLessons[1].id,
+    slide_count: 12,
+    pdf: buildPdf(12, 150000),
+    original: null,
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000d0002",
+    title: "Backup strategies",
+    kind: "native",
+    lesson_id: null,
+    slide_count: 6,
+    pdf: buildPdf(6),
+    original: buildPptx(),
+  },
+];
+const viewedSlides = [1, 2, 3, 4];
 
 function fail(message: string): never {
   console.error(message);
@@ -197,6 +222,52 @@ async function ensureAccount(account: Account, existing: Map<string, string>): P
   });
   if (error) fail(`Seed stopped: could not create ${account.email} (${error.message}).`);
   return data.user.id;
+}
+
+async function listStored(folder: string) {
+  const { data, error } = await admin.storage.from(deckBucket).list(folder, { limit: 1000 });
+  if (error) fail(`Seed stopped: could not list the stored deck files (${error.message}).`);
+  return data;
+}
+
+async function clearDecks(classId: string) {
+  const removedRows = await admin.from("decks").delete().eq("class_id", classId);
+  if (removedRows.error) fail(`Seed stopped: could not clear the decks (${removedRows.error.message}).`);
+
+  const names: string[] = [];
+  for (const deckFolder of await listStored(classId)) {
+    const folder = `${classId}/${deckFolder.name}`;
+    if (deckFolder.id) names.push(folder);
+    else names.push(...(await listStored(folder)).map((file) => `${folder}/${file.name}`));
+  }
+  if (names.length === 0) return;
+  const removedFiles = await admin.storage.from(deckBucket).remove(names);
+  if (removedFiles.error) fail(`Seed stopped: could not clear the stored deck files (${removedFiles.error.message}).`);
+}
+
+async function storeDeckFile(path: string, bytes: Uint8Array, contentType: string) {
+  const { error } = await admin.storage.from(deckBucket).upload(path, bytes, { contentType, upsert: false });
+  if (error) fail(`Seed stopped: could not store ${path} (${error.message}).`);
+}
+
+async function saveDeck(sampleDeck: (typeof sampleDecks)[number], classId: string, createdBy: string) {
+  const { pdf, original, ...columns } = sampleDeck;
+  const folder = `${classId}/${sampleDeck.id}`;
+  const pdfPath = `${folder}/slides.pdf`;
+  const originalPath = original ? `${folder}/original.pptx` : null;
+  await storeDeckFile(pdfPath, pdf, pdfType);
+  if (original && originalPath) await storeDeckFile(originalPath, original, pptxType);
+
+  const { error } = await admin.from("decks").insert({
+    ...columns,
+    class_id: classId,
+    pdf_path: pdfPath,
+    original_path: originalPath,
+    size_bytes: pdf.length + (original?.length ?? 0),
+    created_by: createdBy,
+    ready_at: new Date().toISOString(),
+  });
+  if (error) fail(`Seed stopped: could not save the deck "${sampleDeck.title}" (${error.message}).`);
 }
 
 const existing = await listUserIdsByEmail();
@@ -247,6 +318,21 @@ const savedProgress = await admin
   );
 if (savedProgress.error) fail(`Seed stopped: could not save the lesson progress (${savedProgress.error.message}).`);
 
+await clearDecks(routeClassId);
+for (const sampleDeck of sampleDecks) await saveDeck(sampleDeck, routeClassId, teacherId);
+
+const savedViews = await admin.from("deck_views").upsert(
+  viewedSlides.map((slideNo) => ({ deck_id: sampleDecks[0].id, student_id: studentIds[0], slide_no: slideNo })),
+  { onConflict: "deck_id,student_id,slide_no", ignoreDuplicates: true },
+);
+if (savedViews.error) fail(`Seed stopped: could not save the deck views (${savedViews.error.message}).`);
+
+const savedDecks = await admin
+  .from("decks")
+  .select("id, title, kind, slide_count")
+  .eq("class_id", routeClassId);
+if (savedDecks.error) fail(`Seed stopped: could not read the decks (${savedDecks.error.message}).`);
+
 const savedLessons = await admin
   .from("lessons")
   .select("id, title, published_at")
@@ -267,4 +353,10 @@ for (const sampleLesson of sampleLessons) {
   const saved = savedLessons.data.find((row) => row.id === sampleLesson.id);
   if (!saved) fail(`Seed stopped: the lesson "${sampleLesson.title}" was not saved.`);
   console.log(`  ${saved.title.padEnd(42)}${saved.published_at ? "Published" : "Draft"}`);
+}
+console.log("Decks in COMP 018");
+for (const sampleDeck of sampleDecks) {
+  const saved = savedDecks.data.find((row) => row.id === sampleDeck.id);
+  if (!saved) fail(`Seed stopped: the deck "${sampleDeck.title}" was not saved.`);
+  console.log(`  ${saved.title.padEnd(42)}${saved.kind === "native" ? "PPTX and PDF" : "PDF"}, ${saved.slide_count} slides`);
 }
