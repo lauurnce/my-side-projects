@@ -13,6 +13,8 @@ import { RouteCard } from "@/components/ui/RouteCard";
 import { SprayTag } from "@/components/ui/SprayTag";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { UnlockCard } from "@/components/ui/UnlockCard";
+import { panelsContent } from "@/content/landing";
 import { submissionUpload } from "@/lib/config";
 import { brandDna, layers, sameInBoth, sizeRows, swatches, themePreviews, tokenRows } from "./data";
 import { IndexPillDemo, UploadDropDemo, ViewSwitchDemo } from "./demos";
@@ -22,6 +24,8 @@ export const metadata: Metadata = {
   title: "PENTA style guide",
   description: "Palette, themes, type and every component of the PENTA design system.",
 };
+
+const unlockSample = panelsContent.decks.unlock;
 
 const uploadCapMegabytes = submissionUpload.maxBytes / (1024 * 1024);
 const uploadHint = `DOCX or PDF only · max ${uploadCapMegabytes} MB`;
@@ -423,6 +427,18 @@ function Components() {
               }
             />
           </div>
+        </Cell>
+        <Cell code="C-17" name="UnlockCard · in progress / unlocked" testId="demo-unlock-card">
+          <UnlockCard
+            href="#components"
+            title={unlockSample.title}
+            viewed={unlockSample.viewed}
+            total={unlockSample.total}
+          />
+          <UnlockCard title={unlockSample.title} viewed={unlockSample.total} total={unlockSample.total} />
+          <span className={styles.note}>
+            The count line carries the meaning. The track is decoration. With a link, the whole card opens the deck.
+          </span>
         </Cell>
       </div>
     </section>
