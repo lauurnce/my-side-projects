@@ -68,7 +68,7 @@ export function followReducer(state: FollowState, action: FollowAction): FollowS
 export function countFollowers(presence: Record<string, unknown[]>, ownKey: string): number {
   return Object.entries(presence).filter(
     ([key, entries]) =>
-      key !== ownKey && entries.some((entry) => (entry as { following?: unknown } | null)?.following === true),
+      key !== ownKey && Array.isArray(entries) && entries.some((entry) => (entry as { following?: unknown } | null)?.following === true),
   ).length;
 }
 
