@@ -9,6 +9,9 @@ export type JoinResult = { status: string; class_id?: string; retry_at?: string 
 export type ReserveResult = { status: string; deck_id?: string; free_bytes?: number };
 export type StorageUsage = { used_bytes: number; reserved_bytes: number; budget_bytes: number };
 export type DeckKind = "pdf" | "native";
+export type LiveAnswer = { status: string; session_id?: string; revision?: number };
+export type LiveStateAnswer = { session_id: string | null; current_slide: number | null; revision: number; running: boolean };
+export type SessionOptions = { slide?: number; activeMinutesAgo?: number; ended?: boolean };
 export type DeckOptions = {
   title?: string;
   kind?: DeckKind;
@@ -36,6 +39,8 @@ export const pdfType = "application/pdf";
 export const pptxType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 export const deckColumns =
   "id, class_id, lesson_id, title, kind, pdf_path, original_path, slide_count, size_bytes, created_by, created_at, ready_at";
+export const sessionColumns = "id, deck_id, teacher_id, current_slide, revision, started_at, active_at, ended_at";
+export const noLiveState: LiveStateAnswer = { session_id: null, current_slide: null, revision: 0, running: false };
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
 export const admin = createClient<Database>(url, serviceRoleKey, sessionless);
@@ -277,6 +282,71 @@ export async function recordView(deckId: string, studentId: string, slideNo: num
   if (error) throw error;
 }
 
+export function minutesAgo(minutes: number): string {
+  return new Date(Date.now() - minutes * 60 * 1000).toISOString();
+}
+
+export async function addSession(deckId: string, teacherId: string, options: SessionOptions = {}) {
+  const { data, error } = await admin
+    .from("live_sessions")
+    .insert({
+      deck_id: deckId,
+      teacher_id: teacherId,
+      current_slide: options.slide ?? 1,
+      active_at: minutesAgo(options.activeMinutesAgo ?? 0),
+      ended_at: options.ended ? new Date().toISOString() : null,
+    })
+    .select(sessionColumns)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function readSession(sessionId: string) {
+  const { data, error } = await admin.from("live_sessions").select(sessionColumns).eq("id", sessionId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function readSessions(deckId: string) {
+  const { data, error } = await admin.from("live_sessions").select(sessionColumns).eq("deck_id", deckId).order("revision");
+  if (error) throw error;
+  return data;
+}
+
+export async function setSessionActive(sessionId: string, minutes: number) {
+  const { error } = await admin.from("live_sessions").update({ active_at: minutesAgo(minutes) }).eq("id", sessionId);
+  if (error) throw error;
+}
+
+export async function startLive(client: Client, deckId: string, slide: number | null = 1) {
+  const { data, error } = await client.rpc("start_live", { target_deck: deckId, slide: slide as number });
+  return { result: data as LiveAnswer | null, error };
+}
+
+export async function moveLive(client: Client, sessionId: string, slide: number | null) {
+  const { data, error } = await client.rpc("move_live", { target_session: sessionId, slide: slide as number });
+  return { result: data as LiveAnswer | null, error };
+}
+
+export async function liveState(client: Client, deckId: string) {
+  const { data, error } = await client.rpc("live_state", { target_deck: deckId });
+  return { state: data as LiveStateAnswer | null, error };
+}
+
+export async function startedSession(client: Client, deckId: string, slide = 1): Promise<string> {
+  const { result, error } = await startLive(client, deckId, slide);
+  if (error || result?.status !== "started" || !result.session_id) throw new Error("start_live did not start a session");
+  return result.session_id;
+}
+
+export async function endedSession(client: Client, deckId: string, slide = 1): Promise<string> {
+  const sessionId = await startedSession(client, deckId, slide);
+  const { data, error } = await client.rpc("end_live", { target_session: sessionId });
+  if (error || data !== "ended") throw new Error("end_live did not end the session");
+  return sessionId;
+}
+
 export async function storeDeckFile(path: string, bytes: Uint8Array, contentType = pdfType) {
   const { error } = await admin.storage.from(deckBucket).upload(path, bytes, { contentType, upsert: false });
   if (error) throw error;
@@ -373,7 +443,7 @@ async function idsWhere(table: "classes" | "modules" | "lessons", column: string
   return found;
 }
 
-async function deleteWhere(table: "lesson_progress" | "lessons" | "modules" | "decks", column: string, parentIds: string[]) {
+async function deleteWhere(table: "lesson_progress" | "lessons" | "modules" | "decks" | "live_sessions", column: string, parentIds: string[]) {
   for (const chunk of chunksOf(parentIds)) {
     const { error } = await admin.from(table).delete().in(column, chunk);
     if (error) throw error;
@@ -386,6 +456,7 @@ async function removeRoutes(userIds: string[]) {
   const lessonIds = await idsWhere("lessons", "module_id", moduleIds);
   await removeDecks(classIds);
   await deleteWhere("decks", "created_by", userIds);
+  await deleteWhere("live_sessions", "teacher_id", userIds);
   await deleteWhere("lesson_progress", "student_id", userIds);
   await deleteWhere("lesson_progress", "lesson_id", lessonIds);
   await deleteWhere("lessons", "module_id", moduleIds);
