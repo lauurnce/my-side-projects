@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import type { DeckSummary } from "@/lib/decks";
+import type { Activity, Attempt } from "@/lib/quiz";
 import type { ClassOutline } from "@/lib/routes";
 import { ClassDetail } from "./ClassDetail";
 import { ClassList } from "./ClassList";
@@ -188,6 +189,7 @@ describe("ClassDetail", () => {
       "Foundations",
       "Integration",
       "Decks",
+      "Ops",
     ]);
   });
 
@@ -197,14 +199,75 @@ describe("ClassDetail", () => {
     expect(screen.queryByText(/lessons done/)).toBeNull();
     expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull();
     expect(screen.queryByText("All lessons done.")).toBeNull();
-    expect(screen.queryAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Decks"]);
+    expect(screen.queryAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Decks",
+      "Ops",
+    ]);
   });
 
-  it("keeps one quiet line for activities", () => {
+  it("shows the Ops section in place of the old line about activities", () => {
     render(<ClassDetail {...detail} />);
-    expect(screen.getAllByText("Activities arrive in a later update.")).toHaveLength(1);
+    expect(screen.queryByText("Activities arrive in a later update.")).toBeNull();
+    const section = within(screen.getByRole("region", { name: "Ops" }));
+    expect(section.getByText("0 activities")).toBeTruthy();
+    expect(
+      section.getAllByText("No activities yet. Quizzes show up here when your teacher publishes one."),
+    ).toHaveLength(1);
+    expect(section.queryByRole("link")).toBeNull();
     expect(screen.queryByText(/Decks and activities/)).toBeNull();
     expect(screen.queryByText(/^Nothing here yet\./)).toBeNull();
+  });
+
+  it("lists published quizzes after the decks with a status in words", () => {
+    const now = Date.parse("2026-11-27T04:00:00.000Z");
+    const quiz = (id: string, title: string, overrides: Partial<Activity> = {}): Activity => ({
+      id,
+      classId,
+      lessonId: null,
+      title,
+      instructionsMd: "",
+      points: 12,
+      dueAt: "2026-11-28T15:59:00.000Z",
+      publishedAt: "2026-11-26T00:00:00.000Z",
+      requiresDeckId: null,
+      attemptLimit: 1,
+      timeLimitMin: 20,
+      showAnswers: "never",
+      ...overrides,
+    });
+    const attempts: Attempt[] = [
+      {
+        id: "a1",
+        activityId: "q2",
+        studentId: "s1",
+        attemptNo: 1,
+        startedAt: "2026-11-26T01:00:00.000Z",
+        expiresAt: null,
+        submittedAt: "2026-11-26T02:00:00.000Z",
+        score: 4,
+        maxScore: 5,
+      },
+    ];
+    const activities = [
+      quiz("q1", "Message brokers"),
+      quiz("q2", "Adapters", { points: 5, timeLimitMin: null }),
+      quiz("q3", "Hidden draft quiz", { publishedAt: null }),
+    ];
+    render(<ClassDetail {...detail} ops={{ activities, attempts, now }} />);
+    const region = screen.getByRole("region", { name: "Ops" });
+    const section = within(region);
+    expect(section.getByText("2 activities")).toBeTruthy();
+    const links = section.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/ops/q1", "/ops/q2"]);
+    expect(links[0].textContent).toContain("Quiz · INTE 301");
+    expect(links[0].textContent).toContain("12 points · 20 minutes");
+    expect(links[0].textContent).toContain("Due Nov 28, 11:59 PM");
+    expect(links[1].textContent).toContain("5 points · no time limit");
+    expect(links[1].textContent).toContain("Graded · 4 of 5");
+    expect(section.queryByText("Hidden draft quiz")).toBeNull();
+    expect(section.queryByText(/No activities yet/)).toBeNull();
+    const decks = screen.getByRole("region", { name: "Decks" });
+    expect(decks.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows the deck section after the outline, empty at first", () => {

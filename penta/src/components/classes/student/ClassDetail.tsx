@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { DeckLibrary } from "@/components/decks/library/DeckLibrary";
 import { liveDeckIds } from "@/components/decks/library/helpers";
+import { ClassOps } from "@/components/ops/ClassOps";
+import type { OpsData } from "@/components/ops/list/helpers";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { classProgress } from "@/lib/classes";
 import type { DeckSummary } from "@/lib/decks";
@@ -20,7 +22,10 @@ export type ClassDetailProps = {
   outline: ClassOutline;
   decks: DeckSummary[];
   live?: LiveDeck[];
+  ops?: OpsData;
 };
+
+const noOps: OpsData = { activities: [], attempts: [], now: 0 };
 
 export function ClassDetail({
   classId,
@@ -33,6 +38,7 @@ export function ClassDetail({
   outline,
   decks,
   live = [],
+  ops = noOps,
 }: ClassDetailProps) {
   const progress = classProgress(outline);
   const hasLessons = progress.published > 0;
@@ -70,7 +76,7 @@ export function ClassDetail({
       ) : null}
       <OutlineList classId={classId} outline={outline} />
       <DeckLibrary decks={decks} classCode={code} outline={outline} liveIds={liveDeckIds(live)} />
-      <p className={styles.later}>Activities arrive in a later update.</p>
+      <ClassOps classCode={code} {...ops} />
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { formatManilaDate } from "@/app/classes/student-join";
+import { loadOpsData } from "@/components/ops/list/load";
 import type { CurrentUser } from "@/lib/auth";
 import { unknownTeacherName } from "@/lib/classes";
 import { loadClassDecks } from "@/lib/decks";
 import { loadLiveDecks } from "@/lib/live";
+import { loadClassActivities } from "@/lib/quiz";
 import { loadClassOutline } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { ClassDetail } from "./student/ClassDetail";
@@ -17,7 +19,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
     .maybeSingle();
   if (!enrolledClass) notFound();
 
-  const [{ data: teacher }, { data: enrollment }, outline, decks, live] = await Promise.all([
+  const [{ data: teacher }, { data: enrollment }, outline, decks, live, activities] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", enrolledClass.teacher_id).maybeSingle(),
     supabase
       .from("enrollments")
@@ -28,8 +30,11 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
     loadClassOutline(supabase, classId, user.id),
     loadClassDecks(supabase, classId, user.id),
     loadLiveDecks(supabase),
+    loadClassActivities(supabase, classId),
   ]);
   if (!enrollment) notFound();
+
+  const ops = await loadOpsData(supabase, activities, user.id);
 
   return (
     <ClassDetail
@@ -43,6 +48,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
       outline={outline}
       decks={decks}
       live={live}
+      ops={ops}
     />
   );
 }
