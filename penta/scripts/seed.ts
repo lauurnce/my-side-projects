@@ -174,7 +174,102 @@ const sampleDecks = [
     original: buildPptx(),
   },
 ];
-const viewedSlides = [1, 2, 3, 4];
+const finishedDeck = sampleDecks[0];
+const minuteMs = 60 * 1000;
+const dayMs = 24 * 60 * minuteMs;
+const quizDueDays = 7;
+const sampleQuizzes = [
+  {
+    id: "5e9a0000-0000-4000-8000-0000000a0001",
+    title: "Roles and privileges check",
+    instructions_md: "Five questions on roles and privileges. Finish the slides first. You have 15 minutes and two attempts.",
+    lesson_id: sampleLessons[1].id,
+    requires_deck_id: finishedDeck.id,
+    attempt_limit: 2,
+    time_limit_min: 15,
+    show_answers: "after_due",
+    due_in_days: quizDueDays,
+    published: true,
+    questions: [
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0101",
+        kind: "mcq",
+        prompt: "Which statement gives a role a privilege on a table?",
+        options: ["GRANT", "REVOKE", "ALTER ROLE", "CREATE ROLE"],
+        key: 0,
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0102",
+        kind: "mcq",
+        prompt: "A reporting tool only reads the enrollments table. Which privilege should its role get on that table?",
+        options: ["ALL PRIVILEGES", "SELECT", "UPDATE", "TRUNCATE"],
+        key: 1,
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0103",
+        kind: "tf",
+        prompt: "A role can be a member of another role and use the privileges of that role.",
+        options: null,
+        key: true,
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0104",
+        kind: "tf",
+        prompt: "Sharing the superuser password with the whole team is a safe way to manage access.",
+        options: null,
+        key: false,
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0105",
+        kind: "ident",
+        prompt: "Which statement takes a privilege away from a role?",
+        options: null,
+        key: ["REVOKE"],
+      },
+    ],
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000a0002",
+    title: "Backups check",
+    instructions_md: "Two questions on logical backups.",
+    lesson_id: sampleLessons[2].id,
+    requires_deck_id: null,
+    attempt_limit: 1,
+    time_limit_min: null,
+    show_answers: "never",
+    due_in_days: null,
+    published: false,
+    questions: [
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0201",
+        kind: "tf",
+        prompt: "A backup that has never been restored is already proven to work.",
+        options: null,
+        key: false,
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000a0202",
+        kind: "ident",
+        prompt: "Which command line tool writes a logical backup of one PostgreSQL database?",
+        options: null,
+        key: ["pg_dump"],
+      },
+    ],
+  },
+];
+const sampleAttempt = {
+  id: "5e9a0000-0000-4000-8000-0000000a1001",
+  quiz: sampleQuizzes[0],
+  started_minutes_ago: 30,
+  minutes_taken: 9,
+  answers: [
+    { answer: 0, is_correct: true },
+    { answer: 0, is_correct: false },
+    { answer: true, is_correct: true },
+    { answer: false, is_correct: true },
+    { answer: "revoke", is_correct: true },
+  ],
+};
 
 function fail(message: string): never {
   console.error(message);
@@ -270,6 +365,79 @@ async function saveDeck(sampleDeck: (typeof sampleDecks)[number], classId: strin
   if (error) fail(`Seed stopped: could not save the deck "${sampleDeck.title}" (${error.message}).`);
 }
 
+async function clearQuizzes(classId: string) {
+  const found = await admin.from("activities").select("id").eq("class_id", classId);
+  if (found.error) fail(`Seed stopped: could not list the quizzes (${found.error.message}).`);
+  const activityIds = found.data.map((activity) => activity.id);
+  if (activityIds.length === 0) return;
+  const removedAttempts = await admin.from("quiz_attempts").delete().in("activity_id", activityIds);
+  if (removedAttempts.error) fail(`Seed stopped: could not clear the quiz attempts (${removedAttempts.error.message}).`);
+  const removedQuizzes = await admin.from("activities").delete().in("id", activityIds);
+  if (removedQuizzes.error) fail(`Seed stopped: could not clear the quizzes (${removedQuizzes.error.message}).`);
+}
+
+async function saveQuiz(sampleQuiz: (typeof sampleQuizzes)[number], classId: string, createdBy: string) {
+  const { questions, published, due_in_days, ...columns } = sampleQuiz;
+  const savedQuiz = await admin.from("activities").insert({
+    ...columns,
+    class_id: classId,
+    created_by: createdBy,
+    due_at: due_in_days ? new Date(Date.now() + due_in_days * dayMs).toISOString() : null,
+  });
+  if (savedQuiz.error) fail(`Seed stopped: could not save the quiz "${sampleQuiz.title}" (${savedQuiz.error.message}).`);
+
+  const savedQuestions = await admin.from("quiz_questions").insert(
+    questions.map((question, index) => ({
+      id: question.id,
+      activity_id: sampleQuiz.id,
+      kind: question.kind,
+      prompt: question.prompt,
+      options: question.options,
+      points: 1,
+      position: index + 1,
+    })),
+  );
+  if (savedQuestions.error) fail(`Seed stopped: could not save the quiz questions (${savedQuestions.error.message}).`);
+
+  const savedKeys = await admin
+    .from("quiz_answer_keys")
+    .insert(questions.map((question) => ({ question_id: question.id, answers: question.key })));
+  if (savedKeys.error) fail(`Seed stopped: could not save the answer keys (${savedKeys.error.message}).`);
+
+  if (!published) return;
+  const publishedNow = await admin.from("activities").update({ published_at: new Date().toISOString() }).eq("id", sampleQuiz.id);
+  if (publishedNow.error) fail(`Seed stopped: could not publish the quiz "${sampleQuiz.title}" (${publishedNow.error.message}).`);
+}
+
+async function saveAttempt(studentId: string) {
+  const { quiz, answers } = sampleAttempt;
+  const startedAt = Date.now() - sampleAttempt.started_minutes_ago * minuteMs;
+  const submittedAt = new Date(startedAt + sampleAttempt.minutes_taken * minuteMs).toISOString();
+  const savedAttempt = await admin.from("quiz_attempts").insert({
+    id: sampleAttempt.id,
+    activity_id: quiz.id,
+    student_id: studentId,
+    attempt_no: 1,
+    started_at: new Date(startedAt).toISOString(),
+    expires_at: new Date(startedAt + (quiz.time_limit_min ?? 0) * minuteMs).toISOString(),
+    submitted_at: submittedAt,
+    score: answers.filter((given) => given.is_correct).length,
+    max_score: quiz.questions.length,
+  });
+  if (savedAttempt.error) fail(`Seed stopped: could not save the quiz attempt (${savedAttempt.error.message}).`);
+
+  const savedAnswers = await admin.from("quiz_attempt_answers").insert(
+    answers.map((given, index) => ({
+      attempt_id: sampleAttempt.id,
+      question_id: quiz.questions[index].id,
+      answer: given.answer,
+      is_correct: given.is_correct,
+      saved_at: submittedAt,
+    })),
+  );
+  if (savedAnswers.error) fail(`Seed stopped: could not save the quiz answers (${savedAnswers.error.message}).`);
+}
+
 const existing = await listUserIdsByEmail();
 const teacherId = await ensureAccount(teacher, existing);
 const studentIds: string[] = [];
@@ -318,14 +486,24 @@ const savedProgress = await admin
   );
 if (savedProgress.error) fail(`Seed stopped: could not save the lesson progress (${savedProgress.error.message}).`);
 
+await clearQuizzes(routeClassId);
 await clearDecks(routeClassId);
 for (const sampleDeck of sampleDecks) await saveDeck(sampleDeck, routeClassId, teacherId);
 
+const firstViewAt = Date.now() - 60 * minuteMs;
 const savedViews = await admin.from("deck_views").upsert(
-  viewedSlides.map((slideNo) => ({ deck_id: sampleDecks[0].id, student_id: studentIds[0], slide_no: slideNo })),
+  Array.from({ length: finishedDeck.slide_count }, (_, index) => ({
+    deck_id: finishedDeck.id,
+    student_id: studentIds[0],
+    slide_no: index + 1,
+    viewed_at: new Date(firstViewAt + index * 1000).toISOString(),
+  })),
   { onConflict: "deck_id,student_id,slide_no", ignoreDuplicates: true },
 );
 if (savedViews.error) fail(`Seed stopped: could not save the deck views (${savedViews.error.message}).`);
+
+for (const sampleQuiz of sampleQuizzes) await saveQuiz(sampleQuiz, routeClassId, teacherId);
+await saveAttempt(studentIds[0]);
 
 const savedDecks = await admin
   .from("decks")
@@ -338,6 +516,19 @@ const savedLessons = await admin
   .select("id, title, published_at")
   .in("id", sampleLessons.map((sampleLesson) => sampleLesson.id));
 if (savedLessons.error) fail(`Seed stopped: could not read the lessons (${savedLessons.error.message}).`);
+
+const savedQuizzes = await admin
+  .from("activities")
+  .select("id, title, points, published_at, due_at, attempt_limit, time_limit_min")
+  .eq("class_id", routeClassId);
+if (savedQuizzes.error) fail(`Seed stopped: could not read the quizzes (${savedQuizzes.error.message}).`);
+
+const savedAttempts = await admin
+  .from("quiz_attempts")
+  .select("score, max_score")
+  .eq("id", sampleAttempt.id)
+  .single();
+if (savedAttempts.error) fail(`Seed stopped: could not read the quiz attempt (${savedAttempts.error.message}).`);
 
 console.log("Local sample accounts");
 for (const account of [teacher, ...students]) {
@@ -360,3 +551,18 @@ for (const sampleDeck of sampleDecks) {
   if (!saved) fail(`Seed stopped: the deck "${sampleDeck.title}" was not saved.`);
   console.log(`  ${saved.title.padEnd(42)}${saved.kind === "native" ? "PPTX and PDF" : "PDF"}, ${saved.slide_count} slides`);
 }
+console.log("Quizzes in COMP 018");
+for (const sampleQuiz of sampleQuizzes) {
+  const saved = savedQuizzes.data.find((row) => row.id === sampleQuiz.id);
+  if (!saved) fail(`Seed stopped: the quiz "${sampleQuiz.title}" was not saved.`);
+  const state = saved.published_at ? "Published" : "Draft";
+  const due = saved.due_at ? `, due in ${quizDueDays} days` : "";
+  const limit = saved.time_limit_min ? `, ${saved.time_limit_min} minutes` : "";
+  console.log(
+    `  ${saved.title.padEnd(42)}${state}, ${sampleQuiz.questions.length} questions, ${saved.points} points, attempts allowed ${saved.attempt_limit}${limit}${due}`,
+  );
+}
+console.log(
+  `  ${students[0].fullName} has finished "${finishedDeck.title}" and scored ${savedAttempts.data.score} of ${savedAttempts.data.max_score} on "${sampleAttempt.quiz.title}".`,
+);
+console.log(`  ${students[1].fullName} has not opened the slides, so the quiz is locked for that account.`);
