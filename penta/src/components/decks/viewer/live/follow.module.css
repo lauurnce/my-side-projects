@@ -1,0 +1,109 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(var(--fg-rgb), 0.4);
+  color: var(--fg);
+}
+
+.words {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 0;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.trouble {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 1px solid var(--fg);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.primary {
+  background: var(--fg);
+  color: var(--fg-inv);
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .button:hover {
+    background: var(--fg);
+    color: var(--fg-inv);
+  }
+
+  .primary:hover {
+    background: none;
+    color: var(--fg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .head [data-dot] {
+    animation: beat 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes beat {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 480px) {
+  .button {
+    width: 100%;
+  }
+}
