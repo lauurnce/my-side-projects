@@ -6,6 +6,17 @@ import type { Database } from "../../src/lib/database.types";
 export type Client = SupabaseClient<Database>;
 export type Actor = { id: string; email: string; client: Client };
 export type JoinResult = { status: string; class_id?: string; retry_at?: string };
+export type ReserveResult = { status: string; deck_id?: string; free_bytes?: number };
+export type StorageUsage = { used_bytes: number; reserved_bytes: number; budget_bytes: number };
+export type DeckKind = "pdf" | "native";
+export type DeckOptions = {
+  title?: string;
+  kind?: DeckKind;
+  lessonId?: string | null;
+  ready?: boolean;
+  slideCount?: number;
+  sizeBytes?: number;
+};
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -20,6 +31,11 @@ export const checkFailed = "23514";
 export const foreignKeyFailed = "23503";
 export const duplicateKey = "23505";
 export const limitReached = "P0001";
+export const deckBucket = "decks";
+export const pdfType = "application/pdf";
+export const pptxType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+export const deckColumns =
+  "id, class_id, lesson_id, title, kind, pdf_path, original_path, slide_count, size_bytes, created_by, created_at, ready_at";
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
 export const admin = createClient<Database>(url, serviceRoleKey, sessionless);
@@ -201,6 +217,111 @@ export async function readProgress(lessonId: string, studentId?: string) {
   return data;
 }
 
+export function deckPaths(classId: string, deckId: string, kind: DeckKind = "pdf") {
+  const folder = `${classId}/${deckId}`;
+  return { pdf_path: `${folder}/slides.pdf`, original_path: kind === "native" ? `${folder}/original.pptx` : null };
+}
+
+export async function addDeck(classId: string, createdBy: string, options: DeckOptions = {}) {
+  const id = randomUUID();
+  const kind = options.kind ?? "pdf";
+  const ready = options.ready ?? true;
+  const { data, error } = await admin
+    .from("decks")
+    .insert({
+      id,
+      class_id: classId,
+      lesson_id: options.lessonId ?? null,
+      title: options.title ?? `Deck ${id.slice(0, 8)}`,
+      kind,
+      ...deckPaths(classId, id, kind),
+      size_bytes: options.sizeBytes ?? 1024,
+      created_by: createdBy,
+      slide_count: ready ? (options.slideCount ?? 5) : null,
+      ready_at: ready ? new Date().toISOString() : null,
+    })
+    .select(deckColumns)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export function addUnfinishedDeck(classId: string, createdBy: string, options: DeckOptions = {}) {
+  return addDeck(classId, createdBy, { ...options, ready: false });
+}
+
+export async function readDeck(deckId: string) {
+  const { data, error } = await admin.from("decks").select(deckColumns).eq("id", deckId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function countDecks(classId: string): Promise<number> {
+  const { count, error } = await admin.from("decks").select("id", { count: "exact", head: true }).eq("class_id", classId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function readViews(deckId: string) {
+  const { data, error } = await admin
+    .from("deck_views")
+    .select("deck_id, student_id, slide_no, viewed_at")
+    .eq("deck_id", deckId)
+    .order("slide_no");
+  if (error) throw error;
+  return data;
+}
+
+export async function recordView(deckId: string, studentId: string, slideNo: number) {
+  const { error } = await admin.from("deck_views").insert({ deck_id: deckId, student_id: studentId, slide_no: slideNo });
+  if (error) throw error;
+}
+
+export async function storeDeckFile(path: string, bytes: Uint8Array, contentType = pdfType) {
+  const { error } = await admin.storage.from(deckBucket).upload(path, bytes, { contentType, upsert: false });
+  if (error) throw error;
+}
+
+export async function deckFileExists(path: string): Promise<boolean> {
+  const { data, error } = await admin.storage.from(deckBucket).exists(path);
+  if (error) return false;
+  return data;
+}
+
+export async function readUsage(client: Client) {
+  const { data, error } = await client.rpc("storage_usage");
+  return { usage: data as StorageUsage | null, error };
+}
+
+async function listDeckFolder(folder: string) {
+  const { data, error } = await admin.storage.from(deckBucket).list(folder, { limit: 1000 });
+  if (error) throw error;
+  return data;
+}
+
+async function storedDeckFiles(classId: string): Promise<string[]> {
+  const names: string[] = [];
+  for (const deckFolder of await listDeckFolder(classId)) {
+    const folder = `${classId}/${deckFolder.name}`;
+    if (deckFolder.id) names.push(folder);
+    else names.push(...(await listDeckFolder(folder)).map((file) => `${folder}/${file.name}`));
+  }
+  return names;
+}
+
+export async function removeDecks(classIds: string[]) {
+  for (const chunk of chunksOf(classIds)) {
+    const { error } = await admin.from("decks").delete().in("class_id", chunk);
+    if (error) throw error;
+  }
+  for (const classId of classIds) {
+    const names = await storedDeckFiles(classId);
+    if (names.length === 0) continue;
+    const { error } = await admin.storage.from(deckBucket).remove(names);
+    if (error) throw error;
+  }
+}
+
 export async function join(client: Client, code: string) {
   const { data, error } = await client.rpc("join_class", { code });
   return { result: data as JoinResult | null, error };
@@ -252,7 +373,7 @@ async function idsWhere(table: "classes" | "modules" | "lessons", column: string
   return found;
 }
 
-async function deleteWhere(table: "lesson_progress" | "lessons" | "modules", column: string, parentIds: string[]) {
+async function deleteWhere(table: "lesson_progress" | "lessons" | "modules" | "decks", column: string, parentIds: string[]) {
   for (const chunk of chunksOf(parentIds)) {
     const { error } = await admin.from(table).delete().in(column, chunk);
     if (error) throw error;
@@ -263,6 +384,8 @@ async function removeRoutes(userIds: string[]) {
   const classIds = await idsWhere("classes", "teacher_id", userIds);
   const moduleIds = await idsWhere("modules", "class_id", classIds);
   const lessonIds = await idsWhere("lessons", "module_id", moduleIds);
+  await removeDecks(classIds);
+  await deleteWhere("decks", "created_by", userIds);
   await deleteWhere("lesson_progress", "student_id", userIds);
   await deleteWhere("lesson_progress", "lesson_id", lessonIds);
   await deleteWhere("lessons", "module_id", moduleIds);
