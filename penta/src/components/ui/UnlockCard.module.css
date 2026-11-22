@@ -1,0 +1,71 @@
+.block,
+.link {
+  display: block;
+  min-width: 0;
+}
+
+.link {
+  --ring: var(--ink);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline-offset: -6px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
+  background: var(--card);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  clip-path: polygon(0 0, calc(100% - var(--clip)) 0, 100% var(--clip), 100% 100%, var(--clip) 100%, 0 calc(100% - var(--clip)));
+}
+
+.label,
+.count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.label {
+  padding-right: var(--clip);
+  color: var(--ink-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.track {
+  display: block;
+  height: 6px;
+  background: rgba(var(--ink-rgb), 0.18);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+
+.count {
+  padding-left: var(--clip);
+}
+
+@media (hover: hover) {
+  .link:hover .title {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+}
