@@ -99,3 +99,18 @@
   font-family: var(--font-mono);
   font-size: 12px;
 }
+
+.post {
+  overflow: clip;
+  contain: paint;
+}
+
+.post pre {
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.post a,
+.post .host {
+  unicode-bidi: isolate;
+}

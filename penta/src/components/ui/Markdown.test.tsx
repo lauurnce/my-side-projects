@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Markdown, safeMarkdownUrl } from "@/components/ui/Markdown";
+import { cleanPostText, Markdown, PostMarkdown, safeMarkdownUrl, safePostUrl } from "@/components/ui/Markdown";
 
 afterEach(cleanup);
 
@@ -93,5 +93,102 @@ describe("safeMarkdownUrl", () => {
     expect(safeMarkdownUrl(" javascript:alert(1)")).toBe("");
     expect(safeMarkdownUrl("/\\evil.example")).toBe("");
     expect(safeMarkdownUrl("")).toBe("");
+  });
+});
+
+describe("PostMarkdown", () => {
+  function html(body: string): string {
+    return render(<PostMarkdown>{body}</PostMarkdown>).container.innerHTML;
+  }
+
+  it("renders a script tag as text", () => {
+    const { container } = render(<PostMarkdown>{"hello <script>window.postScriptRan = true</script>"}</PostMarkdown>);
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.textContent).toContain("<script>window.postScriptRan = true</script>");
+    expect((window as { postScriptRan?: boolean }).postScriptRan).toBeUndefined();
+  });
+
+  it.each([
+    "<img src=x onerror=alert(1)>",
+    "<iframe src=https://evil.example></iframe>",
+    "<svg onload=alert(1)>",
+    "<style>body{display:none}</style>",
+    "<b>bold</b> <!-- c -->",
+  ])("never turns raw markup into an element: %s", (body) => {
+    const { container } = render(<PostMarkdown>{body}</PostMarkdown>);
+    expect(container.querySelector("img, iframe, svg, style, b, script")).toBeNull();
+  });
+
+  it.each([
+    "[a](javascript:alert(1))",
+    "[a](JaVaScRiPt:alert(1))",
+    "[a](data:text/html;base64,PHNjcmlwdD4=)",
+    "[a](vbscript:x)",
+    "<javascript:alert(1)>",
+    "[a](java&#x73;cript:alert(1))",
+    "[a]( javascript:alert(1))",
+    "[a](/logout)",
+    "[a](//evil.example)",
+    "[a](mailto:t@x.example?subject=hi&bcc=a@b.example)",
+    "[a][r]\n\n[r]: javascript:alert(1)",
+  ])("does not make a link of %s", (body) => {
+    const { container } = render(<PostMarkdown>{body}</PostMarkdown>);
+    expect(container.querySelector("a")).toBeNull();
+  });
+
+  it("makes a safe link with the host shown and no opener", () => {
+    const { container } = render(<PostMarkdown>{"[the docs](https://penta.edu@evil.example/x)"}</PostMarkdown>);
+    const link = container.querySelector("a")!;
+    expect(link.getAttribute("href")).toBe("https://penta.edu@evil.example/x");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer nofollow ugc");
+    expect(link.getAttribute("target")).toBeNull();
+    expect(link.textContent).toBe("the docs (evil.example)");
+  });
+
+  it("keeps the words of a heading as a paragraph", () => {
+    expect(html("# Heading words\n\nbody")).toContain("<p>Heading words</p>");
+    expect(html("Please help me\n===\nnext")).toContain("<p>Please help me</p>");
+    expect(html("my answer is 5\n---\nnext line")).toContain("<p>my answer is 5</p>");
+    const { container } = render(<PostMarkdown>{"# One\n\n## Two"}</PostMarkdown>);
+    expect(container.querySelector("h1, h2, h3, h4, h5, h6")).toBeNull();
+  });
+
+  it("turns an image into a link and loads nothing", () => {
+    const { container } = render(<PostMarkdown>{"![alt text](https://evil.example/p.gif)"}</PostMarkdown>);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("a")?.textContent).toBe("alt text (evil.example)");
+  });
+
+  it("keeps emphasis, code, lists, quotes and hard breaks", () => {
+    const out = html("*a* **b** `c`\n\n- one\n  1. two\n\n> q  \n> r\n\n```\ncode\n```");
+    for (const tag of ["<em>", "<strong>", "<code>", "<ul>", "<ol>", "<blockquote>", "<br>", "<pre>"]) {
+      expect(out).toContain(tag);
+    }
+  });
+
+  it("drops the language class a student chose for a code block", () => {
+    const { container } = render(<PostMarkdown>{"```anything\ncode\n```"}</PostMarkdown>);
+    expect(container.querySelector("code")?.getAttribute("class")).toBeNull();
+  });
+
+  it("strips hidden and direction characters written as references", () => {
+    const { container } = render(<PostMarkdown>{"abc &#x202E;txt.exe &rlm; &#8238; &zwj; &#x2066; done &#8203;"}</PostMarkdown>);
+    expect(container.textContent).not.toMatch(/[​-‏‪-‮⁦-⁩]/);
+    expect(container.textContent).toContain("txt.exe");
+  });
+
+  it("caps stacked combining marks at three", () => {
+    expect(cleanPostText(`z${"́".repeat(50)}`)).toBe(`z${"́".repeat(3)}`);
+  });
+
+  it("leaves tables and bare addresses as plain text", () => {
+    const { container } = render(<PostMarkdown>{"| a | b |\n| - | - |\n\nhttps://evil.example"}</PostMarkdown>);
+    expect(container.querySelector("table, a")).toBeNull();
+  });
+
+  it("only accepts http and https for post links", () => {
+    expect(safePostUrl("https://a.example")).toBe("https://a.example");
+    expect(safePostUrl("mailto:a@b.example")).toBe("");
+    expect(safePostUrl("javascript:alert(1)")).toBe("");
   });
 });
