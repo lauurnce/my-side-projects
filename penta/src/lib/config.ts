@@ -8,6 +8,7 @@ export const storagePlan = {
   maxFileBytes: 50 * megabyte,
   totalBytes: 1024 * megabyte,
   functionBodyBytes: 4.5 * megabyte,
+  blockBytes: 900 * megabyte,
 } as const;
 
 export const submissionUpload = {
@@ -81,3 +82,15 @@ export const quizLimits = {
   saveDebounceMilliseconds: 600,
   timerNoticesMinutes: [10, 5, 1],
 } as const;
+
+export const submissionLimits = {
+  fileNameLength: 120,
+  feedbackLength: 5000,
+  pointsMax: 1000,
+  uploadWindowMinutes: 30,
+  fileUrlSeconds: 60,
+  contentTypesMaxBytes: megabyte,
+  pdfTailBytes: 1024,
+} as const;
+
+export const altitudeWeights = { lessons: 1200, decks: 600, activities: 1200 } as const;
