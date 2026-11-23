@@ -1,0 +1,51 @@
+.page {
+  padding: 32px var(--gutter) 64px;
+  color: var(--fg);
+}
+
+.header {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--display-m);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.stage {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}

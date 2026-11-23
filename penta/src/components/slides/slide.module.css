@@ -1,0 +1,46 @@
+.frame {
+  position: relative;
+  overflow: hidden;
+  contain: strict;
+}
+
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1600px;
+  height: 900px;
+  transform-origin: 0 0;
+  background: var(--on-ink);
+  color: var(--ink);
+}
+
+.block {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 96px;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.text {
+  font-family: var(--font-body);
+  font-size: 32px;
+  line-height: 1.4;
+}
+
+.box {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 44px;
+  line-height: 1;
+  text-transform: uppercase;
+}
