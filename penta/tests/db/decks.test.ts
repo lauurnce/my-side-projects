@@ -231,8 +231,8 @@ describe("decks update", () => {
   });
 
   it("decks update: the teacher cannot change any other column", async () => {
-    const deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "native" });
-    const moved = deckPaths(world.classroom.id, randomUUID(), "native");
+    const deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx" });
+    const moved = deckPaths(world.classroom.id, randomUUID(), "pptx");
     const changes: Record<string, unknown>[] = [
       { size_bytes: 1 },
       { slide_count: 300 },
@@ -335,7 +335,7 @@ describe("decks constraints", () => {
   });
 
   it("decks constraints: a path that does not match the ids is refused", async () => {
-    const elsewhere = deckPaths(world.otherClassroom.id, randomUUID(), "native");
+    const elsewhere = deckPaths(world.otherClassroom.id, randomUUID(), "pptx");
     const row = fullRow(world.classroom.id, world.teacher.id);
     const changes: Record<string, unknown>[] = [
       { pdf_path: elsewhere.pdf_path },
@@ -343,8 +343,8 @@ describe("decks constraints", () => {
       { pdf_path: `${world.classroom.id}/${row.id}/other.pdf` },
       { pdf_path: `${world.classroom.id}/${row.id}/../${row.id}/slides.pdf` },
       { pdf_path: "slides.pdf" },
-      { kind: "native", original_path: elsewhere.original_path },
-      { kind: "native", original_path: `${world.classroom.id}/${row.id}/slides.pdf` },
+      { kind: "pptx", original_path: elsewhere.original_path },
+      { kind: "pptx", original_path: `${world.classroom.id}/${row.id}/slides.pdf` },
     ];
     for (const change of changes) {
       const { error } = await admin.from("decks").insert({ ...row, ...change } as never);
@@ -353,19 +353,19 @@ describe("decks constraints", () => {
     expect(await readDeck(row.id)).toBeNull();
   });
 
-  it("decks constraints: a native deck needs its original path and a pdf deck must not have one", async () => {
+  it("decks constraints: a pptx deck needs its original path and a pdf deck must not have one", async () => {
     const row = fullRow(world.classroom.id, world.teacher.id);
-    const original = deckPaths(world.classroom.id, row.id, "native").original_path;
-    const nativeWithout = await admin.from("decks").insert({ ...row, kind: "native" });
-    expect(nativeWithout.error?.code).toBe(checkFailed);
+    const original = deckPaths(world.classroom.id, row.id, "pptx").original_path;
+    const pptxWithout = await admin.from("decks").insert({ ...row, kind: "pptx" });
+    expect(pptxWithout.error?.code).toBe(checkFailed);
     const pdfWith = await admin.from("decks").insert({ ...row, original_path: original });
     expect(pdfWith.error?.code).toBe(checkFailed);
-    const nativeWith = await admin.from("decks").insert({ ...row, kind: "native", original_path: original });
-    expect(nativeWith.error).toBeNull();
+    const pptxWith = await admin.from("decks").insert({ ...row, kind: "pptx", original_path: original });
+    expect(pptxWith.error).toBeNull();
   });
 
-  it("decks constraints: kind must be pdf or native", async () => {
-    for (const kind of ["pptx", "PDF", "", "html"]) {
+  it("decks constraints: kind must be pdf or pptx", async () => {
+    for (const kind of ["slides", "PDF", "", "html"]) {
       expect((await adminInsert({ kind })).error?.code).toBe(checkFailed);
     }
   });

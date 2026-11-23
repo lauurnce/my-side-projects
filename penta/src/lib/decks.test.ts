@@ -15,7 +15,7 @@ const row = {
   class_id: "c1",
   lesson_id: null,
   title: "Message-based integration",
-  kind: "native",
+  kind: "pptx",
   slide_count: 24,
   size_bytes: 3 * megabyte,
   ready_at: "2026-11-22T01:00:00Z",
@@ -25,7 +25,7 @@ const row = {
 describe("download file name", () => {
   it("keeps letters and digits and takes the extension from the kind", () => {
     expect(downloadFileName("Week 3: Message-based integration", "pdf")).toBe("Week-3-Message-based-integration.pdf");
-    expect(downloadFileName("Week 3", "native")).toBe("Week-3.pptx");
+    expect(downloadFileName("Week 3", "pptx")).toBe("Week-3.pptx");
   });
 
   it("drops path parts, quotes and line breaks", () => {
@@ -35,7 +35,7 @@ describe("download file name", () => {
 
   it("falls back to deck when nothing is left", () => {
     expect(downloadFileName("数据库", "pdf")).toBe("deck.pdf");
-    expect(downloadFileName("...", "native")).toBe("deck.pptx");
+    expect(downloadFileName("...", "pptx")).toBe("deck.pptx");
   });
 
   it("caps the length", () => {
@@ -45,7 +45,7 @@ describe("download file name", () => {
 
 describe("deck summary", () => {
   it("maps a row and clamps the viewed count to the slide count", () => {
-    expect(toDeckSummary(row, 30)).toMatchObject({ kind: "native", slideCount: 24, viewedCount: 24, ready: true });
+    expect(toDeckSummary(row, 30)).toMatchObject({ kind: "pptx", slideCount: 24, viewedCount: 24, ready: true });
     expect(toDeckSummary(row, -2).viewedCount).toBe(0);
   });
 
@@ -58,7 +58,7 @@ describe("deck summary", () => {
   });
 
   it("names the format of the downloadable file", () => {
-    expect(deckFormat("native")).toBe("PPTX");
+    expect(deckFormat("pptx")).toBe("PPTX");
     expect(deckFormat("pdf")).toBe("PDF");
   });
 });

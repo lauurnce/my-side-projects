@@ -8,7 +8,7 @@ type DeckRow = Pick<
   "id" | "class_id" | "lesson_id" | "title" | "kind" | "slide_count" | "size_bytes" | "ready_at" | "created_at"
 >;
 
-export type DeckKind = "pdf" | "native";
+export type DeckKind = "pdf" | "pptx";
 
 export type DeckSummary = {
   id: string;
@@ -30,8 +30,16 @@ export type UsageLevel = "ok" | "nearly_full" | "full";
 
 const deckColumns = "id, class_id, lesson_id, title, kind, slide_count, size_bytes, ready_at, created_at";
 
-export function deckFormat(kind: DeckKind): "PDF" | "PPTX" {
-  return kind === "native" ? "PPTX" : "PDF";
+const deckKinds: readonly DeckKind[] = ["pdf", "pptx"];
+const formatByKind = { pdf: "PDF", pptx: "PPTX" } as const satisfies Record<DeckKind, string>;
+const extensionByKind = { pdf: "pdf", pptx: "pptx" } as const satisfies Record<DeckKind, string>;
+
+export function toDeckKind(value: string): DeckKind {
+  return deckKinds.find((kind) => kind === value) ?? "pdf";
+}
+
+export function deckFormat(kind: DeckKind): (typeof formatByKind)[DeckKind] {
+  return formatByKind[kind];
 }
 
 export function downloadFileName(title: string, kind: DeckKind): string {
@@ -41,7 +49,7 @@ export function downloadFileName(title: string, kind: DeckKind): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80)
     .replace(/-+$/, "");
-  return `${base || "deck"}.${kind === "native" ? "pptx" : "pdf"}`;
+  return `${base || "deck"}.${extensionByKind[kind]}`;
 }
 
 export function formatBytes(bytes: number): string {
@@ -57,7 +65,7 @@ export function toDeckSummary(row: DeckRow, viewedCount = 0): DeckSummary {
     classId: row.class_id,
     lessonId: row.lesson_id,
     title: row.title,
-    kind: row.kind === "native" ? "native" : "pdf",
+    kind: toDeckKind(row.kind),
     slideCount,
     sizeBytes: row.size_bytes,
     ready: row.ready_at !== null,

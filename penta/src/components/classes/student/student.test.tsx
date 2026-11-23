@@ -337,7 +337,7 @@ describe("ClassDetail", () => {
   it("links each deck with the lesson title or the class code above it", () => {
     const decks: DeckSummary[] = [
       { id: "d1", classId, lessonId: "l4", title: "Queues in pictures", kind: "pdf", slideCount: 24, sizeBytes: 9, ready: true, viewedCount: 6 },
-      { id: "d2", classId, lessonId: "l2", title: "Draft companion", kind: "native", slideCount: 8, sizeBytes: 9, ready: true, viewedCount: 0 },
+      { id: "d2", classId, lessonId: "l2", title: "Draft companion", kind: "pptx", slideCount: 8, sizeBytes: 9, ready: true, viewedCount: 0 },
       { id: "d3", classId, lessonId: null, title: "Course intro", kind: "pdf", slideCount: 1, sizeBytes: 9, ready: true, viewedCount: 0 },
     ];
     render(<ClassDetail {...detail} decks={decks} />);

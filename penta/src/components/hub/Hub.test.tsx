@@ -232,7 +232,7 @@ describe("HubLayers", () => {
   });
 
   it("shows a teacher only ready decks as a list with no viewed line", () => {
-    const decks = [sampleDeck(1), sampleDeck(2, { ready: false, slideCount: 0 }), sampleDeck(3, { kind: "native" })];
+    const decks = [sampleDeck(1), sampleDeck(2, { ready: false, slideCount: 0 }), sampleDeck(3, { kind: "pptx" })];
     render(<HubLayers role="teacher" classes={[halfway]} decks={decks} />);
     const region = screen.getByRole("region", { name: "Decks" });
     const panel = within(region);

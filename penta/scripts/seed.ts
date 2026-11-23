@@ -167,7 +167,7 @@ const sampleDecks = [
   {
     id: "5e9a0000-0000-4000-8000-0000000d0002",
     title: "Backup strategies",
-    kind: "native",
+    kind: "pptx",
     lesson_id: null,
     slide_count: 6,
     pdf: buildPdf(6),
@@ -904,7 +904,7 @@ console.log("Decks in COMP 018");
 for (const sampleDeck of sampleDecks) {
   const saved = savedDecks.data.find((row) => row.id === sampleDeck.id);
   if (!saved) fail(`Seed stopped: the deck "${sampleDeck.title}" was not saved.`);
-  console.log(`  ${saved.title.padEnd(42)}${saved.kind === "native" ? "PPTX and PDF" : "PDF"}, ${saved.slide_count} slides`);
+  console.log(`  ${saved.title.padEnd(42)}${saved.kind === "pptx" ? "PPTX and PDF" : "PDF"}, ${saved.slide_count} slides`);
 }
 console.log("Quizzes in COMP 018");
 for (const sampleQuiz of sampleQuizzes) {

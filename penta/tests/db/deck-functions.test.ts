@@ -127,13 +127,13 @@ describe("reserve_deck", () => {
     expect(Math.abs(Date.now() - new Date(row!.created_at).getTime())).toBeLessThan(60_000);
   });
 
-  it("reserve_deck: a native deck gets an original path and a lesson of the class can be linked", async () => {
-    const { result } = await reserve(world.teacher.client, { deck_kind: "native", target_lesson: ownLesson.id });
+  it("reserve_deck: a pptx deck gets an original path and a lesson of the class can be linked", async () => {
+    const { result } = await reserve(world.teacher.client, { deck_kind: "pptx", target_lesson: ownLesson.id });
     expect(result?.status).toBe("reserved");
     expect(await readDeck(result!.deck_id!)).toMatchObject({
-      kind: "native",
+      kind: "pptx",
       lesson_id: ownLesson.id,
-      ...deckPaths(world.classroom.id, result!.deck_id!, "native"),
+      ...deckPaths(world.classroom.id, result!.deck_id!, "pptx"),
       ready_at: null,
     });
   });
@@ -169,19 +169,19 @@ describe("reserve_deck", () => {
     expect(await countDecks(world.classroom.id)).toBe(0);
   });
 
-  it("reserve_deck: a kind outside pdf and native gives bad_kind", async () => {
-    for (const deck_kind of ["pptx", "PDF", "", "html"]) {
+  it("reserve_deck: a kind outside pdf and pptx gives bad_kind", async () => {
+    for (const deck_kind of ["native", "PDF", "", "html"]) {
       expect((await reserve(world.teacher.client, { deck_kind })).result).toEqual({ status: "bad_kind" });
     }
     expect(await countDecks(world.classroom.id)).toBe(0);
   });
 
-  it("reserve_deck: 0 bytes, a pdf above 50 MB and a native deck above 100 MB give too_large", async () => {
+  it("reserve_deck: 0 bytes, a pdf above 50 MB and a pptx deck above 100 MB give too_large", async () => {
     const cases: Partial<ReserveArgs>[] = [
       { declared_bytes: 0 },
       { declared_bytes: -1 },
       { deck_kind: "pdf", declared_bytes: largestPdf + 1 },
-      { deck_kind: "native", declared_bytes: largestDeck + 1 },
+      { deck_kind: "pptx", declared_bytes: largestDeck + 1 },
     ];
     for (const change of cases) {
       expect((await reserve(world.teacher.client, change)).result).toEqual({ status: "too_large" });
@@ -189,12 +189,12 @@ describe("reserve_deck", () => {
     expect(await countDecks(world.classroom.id)).toBe(0);
   });
 
-  it("reserve_deck: exactly 50 MB for a pdf and 100 MB for a native deck are accepted", async () => {
+  it("reserve_deck: exactly 50 MB for a pdf and 100 MB for a pptx deck are accepted", async () => {
     expect(await freeNow()).toBeGreaterThan(largestPdf + largestDeck);
     const pdf = await reserve(world.teacher.client, { deck_kind: "pdf", declared_bytes: largestPdf });
     expect(pdf.result?.status).toBe("reserved");
-    const native = await reserve(world.teacher.client, { deck_kind: "native", declared_bytes: largestDeck });
-    expect(native.result?.status).toBe("reserved");
+    const pptx = await reserve(world.teacher.client, { deck_kind: "pptx", declared_bytes: largestDeck });
+    expect(pptx.result?.status).toBe("reserved");
   });
 
   it("reserve_deck: a lesson of another class or a missing lesson gives bad_lesson", async () => {
@@ -383,7 +383,7 @@ describe("storage_usage", () => {
 
   it("storage_usage: used_bytes grows by the size of a stored object", async () => {
     const before = await usageNow();
-    const deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "native" });
+    const deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx" });
     const pdf = buildPdf(3, 2000);
     const pptx = buildPptx();
     await storeDeckFile(deck.pdf_path, pdf);
@@ -423,7 +423,7 @@ describe("sweep_decks", () => {
   it("sweep_decks: it returns an object that has no deck row and not one that has", async () => {
     const orphan = `${world.classroom.id}/${randomUUID()}/slides.pdf`;
     const strayOriginal = `${world.classroom.id}/${randomUUID()}/original.pptx`;
-    const ready = await addDeck(world.classroom.id, world.teacher.id, { kind: "native" });
+    const ready = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx" });
     const unfinished = await addUnfinishedDeck(world.classroom.id, world.teacher.id);
     await storeDeckFile(orphan, buildPdf(1));
     await storeDeckFile(strayOriginal, buildPptx(), pptxType);

@@ -77,7 +77,7 @@ export async function startDeckUpload(input: unknown): Promise<StartUploadResult
   const { data, error } = await supabase.rpc("reserve_deck", {
     target_class: classId,
     deck_title: title,
-    deck_kind: pptx ? "native" : "pdf",
+    deck_kind: pptx ? "pptx" : "pdf",
     target_lesson: lessonId as string,
     declared_bytes: declaredBytes,
   });

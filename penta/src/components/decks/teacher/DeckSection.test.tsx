@@ -16,7 +16,7 @@ const brokers = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const queues = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const readyId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const pendingId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-const nativeId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const pptxId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
 const outline: ClassOutline = {
   classId,
@@ -58,12 +58,12 @@ const pendingDeck: DeckSummary = {
   ready: false,
 };
 
-const nativeDeck: DeckSummary = {
+const pptxDeck: DeckSummary = {
   ...readyDeck,
-  id: nativeId,
+  id: pptxId,
   lessonId: queues,
   title: "Queues workshop",
-  kind: "native",
+  kind: "pptx",
   slideCount: 1,
   sizeBytes: 12 * megabyte,
 };
@@ -133,7 +133,7 @@ describe("storage meter", () => {
 describe("deck labels", () => {
   it("writes slides, format and size", () => {
     expect(deckMeta(readyDeck)).toBe("24 slides · PDF · 3.2 MB");
-    expect(deckMeta(nativeDeck)).toBe("1 slide · PPTX · 12 MB");
+    expect(deckMeta(pptxDeck)).toBe("1 slide · PPTX · 12 MB");
     expect(deckMeta(pendingDeck)).toBe("PDF · 48 MB");
   });
 
@@ -156,7 +156,7 @@ describe("deck labels", () => {
 
   it("knows when a deck waits on a draft lesson", () => {
     expect(isLinkedToDraft(readyDeck, lessons)).toBe(false);
-    expect(isLinkedToDraft(nativeDeck, lessons)).toBe(true);
+    expect(isLinkedToDraft(pptxDeck, lessons)).toBe(true);
     expect(isLinkedToDraft(pendingDeck, lessons)).toBe(false);
   });
 });
@@ -204,7 +204,7 @@ describe("deck list", () => {
   });
 
   it("tells the teacher when the linked lesson is a draft", () => {
-    renderList([readyDeck, nativeDeck]);
+    renderList([readyDeck, pptxDeck]);
     expect(row("Queues workshop").getByText("Students see this deck after the lesson is published.")).toBeTruthy();
     expect(row("Brokers in practice").queryByText(/after the lesson is published/)).toBeNull();
   });
@@ -261,9 +261,9 @@ describe("live chip in the deck list", () => {
   it("shows Live next to the title of a deck with a running session", () => {
     const { container } = render(
       <DeckList
-        decks={[readyDeck, nativeDeck]}
+        decks={[readyDeck, pptxDeck]}
         lessons={lessons}
-        liveDeckIds={[nativeId]}
+        liveDeckIds={[pptxId]}
         state={{}}
         formAction={() => {}}
         pending={false}
@@ -277,7 +277,7 @@ describe("live chip in the deck list", () => {
   });
 
   it("shows no Live chip without a session", () => {
-    const { container } = renderList([readyDeck, pendingDeck, nativeDeck]);
+    const { container } = renderList([readyDeck, pendingDeck, pptxDeck]);
     expect(container.querySelector('[data-status="live"]')).toBeNull();
     expect(screen.queryByText("Live")).toBeNull();
   });

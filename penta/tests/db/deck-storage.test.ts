@@ -88,7 +88,7 @@ async function signedUploadUrl(path: string): Promise<string> {
 
 beforeAll(async () => {
   world = await createRouteWorld();
-  deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "native", slideCount: 2, sizeBytes: storedPdf.length });
+  deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx", slideCount: 2, sizeBytes: storedPdf.length });
   await storeDeckFile(deck.pdf_path, storedPdf);
   await storeDeckFile(deck.original_path!, buildPptx(), pptxType);
   callers = [

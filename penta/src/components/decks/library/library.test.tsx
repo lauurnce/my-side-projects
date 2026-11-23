@@ -44,7 +44,7 @@ const longTitle = "W".repeat(120);
 
 describe("DeckLibrary", () => {
   it("shows the heading, the count and one link per deck", () => {
-    const decks = [deck("a", { lessonId: "l1", viewedCount: 5 }), deck("b", { kind: "native" }), deck("c")];
+    const decks = [deck("a", { lessonId: "l1", viewedCount: 5 }), deck("b", { kind: "pptx" }), deck("c")];
     render(<DeckLibrary decks={decks} classCode="INTE 301" outline={outline} />);
     expect(screen.getByRole("region", { name: "Decks" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Decks");
@@ -133,7 +133,7 @@ describe("HubDeckList", () => {
   });
 
   it("shows a teacher a compact list with no viewed numbers", () => {
-    const decks = [deck("a", { kind: "native", classId: "c2" }), deck("b", { slideCount: 1 })];
+    const decks = [deck("a", { kind: "pptx", classId: "c2" }), deck("b", { slideCount: 1 })];
     const { container } = render(<HubDeckList role="teacher" decks={decks} classes={classes} />);
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/decks/a", "/decks/b"]);

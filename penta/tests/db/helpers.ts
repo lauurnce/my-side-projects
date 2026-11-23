@@ -62,7 +62,7 @@ export type ClassAltitude = {
   points_possible: number;
 };
 export type Altitude = { overall: number; classes: ClassAltitude[] };
-export type DeckKind = "pdf" | "native";
+export type DeckKind = "pdf" | "pptx";
 export type LiveAnswer = { status: string; session_id?: string; revision?: number };
 export type LiveStateAnswer = { session_id: string | null; current_slide: number | null; revision: number; running: boolean };
 export type SessionOptions = { slide?: number; activeMinutesAgo?: number; ended?: boolean };
@@ -360,7 +360,7 @@ export async function readProgress(lessonId: string, studentId?: string) {
 
 export function deckPaths(classId: string, deckId: string, kind: DeckKind = "pdf") {
   const folder = `${classId}/${deckId}`;
-  return { pdf_path: `${folder}/slides.pdf`, original_path: kind === "native" ? `${folder}/original.pptx` : null };
+  return { pdf_path: `${folder}/slides.pdf`, original_path: kind === "pptx" ? `${folder}/original.pptx` : null };
 }
 
 export async function addDeck(classId: string, createdBy: string, options: DeckOptions = {}) {

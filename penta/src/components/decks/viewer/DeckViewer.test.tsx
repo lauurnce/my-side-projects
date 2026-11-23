@@ -104,7 +104,7 @@ const deck: DeckDetail = {
   classId,
   lessonId: null,
   title: "Message queues",
-  kind: "native",
+  kind: "pptx",
   slideCount: 5,
   sizeBytes: 300000,
   ready: true,
