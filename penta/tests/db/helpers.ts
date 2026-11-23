@@ -81,6 +81,53 @@ export type QuizOptions = {
 };
 export type AttemptPatch = Database["public"]["Tables"]["quiz_attempts"]["Update"];
 export type ActivityPatch = Database["public"]["Tables"]["activities"]["Update"];
+export type ThreadTarget = { lesson?: string | null; activity?: string | null };
+export type ThreadReply = { status: string; thread_id?: string; post_id?: string };
+export type ViewPost = {
+  id: string;
+  parent_id: string | null;
+  is_question: boolean;
+  author_name: string;
+  author_role: string;
+  mine: boolean;
+  can_edit: boolean;
+  body: string;
+  created_at: string;
+  edited_at: string | null;
+  hidden?: boolean;
+  author_id?: string | null;
+  author_in_class?: boolean;
+  edit_count?: number;
+};
+export type ThreadView = {
+  status: string;
+  version?: number;
+  thread?: {
+    id: string;
+    class_id: string;
+    lesson_id: string | null;
+    activity_id: string | null;
+    target_title: string;
+    title: string;
+    locked: boolean;
+    can_moderate: boolean;
+  };
+  posts?: ViewPost[];
+};
+export type SeededThread = {
+  createdBy?: string | null;
+  authorName?: string;
+  createdAt?: string;
+  title?: string;
+  body?: string;
+};
+export type SeededPost = {
+  authorId?: string | null;
+  authorName?: string;
+  body?: string;
+  parentId?: string | null;
+  createdAt?: string;
+};
 export type DeckOptions = {
   title?: string;
   kind?: DeckKind;
@@ -121,6 +168,12 @@ export const activityColumns =
   "id, class_id, lesson_id, type, title, instructions_md, points, due_at, published_at, requires_deck_id, attempt_limit, time_limit_min, show_answers, created_by, created_at";
 export const attemptColumns =
   "id, activity_id, student_id, attempt_no, started_at, expires_at, submitted_at, score, max_score, answers_seen_at";
+export const threadColumns =
+  "id, class_id, lesson_id, activity_id, title, created_by, created_at, locked, locked_by, locked_at, version";
+export const postColumns =
+  "id, thread_id, author_id, author_name, body, parent_id, is_question, created_at, edited_at, edit_count, hidden_at, hidden_by";
+export const postEventColumns = "id, post_id, actor_id, kind, old_body, happened_at";
+export const notFound = { status: "not_found" };
 export const noLiveState: LiveStateAnswer = { session_id: null, current_slide: null, revision: 0, running: false };
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
@@ -867,6 +920,247 @@ export async function removeSubmissions(classIds: string[]) {
   for (const classId of classIds) await removeSubmissionFiles(await storedFilesUnder(submissionBucket, classId));
 }
 
+export async function threadRoom() {
+  const [teacher, studentA, studentB] = await Promise.all([
+    createActor("teacher", "teacher"),
+    createActor("student-a"),
+    createActor("student-b"),
+  ]);
+  const classroom = await createClass(teacher.id);
+  await Promise.all([enroll(classroom.id, studentA.id), enroll(classroom.id, studentB.id)]);
+  const week = await addModule(classroom.id, "Week 1");
+  const lesson = await addLesson(week.id, "Backups", true);
+  return { teacher, studentA, studentB, classroom, moduleId: week.id, lesson };
+}
+
+export function secondsAgo(seconds: number): string {
+  return new Date(Date.now() - seconds * 1000).toISOString();
+}
+
+export async function askQuestion(
+  client: Client,
+  target: ThreadTarget,
+  title: string | null = "Why does the restore fail?",
+  body: string | null = "The restore stops at the first table.",
+) {
+  const { data, error } = await client.rpc("ask_question", {
+    target_lesson: (target.lesson ?? null) as string,
+    target_activity: (target.activity ?? null) as string,
+    question_title: title as string,
+    question_body: body as string,
+  });
+  return { result: data as ThreadReply | null, error };
+}
+
+export async function asked(actor: Actor, target: ThreadTarget, title?: string, body?: string) {
+  const { result, error } = await askQuestion(actor.client, target, title, body);
+  if (error || result?.status !== "asked") throw new Error(`ask_question answered ${result?.status ?? error?.code}`);
+  return { threadId: result.thread_id!, postId: result.post_id! };
+}
+
+export async function addPost(client: Client, threadId: string, parentId: string | null = null, body: string | null = "Check the role first.") {
+  const { data, error } = await client.rpc("add_post", {
+    target_thread: threadId,
+    target_parent: parentId as string,
+    post_body: body as string,
+  });
+  return { result: data as ThreadReply | null, error };
+}
+
+export async function posted(actor: Actor, threadId: string, parentId: string | null = null, body?: string): Promise<string> {
+  const { result, error } = await addPost(actor.client, threadId, parentId, body);
+  if (error || result?.status !== "posted") throw new Error(`add_post answered ${result?.status ?? error?.code}`);
+  return result.post_id!;
+}
+
+export async function editPost(client: Client, postId: string, body: string | null) {
+  const { data, error } = await client.rpc("edit_post", { target_post: postId, post_body: body as string });
+  return { result: data as ThreadReply | null, error };
+}
+
+export async function setPostHidden(client: Client, postId: string, hide: boolean) {
+  const { data, error } = await client.rpc("set_post_hidden", { target_post: postId, hide });
+  return { result: data as ThreadReply | null, error };
+}
+
+export async function setThreadLocked(client: Client, threadId: string, lock: boolean) {
+  const { data, error } = await client.rpc("set_thread_locked", { target_thread: threadId, lock });
+  return { result: data as ThreadReply | null, error };
+}
+
+export async function threadView(client: Client, threadId: string, knownVersion?: number) {
+  const args = knownVersion === undefined ? { target_thread: threadId } : { target_thread: threadId, known_version: knownVersion };
+  const { data, error } = await client.rpc("thread_view", args);
+  return { view: data as ThreadView | null, error };
+}
+
+export async function classThreads(client: Client, classId: string) {
+  const { data, error } = await client.rpc("class_threads", { target_class: classId });
+  return { rows: data, error };
+}
+
+export async function postHistory(client: Client, postId: string) {
+  const { data, error } = await client.rpc("post_history", { target_post: postId });
+  return { rows: data, error };
+}
+
+export async function readThread(threadId: string) {
+  const { data, error } = await admin.from("threads").select(threadColumns).eq("id", threadId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function readPost(postId: string) {
+  const { data, error } = await admin.from("posts").select(postColumns).eq("id", postId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function readPosts(threadId: string) {
+  const { data, error } = await admin.from("posts").select(postColumns).eq("thread_id", threadId).order("created_at").order("id");
+  if (error) throw error;
+  return data;
+}
+
+export async function readPostEvents(postId: string) {
+  const { data, error } = await admin.from("post_events").select(postEventColumns).eq("post_id", postId).order("happened_at");
+  if (error) throw error;
+  return data;
+}
+
+export async function countPostsBy(authorId: string): Promise<number> {
+  const { count, error } = await admin.from("posts").select("id", { count: "exact", head: true }).eq("author_id", authorId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function countThreadsBy(userId: string): Promise<number> {
+  const { count, error } = await admin.from("threads").select("id", { count: "exact", head: true }).eq("created_by", userId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function countPostsIn(threadId: string): Promise<number> {
+  const { count, error } = await admin.from("posts").select("id", { count: "exact", head: true }).eq("thread_id", threadId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function seedThread(classId: string, target: ThreadTarget, options: SeededThread = {}) {
+  const threadId = randomUUID();
+  const postId = randomUUID();
+  const createdAt = options.createdAt ?? minutesAgo(2 * 24 * 60);
+  const thread = await admin.from("threads").insert({
+    id: threadId,
+    class_id: classId,
+    lesson_id: target.lesson ?? null,
+    activity_id: target.activity ?? null,
+    title: options.title ?? `Question ${threadId.slice(0, 8)}`,
+    created_by: options.createdBy ?? null,
+    created_at: createdAt,
+  });
+  if (thread.error) throw thread.error;
+  const post = await admin.from("posts").insert({
+    id: postId,
+    thread_id: threadId,
+    author_id: options.createdBy ?? null,
+    author_name: options.authorName ?? "Former classmate",
+    body: options.body ?? "Where is this covered in the lesson?",
+    is_question: true,
+    created_at: createdAt,
+  });
+  if (post.error) throw post.error;
+  return { threadId, postId };
+}
+
+export async function seedThreads(classId: string, target: ThreadTarget, count: number, options: SeededThread = {}): Promise<string[]> {
+  const createdAt = options.createdAt ?? minutesAgo(2 * 24 * 60);
+  const threads = Array.from({ length: count }, (_, index) => ({
+    id: randomUUID(),
+    class_id: classId,
+    lesson_id: target.lesson ?? null,
+    activity_id: target.activity ?? null,
+    title: `${options.title ?? "Older question"} ${index + 1}`,
+    created_by: options.createdBy ?? null,
+    created_at: createdAt,
+  }));
+  for (let start = 0; start < threads.length; start += 100) {
+    const batch = threads.slice(start, start + 100);
+    const saved = await admin.from("threads").insert(batch);
+    if (saved.error) throw saved.error;
+    const questions = await admin.from("posts").insert(
+      batch.map((thread) => ({
+        thread_id: thread.id,
+        author_id: options.createdBy ?? null,
+        author_name: options.authorName ?? "Former classmate",
+        body: options.body ?? "Where is this covered in the lesson?",
+        is_question: true,
+        created_at: createdAt,
+      })),
+    );
+    if (questions.error) throw questions.error;
+  }
+  return threads.map((thread) => thread.id);
+}
+
+export async function seedPosts(threadId: string, posts: SeededPost[]): Promise<string[]> {
+  const rows = posts.map((post) => ({
+    id: randomUUID(),
+    thread_id: threadId,
+    author_id: post.authorId ?? null,
+    author_name: post.authorName ?? "Former classmate",
+    body: post.body ?? "An older answer.",
+    parent_id: post.parentId ?? null,
+    created_at: post.createdAt ?? minutesAgo(2 * 24 * 60),
+  }));
+  for (let start = 0; start < rows.length; start += 100) {
+    const { error } = await admin.from("posts").insert(rows.slice(start, start + 100));
+    if (error) throw error;
+  }
+  return rows.map((row) => row.id);
+}
+
+export async function setPostCreatedAt(postIds: string[], createdAt: string) {
+  for (const chunk of chunksOf(postIds)) {
+    const { error } = await admin.from("posts").update({ created_at: createdAt }).in("id", chunk);
+    if (error) throw error;
+  }
+}
+
+export async function forgetQuota(userIds: string[]) {
+  const longAgo = minutesAgo(3 * 24 * 60);
+  const dayAgo = minutesAgo(24 * 60 + 5);
+  const posts = await admin.from("posts").update({ created_at: longAgo }).in("author_id", userIds).gt("created_at", dayAgo);
+  if (posts.error) throw posts.error;
+  const threads = await admin.from("threads").update({ created_at: longAgo }).in("created_by", userIds).gt("created_at", dayAgo);
+  if (threads.error) throw threads.error;
+}
+
+export async function renameSelf(actor: Actor, fullName: string) {
+  const { data, error } = await actor.client.from("profiles").update({ full_name: fullName }).eq("id", actor.id).select("id");
+  if (error || data.length !== 1) throw new Error("the profile was not renamed");
+}
+
+export async function deleteAccount(actor: Actor) {
+  const { error } = await admin.auth.admin.deleteUser(actor.id);
+  if (error) throw error;
+  const tracked = createdUserIds.indexOf(actor.id);
+  if (tracked >= 0) createdUserIds.splice(tracked, 1);
+}
+
+export async function removeThreads(classIds: string[]) {
+  const threadIds = await idsWhere("threads", "class_id", classIds);
+  for (const chunk of chunksOf(threadIds)) {
+    const events = await admin.from("post_events").select("post_id, posts!inner(thread_id)").in("posts.thread_id", chunk);
+    if (events.error) throw events.error;
+    await deleteWhere("post_events", "post_id", [...new Set(events.data.map((event) => event.post_id))]);
+    const replies = await admin.from("posts").delete().in("thread_id", chunk).not("parent_id", "is", null);
+    if (replies.error) throw replies.error;
+  }
+  await deleteWhere("posts", "thread_id", threadIds);
+  await deleteWhere("threads", "id", threadIds);
+}
+
 export async function join(client: Client, code: string) {
   const { data, error } = await client.rpc("join_class", { code });
   return { result: data as JoinResult | null, error };
@@ -908,7 +1202,7 @@ function chunksOf(ids: string[]): string[][] {
   return chunks;
 }
 
-async function idsWhere(table: "classes" | "modules" | "lessons" | "activities", column: string, parentIds: string[]): Promise<string[]> {
+async function idsWhere(table: "classes" | "modules" | "lessons" | "activities" | "threads", column: string, parentIds: string[]): Promise<string[]> {
   const found: string[] = [];
   for (const chunk of chunksOf(parentIds)) {
     const { data, error } = await admin.from(table).select("id").in(column, chunk);
@@ -928,7 +1222,10 @@ type Removable =
   | "activities"
   | "submissions"
   | "submission_uploads"
-  | "submission_grade_log";
+  | "submission_grade_log"
+  | "post_events"
+  | "posts"
+  | "threads";
 
 async function deleteWhere(table: Removable, column: string, parentIds: string[]) {
   for (const chunk of chunksOf(parentIds)) {
@@ -945,6 +1242,7 @@ async function removeRoutes(userIds: string[]) {
     ...(await idsWhere("activities", "class_id", classIds)),
     ...(await idsWhere("activities", "created_by", userIds)),
   ];
+  await removeThreads(classIds);
   await deleteWhere("quiz_attempts", "activity_id", activityIds);
   await deleteWhere("quiz_attempts", "student_id", userIds);
   await removeSubmissions(classIds);
