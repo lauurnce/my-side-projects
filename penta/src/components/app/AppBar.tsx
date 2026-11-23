@@ -14,6 +14,11 @@ export function AppBar({ user }: { user: CurrentUser }) {
       <Link href="/classes" className={styles.link}>
         Classes
       </Link>
+      {user.role === "student" ? (
+        <Link href="/grades" className={styles.link}>
+          Grades
+        </Link>
+      ) : null}
       <p className={styles.identity}>
         <span className={styles.name}>{user.fullName}</span>
         <BracketLabel>{user.role}</BracketLabel>

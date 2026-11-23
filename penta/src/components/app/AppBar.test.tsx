@@ -38,6 +38,18 @@ describe("AppBar", () => {
     expect(screen.getByRole("link", { name: "Classes" }).getAttribute("href")).toBe("/classes");
   });
 
+  it("links a student to the grades, next to the classes", () => {
+    render(<AppBar user={{ ...teacher, role: "student" }} />);
+    const grades = screen.getByRole("link", { name: "Grades" });
+    expect(grades.getAttribute("href")).toBe("/grades");
+    expect(screen.getByRole("link", { name: "Classes" }).nextElementSibling).toBe(grades);
+  });
+
+  it("shows a teacher no grades link", () => {
+    render(<AppBar user={teacher} />);
+    expect(screen.queryByRole("link", { name: "Grades" })).toBeNull();
+  });
+
   it("signs out with a submit button inside a form, not a link", () => {
     render(<AppBar user={teacher} />);
     const button = screen.getByRole("button", { name: "Sign out" });
