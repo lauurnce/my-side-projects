@@ -157,6 +157,7 @@ describe("askRefusedState", () => {
     ...sharedSentences,
     ["bad_title", "Give your question a title of 160 characters or fewer."],
     ["full", "This lesson or activity already has the most questions it can hold."],
+    ["asked_enough", "You have asked the most questions one person can ask here."],
   ])("maps %s to its sentence and keeps the values", (status, sentence) => {
     expect(askRefusedState({ status }, values)).toMatchObject({ tone: "alert", message: sentence, values });
   });

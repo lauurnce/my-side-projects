@@ -13,6 +13,7 @@ export const threadMessages = {
   slowDown: "You are posting too fast. Wait a minute and try again.",
   limitReached: "You have reached the posting limit for now. Try again later.",
   targetFull: "This lesson or activity already has the most questions it can hold.",
+  askedEnough: "You have asked the most questions one person can ask here.",
   threadFull: "This thread is full.",
   locked: "This thread is locked.",
   badParent: "You can only reply to a top-level post.",
@@ -119,6 +120,7 @@ const askRefusals: Record<string, string> = {
   ...sharedRefusals,
   bad_title: threadMessages.badTitle,
   full: threadMessages.targetFull,
+  asked_enough: threadMessages.askedEnough,
 };
 
 const postRefusals: Record<string, string> = {
