@@ -116,14 +116,38 @@ export function altitudeFor(altitude: Altitude, classId: string): ClassAltitude 
   return altitude.classes.find((item) => item.classId === classId) ?? null;
 }
 
+const pageRows = 1000;
+const pageLimit = 50;
+
+async function readPages<Row>(
+  readPage: (from: number, to: number) => PromiseLike<{ data: Row[] | null; error: unknown }>,
+): Promise<Row[]> {
+  const rows: Row[] = [];
+  for (let page = 0; page < pageLimit; page += 1) {
+    const { data, error } = await readPage(page * pageRows, (page + 1) * pageRows - 1);
+    if (error || !data) return rows;
+    rows.push(...data);
+    if (data.length < pageRows) return rows;
+  }
+  return rows;
+}
+
 export async function loadClassGradebook(supabase: Supabase, classId: string): Promise<GradeCell[]> {
-  const { data } = await supabase.rpc("class_gradebook", { target_class: classId });
-  return (data ?? []).map(toGradeCell);
+  const rows = await readPages((from, to) =>
+    supabase
+      .rpc("class_gradebook", { target_class: classId })
+      .order("student_id")
+      .order("activity_id")
+      .range(from, to),
+  );
+  return rows.map(toGradeCell);
 }
 
 export async function loadMyGrades(supabase: Supabase): Promise<OwnGradeCell[]> {
-  const { data } = await supabase.rpc("my_grades");
-  return (data ?? []).map(toOwnGradeCell);
+  const rows = await readPages((from, to) =>
+    supabase.rpc("my_grades").order("class_id").order("activity_id").range(from, to),
+  );
+  return rows.map(toOwnGradeCell);
 }
 
 export async function loadAltitude(supabase: Supabase, studentId: string): Promise<Altitude> {
