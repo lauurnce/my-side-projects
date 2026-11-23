@@ -200,7 +200,10 @@ begin
     raise exception 'server_only' using errcode = '42501';
   end if;
   delete from public.submission_uploads where id = target_upload;
-  return 'cancelled';
+  if found then
+    return 'cancelled';
+  end if;
+  return 'not_pending';
 end;
 $$;
 
