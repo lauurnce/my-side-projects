@@ -1,0 +1,294 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 40px var(--gutter) 96px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-width: 0;
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--fg);
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  min-width: 0;
+  margin: 0;
+}
+
+.title,
+.gone {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(32px, 5.4vw, 56px);
+  line-height: 0.96;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.paused,
+.report {
+  margin: 0;
+  font-size: 14px;
+  color: var(--fg-muted);
+}
+
+.posts,
+.replies {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.group:first-child > .post,
+.group:first-child > .postHidden {
+  border-width: 2px;
+}
+
+.replies {
+  gap: 12px;
+  margin-left: 28px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(var(--fg-rgb), 0.35);
+}
+
+.replies > li {
+  min-width: 0;
+}
+
+.post,
+.postHidden {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid rgba(var(--fg-rgb), 0.5);
+  background: var(--field);
+}
+
+.postHidden {
+  border-style: dashed;
+  border-color: var(--fg);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.meta > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg);
+}
+
+.role {
+  padding: 2px 8px;
+  background: var(--fg);
+  color: var(--fg-inv);
+  font-weight: 700;
+}
+
+.tag {
+  padding: 1px 7px;
+  border: 1px solid var(--fg-muted);
+}
+
+.hiddenMark {
+  padding: 2px 8px;
+  border: 2px solid var(--fg);
+  color: var(--fg);
+}
+
+.body,
+.bodyOpen {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.body {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.plain {
+  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.actions:empty {
+  display: none;
+}
+
+.submit,
+.ghost {
+  height: 44px;
+  padding: 0 22px;
+}
+
+.ghost {
+  align-self: flex-start;
+  border: 1px solid rgba(var(--fg-rgb), 0.5);
+  background: transparent;
+  color: var(--fg);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fieldLabel,
+.count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 120px;
+  padding: 12px 14px;
+  border: 1px solid var(--fg-muted);
+  border-radius: 0;
+  background: var(--field);
+  color: var(--fg);
+  font: 16px/1.5 var(--font-body);
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+
+.textarea[aria-invalid="true"] {
+  border: 2px solid var(--fg);
+}
+
+.help {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.saved {
+  margin: 0;
+  font-size: 14px;
+  color: var(--fg-muted);
+}
+
+.alert,
+.locked {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 14px;
+  border: 2px solid var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .page {
+    gap: 24px;
+    padding: 20px 20px 64px;
+  }
+
+  .post,
+  .postHidden {
+    padding: 14px;
+  }
+
+  .replies {
+    margin-left: 8px;
+    padding-left: 12px;
+  }
+}
