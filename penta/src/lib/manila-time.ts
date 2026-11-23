@@ -45,3 +45,36 @@ export function formatCountdown(milliseconds: number): string {
   const two = (value: number) => String(value).padStart(2, "0");
   return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds % 60)}` : `${two(minutes)}:${two(seconds % 60)}`;
 }
+
+const dayMilliseconds = 24 * 60 * 60 * 1000;
+
+export function manilaDayNumber(milliseconds: number): number {
+  return Math.floor((milliseconds + manilaOffsetMilliseconds) / dayMilliseconds);
+}
+
+export function formatManilaShort(value: string | Date | null | undefined): string | null {
+  return format(value, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+export function dueLabel(dueAt: string | null | undefined, now: number): string | null {
+  const due = toDate(dueAt);
+  if (!due) return null;
+  const time = format(due, { hour: "numeric", minute: "2-digit" });
+  const days = manilaDayNumber(due.getTime()) - manilaDayNumber(now);
+  if (due.getTime() <= now) return `Was due ${formatManilaShort(due)}`;
+  if (days === 0) return `Due today, ${time}`;
+  if (days === 1) return `Due tomorrow, ${time}`;
+  return `Due ${formatManilaShort(due)}`;
+}
+
+export function lateLabel(submittedAt: string | null | undefined, dueAt: string | null | undefined): string | null {
+  const submitted = toDate(submittedAt);
+  const due = toDate(dueAt);
+  if (!submitted || !due || submitted.getTime() < due.getTime()) return null;
+  const minutes = Math.max(1, Math.floor((submitted.getTime() - due.getTime()) / 60000));
+  if (minutes < 60) return `Late by ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Late by ${hours} ${hours === 1 ? "hour" : "hours"}`;
+  const days = Math.floor(hours / 24);
+  return `Late by ${days} ${days === 1 ? "day" : "days"}`;
+}

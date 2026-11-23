@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  dueLabel,
   formatCountdown,
   formatManilaClock,
   formatManilaDateTime,
   isoToManilaInput,
+  lateLabel,
+  manilaDayNumber,
   manilaInputToIso,
 } from "@/lib/manila-time";
 
@@ -80,5 +83,52 @@ describe("countdown", () => {
   it("adds hours above 59 minutes and never goes below zero", () => {
     expect(formatCountdown(3 * 3600000 + 5000)).toBe("3:00:05");
     expect(formatCountdown(-4000)).toBe("00:00");
+  });
+});
+
+describe("due label", () => {
+  const due = "2026-11-28T15:59:00Z";
+
+  it("says today when the due time is later the same Manila day", () => {
+    expect(dueLabel(due, Date.parse("2026-11-28T02:00:00Z"))).toBe("Due today, 11:59 PM");
+    expect(dueLabel(due, Date.parse("2026-11-27T16:00:00Z"))).toBe("Due today, 11:59 PM");
+  });
+
+  it("says tomorrow for the Manila day before, even when the UTC date is the same or two back", () => {
+    expect(dueLabel(due, Date.parse("2026-11-27T15:59:00Z"))).toBe("Due tomorrow, 11:59 PM");
+    expect(dueLabel(due, Date.parse("2026-11-26T16:30:00Z"))).toBe("Due tomorrow, 11:59 PM");
+  });
+
+  it("gives the date further out and after the due time", () => {
+    expect(dueLabel(due, Date.parse("2026-11-20T00:00:00Z"))).toBe("Due Nov 28, 11:59 PM");
+    expect(dueLabel(due, Date.parse("2026-11-28T15:59:00Z"))).toBe("Was due Nov 28, 11:59 PM");
+  });
+
+  it("is null with no due time", () => {
+    expect(dueLabel(null, Date.now())).toBeNull();
+  });
+
+  it("numbers Manila days from Manila midnight", () => {
+    expect(manilaDayNumber(Date.parse("2026-11-27T15:59:59Z"))).toBe(manilaDayNumber(Date.parse("2026-11-27T00:00:00Z")));
+    expect(manilaDayNumber(Date.parse("2026-11-27T16:00:00Z"))).toBe(manilaDayNumber(Date.parse("2026-11-27T15:59:59Z")) + 1);
+  });
+});
+
+describe("late label", () => {
+  const due = "2026-11-28T15:59:00Z";
+
+  it("is null on time, one second before", () => {
+    expect(lateLabel("2026-11-28T15:58:59Z", due)).toBeNull();
+    expect(lateLabel("2026-11-28T15:59:00Z", null)).toBeNull();
+  });
+
+  it("counts minutes, then hours, then days, rounded down with a minimum of one minute", () => {
+    expect(lateLabel("2026-11-28T15:59:00Z", due)).toBe("Late by 1 minute");
+    expect(lateLabel("2026-11-28T15:59:01Z", due)).toBe("Late by 1 minute");
+    expect(lateLabel("2026-11-28T16:44:00Z", due)).toBe("Late by 45 minutes");
+    expect(lateLabel("2026-11-28T17:00:00Z", due)).toBe("Late by 1 hour");
+    expect(lateLabel("2026-11-29T15:58:00Z", due)).toBe("Late by 23 hours");
+    expect(lateLabel("2026-11-29T15:59:00Z", due)).toBe("Late by 1 day");
+    expect(lateLabel("2026-12-01T00:00:00Z", due)).toBe("Late by 2 days");
   });
 });
