@@ -7,7 +7,61 @@ export type Client = SupabaseClient<Database>;
 export type Actor = { id: string; email: string; client: Client };
 export type JoinResult = { status: string; class_id?: string; retry_at?: string };
 export type ReserveResult = { status: string; deck_id?: string; free_bytes?: number };
-export type StorageUsage = { used_bytes: number; reserved_bytes: number; budget_bytes: number };
+export type StorageUsage = {
+  used_bytes: number;
+  reserved_bytes: number;
+  budget_bytes: number;
+  submission_bytes: number;
+  total_bytes: number;
+  block_bytes: number;
+};
+export type SubmissionKind = "pdf" | "docx";
+export type SubmissionReply = {
+  status: string;
+  upload_id?: string;
+  free_bytes?: number;
+  submission_id?: string;
+  activity_id?: string;
+  old_path?: string | null;
+  file_path?: string;
+  regrade?: boolean;
+  points?: number;
+};
+export type UploadOptions = { title?: string; points?: number; dueAt?: string | null; lessonId?: string | null; published?: boolean };
+export type ReserveSubmissionArgs = { file_name: string | null; file_kind: string | null; declared_bytes: number | null };
+export type SubmissionOptions = {
+  kind?: SubmissionKind;
+  fileName?: string;
+  sizeBytes?: number;
+  submittedAt?: string;
+  late?: boolean;
+  score?: number;
+  feedback?: string;
+  gradedBy?: string;
+};
+export type PendingOptions = { kind?: SubmissionKind; declaredBytes?: number; reservedAt?: string; fileName?: string };
+export type UploadActivity = { id: string; class_id: string };
+export type GradeCell = {
+  student_id: string;
+  activity_id: string;
+  state: string;
+  score: number | null;
+  points: number;
+  late: boolean;
+  submitted_at: string | null;
+};
+export type ClassAltitude = {
+  class_id: string;
+  counts: boolean;
+  meters: number;
+  lessons_done: number;
+  lessons_published: number;
+  decks_finished: number;
+  decks: number;
+  points_earned: number;
+  points_possible: number;
+};
+export type Altitude = { overall: number; classes: ClassAltitude[] };
 export type DeckKind = "pdf" | "native";
 export type LiveAnswer = { status: string; session_id?: string; revision?: number };
 export type LiveStateAnswer = { session_id: string | null; current_slide: number | null; revision: number; running: boolean };
@@ -52,6 +106,14 @@ export const limitReached = "P0001";
 export const deckBucket = "decks";
 export const pdfType = "application/pdf";
 export const pptxType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+export const submissionBucket = "submissions";
+export const docxType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const submissionMime: Record<SubmissionKind, string> = { pdf: pdfType, docx: docxType };
+export const submissionColumns =
+  "id, activity_id, student_id, upload_id, file_path, file_name, mime, size_bytes, file_etag, submitted_at, is_late, score, feedback, graded_by, graded_at, files_removed_at";
+export const pendingColumns = "id, activity_id, student_id, file_path, file_name, mime, declared_bytes, reserved_at";
+export const gradeLogColumns =
+  "id, submission_id, activity_id, student_id, old_score, new_score, feedback, file_path, file_name, size_bytes, file_etag, graded_by, graded_at";
 export const deckColumns =
   "id, class_id, lesson_id, title, kind, pdf_path, original_path, slide_count, size_bytes, created_by, created_at, ready_at";
 export const sessionColumns = "id, deck_id, teacher_id, current_slide, revision, started_at, active_at, ended_at";
@@ -584,6 +646,227 @@ export async function removeDecks(classIds: string[]) {
   }
 }
 
+export function submissionPath(activity: UploadActivity, studentId: string, fileId: string, kind: SubmissionKind = "pdf") {
+  return `${activity.class_id}/${activity.id}/${studentId}/${fileId}.${kind}`;
+}
+
+export async function addUpload(classId: string, createdBy: string, options: UploadOptions = {}) {
+  const { data, error } = await admin
+    .from("activities")
+    .insert({
+      class_id: classId,
+      type: "upload",
+      title: options.title ?? `Essay ${randomUUID().slice(0, 8)}`,
+      instructions_md: "Hand in one file.",
+      points: options.points ?? 20,
+      due_at: options.dueAt ?? null,
+      lesson_id: options.lessonId ?? null,
+      created_by: createdBy,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  if (options.published ?? true) await setActivity(data.id, { published_at: new Date().toISOString() });
+  return (await readActivity(data.id))!;
+}
+
+export async function addSubmission(activity: UploadActivity, studentId: string, options: SubmissionOptions = {}) {
+  const uploadId = randomUUID();
+  const kind = options.kind ?? "pdf";
+  const graded = options.score !== undefined;
+  const { data, error } = await admin
+    .from("submissions")
+    .insert({
+      activity_id: activity.id,
+      student_id: studentId,
+      upload_id: uploadId,
+      file_path: submissionPath(activity, studentId, uploadId, kind),
+      file_name: options.fileName ?? `essay.${kind}`,
+      mime: submissionMime[kind],
+      size_bytes: options.sizeBytes ?? 1024,
+      file_etag: "seeded-etag",
+      submitted_at: options.submittedAt ?? new Date().toISOString(),
+      is_late: options.late ?? false,
+      score: options.score ?? null,
+      feedback: graded ? (options.feedback ?? "Clear and complete.") : null,
+      graded_by: graded ? options.gradedBy! : null,
+      graded_at: graded ? new Date().toISOString() : null,
+    })
+    .select(submissionColumns)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function addPending(activity: UploadActivity, studentId: string, options: PendingOptions = {}) {
+  const id = randomUUID();
+  const kind = options.kind ?? "pdf";
+  const { data, error } = await admin
+    .from("submission_uploads")
+    .insert({
+      id,
+      activity_id: activity.id,
+      student_id: studentId,
+      file_path: submissionPath(activity, studentId, id, kind),
+      file_name: options.fileName ?? `essay.${kind}`,
+      mime: submissionMime[kind],
+      declared_bytes: options.declaredBytes ?? 2048,
+      reserved_at: options.reservedAt ?? new Date().toISOString(),
+    })
+    .select(pendingColumns)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function reserveSubmission(client: Client, activityId: string, change: Partial<ReserveSubmissionArgs> = {}) {
+  const args = { target_activity: activityId, file_name: "essay.pdf", file_kind: "pdf", declared_bytes: 2048, ...change };
+  const { data, error } = await client.rpc("reserve_submission", args as never);
+  return { result: data as SubmissionReply | null, error };
+}
+
+export async function completeSubmission(client: Client, uploadId: string, realBytes: number | null = 2048, etag = "etag-1") {
+  const { data, error } = await client.rpc("complete_submission", {
+    target_upload: uploadId,
+    real_bytes: realBytes as number,
+    stored_etag: etag,
+  });
+  return { result: data as SubmissionReply | null, error };
+}
+
+export async function gradeSubmission(
+  client: Client,
+  submissionId: string,
+  expectedUpload: string,
+  score: number | null,
+  feedback: string | null = "Clear and complete.",
+) {
+  const { data, error } = await client.rpc("grade_submission", {
+    target_submission: submissionId,
+    expected_upload: expectedUpload,
+    new_score: score as number,
+    new_feedback: feedback as string,
+  });
+  return { result: data as SubmissionReply | null, error };
+}
+
+export async function handIn(student: Actor, activityId: string, change: Partial<ReserveSubmissionArgs> = {}) {
+  const reserved = await reserveSubmission(student.client, activityId, change);
+  if (reserved.error || reserved.result?.status !== "reserved") {
+    throw new Error(`reserve_submission answered ${reserved.result?.status ?? reserved.error?.code}`);
+  }
+  const completed = await completeSubmission(admin, reserved.result.upload_id!, change.declared_bytes ?? 2048);
+  if (completed.error || completed.result?.status !== "completed") {
+    throw new Error(`complete_submission answered ${completed.result?.status ?? completed.error?.code}`);
+  }
+  return (await readSubmission(completed.result.submission_id!))!;
+}
+
+export async function readSubmission(submissionId: string) {
+  const { data, error } = await admin.from("submissions").select(submissionColumns).eq("id", submissionId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function readSubmissionOf(activityId: string, studentId: string) {
+  const { data, error } = await admin
+    .from("submissions")
+    .select(submissionColumns)
+    .eq("activity_id", activityId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function setSubmission(submissionId: string, patch: Database["public"]["Tables"]["submissions"]["Update"]) {
+  const { error } = await admin.from("submissions").update(patch).eq("id", submissionId);
+  if (error) throw error;
+}
+
+export async function readPending(uploadId: string) {
+  const { data, error } = await admin.from("submission_uploads").select(pendingColumns).eq("id", uploadId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function readPendingOf(activityId: string, studentId: string) {
+  const { data, error } = await admin
+    .from("submission_uploads")
+    .select(pendingColumns)
+    .eq("activity_id", activityId)
+    .eq("student_id", studentId);
+  if (error) throw error;
+  return data;
+}
+
+export async function setReservedAt(uploadId: string, reservedAt: string) {
+  const { error } = await admin.from("submission_uploads").update({ reserved_at: reservedAt }).eq("id", uploadId);
+  if (error) throw error;
+}
+
+export async function readGradeLog(submissionId: string) {
+  const { data, error } = await admin
+    .from("submission_grade_log")
+    .select(gradeLogColumns)
+    .eq("submission_id", submissionId)
+    .order("graded_at");
+  if (error) throw error;
+  return data;
+}
+
+export async function storeSubmissionFile(path: string, bytes: Uint8Array, contentType = pdfType) {
+  const { error } = await admin.storage.from(submissionBucket).upload(path, bytes, { contentType, upsert: false });
+  if (error) throw error;
+}
+
+export async function submissionFileExists(path: string): Promise<boolean> {
+  const { data, error } = await admin.storage.from(submissionBucket).exists(path);
+  if (error) return false;
+  return data;
+}
+
+export async function removeSubmissionFiles(paths: string[]) {
+  if (paths.length === 0) return;
+  const { error } = await admin.storage.from(submissionBucket).remove(paths);
+  if (error) throw error;
+}
+
+export async function classGradebook(client: Client, classId: string) {
+  const { data, error } = await client.rpc("class_gradebook", { target_class: classId });
+  return { cells: data as GradeCell[] | null, error };
+}
+
+export async function myGrades(client: Client) {
+  const { data, error } = await client.rpc("my_grades");
+  return { cells: data as (Omit<GradeCell, "student_id"> & { class_id: string })[] | null, error };
+}
+
+export async function studentAltitude(client: Client, studentId: string) {
+  const { data, error } = await client.rpc("student_altitude", { target_student: studentId });
+  return { altitude: data as Altitude | null, error };
+}
+
+async function storedFilesUnder(bucket: string, folder: string): Promise<string[]> {
+  const { data, error } = await admin.storage.from(bucket).list(folder, { limit: 1000 });
+  if (error) throw error;
+  const names: string[] = [];
+  for (const entry of data) {
+    const name = `${folder}/${entry.name}`;
+    if (entry.id) names.push(name);
+    else names.push(...(await storedFilesUnder(bucket, name)));
+  }
+  return names;
+}
+
+export async function removeSubmissions(classIds: string[]) {
+  const activityIds = await idsWhere("activities", "class_id", classIds);
+  await deleteWhere("submissions", "activity_id", activityIds);
+  await deleteWhere("submission_uploads", "activity_id", activityIds);
+  await deleteWhere("submission_grade_log", "activity_id", activityIds);
+  for (const classId of classIds) await removeSubmissionFiles(await storedFilesUnder(submissionBucket, classId));
+}
+
 export async function join(client: Client, code: string) {
   const { data, error } = await client.rpc("join_class", { code });
   return { result: data as JoinResult | null, error };
@@ -635,7 +918,17 @@ async function idsWhere(table: "classes" | "modules" | "lessons" | "activities",
   return found;
 }
 
-type Removable = "lesson_progress" | "lessons" | "modules" | "decks" | "live_sessions" | "quiz_attempts" | "activities";
+type Removable =
+  | "lesson_progress"
+  | "lessons"
+  | "modules"
+  | "decks"
+  | "live_sessions"
+  | "quiz_attempts"
+  | "activities"
+  | "submissions"
+  | "submission_uploads"
+  | "submission_grade_log";
 
 async function deleteWhere(table: Removable, column: string, parentIds: string[]) {
   for (const chunk of chunksOf(parentIds)) {
@@ -654,6 +947,13 @@ async function removeRoutes(userIds: string[]) {
   ];
   await deleteWhere("quiz_attempts", "activity_id", activityIds);
   await deleteWhere("quiz_attempts", "student_id", userIds);
+  await removeSubmissions(classIds);
+  for (const column of ["student_id", "graded_by"]) {
+    await deleteWhere("submissions", column, userIds);
+    await deleteWhere("submission_grade_log", column, userIds);
+  }
+  await deleteWhere("submissions", "activity_id", activityIds);
+  await deleteWhere("submission_grade_log", "activity_id", activityIds);
   await deleteWhere("activities", "id", activityIds);
   await removeDecks(classIds);
   await deleteWhere("decks", "created_by", userIds);
