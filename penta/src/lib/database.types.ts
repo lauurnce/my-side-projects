@@ -277,6 +277,70 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"post_events": {
+                  Row: {
+                    "actor_id": string | null,"happened_at": string,"id": string,"kind": string,"old_body": string | null,"post_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor_id"?: string | null,"happened_at"?: string,"id"?: string,"kind": string,"old_body"?: string | null,"post_id": string
+                  }
+                  Update: {
+                    "actor_id"?: string | null,"happened_at"?: string,"id"?: string,"kind"?: string,"old_body"?: string | null,"post_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "post_events_actor_id_fkey"
+      columns: ["actor_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "post_events_post_id_fkey"
+      columns: ["post_id"]
+isOneToOne: false
+      referencedRelation: "posts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"posts": {
+                  Row: {
+                    "author_id": string | null,"author_name": string,"body": string,"created_at": string,"edit_count": number,"edited_at": string | null,"hidden_at": string | null,"hidden_by": string | null,"id": string,"is_question": boolean,"parent_id": string | null,"thread_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author_id"?: string | null,"author_name": string,"body": string,"created_at"?: string,"edit_count"?: number,"edited_at"?: string | null,"hidden_at"?: string | null,"hidden_by"?: string | null,"id"?: string,"is_question"?: boolean,"parent_id"?: string | null,"thread_id": string
+                  }
+                  Update: {
+                    "author_id"?: string | null,"author_name"?: string,"body"?: string,"created_at"?: string,"edit_count"?: number,"edited_at"?: string | null,"hidden_at"?: string | null,"hidden_by"?: string | null,"id"?: string,"is_question"?: boolean,"parent_id"?: string | null,"thread_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "posts_author_id_fkey"
+      columns: ["author_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "posts_hidden_by_fkey"
+      columns: ["hidden_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "posts_parent_id_fkey"
+      columns: ["parent_id"]
+isOneToOne: false
+      referencedRelation: "posts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "posts_thread_id_fkey"
+      columns: ["thread_id"]
+isOneToOne: false
+      referencedRelation: "threads"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "created_at": string,"full_name": string,"id": string,"role": string
@@ -455,13 +519,63 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"threads": {
+                  Row: {
+                    "activity_id": string | null,"class_id": string,"created_at": string,"created_by": string | null,"id": string,"lesson_id": string | null,"locked": boolean,"locked_at": string | null,"locked_by": string | null,"title": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id"?: string | null,"class_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"lesson_id"?: string | null,"locked"?: boolean,"locked_at"?: string | null,"locked_by"?: string | null,"title": string,"version"?: number
+                  }
+                  Update: {
+                    "activity_id"?: string | null,"class_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"lesson_id"?: string | null,"locked"?: boolean,"locked_at"?: string | null,"locked_by"?: string | null,"title"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "threads_activity_id_fkey"
+      columns: ["activity_id"]
+isOneToOne: false
+      referencedRelation: "activities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "threads_class_id_fkey"
+      columns: ["class_id"]
+isOneToOne: false
+      referencedRelation: "classes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "threads_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "threads_lesson_id_fkey"
+      columns: ["lesson_id"]
+isOneToOne: false
+      referencedRelation: "lessons"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "threads_locked_by_fkey"
+      columns: ["locked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
-            "attempt_paper":
+            "add_post":
+{ Args: { "post_body": string,"target_parent": string,"target_thread": string }; Returns: Json
+                           },
+"ask_question":
+{ Args: { "question_body": string,"question_title": string,"target_activity": string,"target_lesson": string }; Returns: Json
+                           },
+"attempt_paper":
 { Args: { "target_attempt": string }; Returns: Json
                            },
 "attempt_review":
@@ -477,6 +591,11 @@ isOneToOne: false
                            },
 "class_join_code":
 { Args: { "target_class": string }; Returns: string
+                           },
+"class_threads":
+{ Args: { "target_class": string }; Returns: {
+              "activity_id": string,"author_name": string,"author_role": string,"created_at": string,"hidden_posts": number,"last_post_at": string,"lesson_id": string,"locked": boolean,"question_hidden": boolean,"replies": number,"target_title": string,"thread_id": string,"title": string
+            }[]
                            },
 "complete_deck":
 { Args: { "real_bytes": number,"slides": number,"target_deck": string }; Returns: string
@@ -497,6 +616,9 @@ isOneToOne: false
                            },
 "drop_graded_files":
 { Args: { "target_activity": string }; Returns: number
+                           },
+"edit_post":
+{ Args: { "post_body": string,"target_post": string }; Returns: Json
                            },
 "end_live":
 { Args: { "target_session": string }; Returns: string
@@ -535,6 +657,11 @@ isOneToOne: false
               "activity_id": string,"class_id": string,"late": boolean,"points": number,"score": number,"state": string,"submitted_at": string
             }[]
                            },
+"post_history":
+{ Args: { "target_post": string }; Returns: {
+              "actor_name": string,"happened_at": string,"kind": string,"old_body": string
+            }[]
+                           },
 "quiz_keys":
 { Args: { "target_activity": string }; Returns: {
               "answers": Json,"question_id": string
@@ -557,6 +684,12 @@ isOneToOne: false
                            },
 "save_quiz_question":
 { Args: { "key_answers": Json,"question_kind": string,"question_options": Json,"question_points": number,"question_prompt": string,"target_activity": string,"target_question": string }; Returns: Json
+                           },
+"set_post_hidden":
+{ Args: { "hide": boolean,"target_post": string }; Returns: Json
+                           },
+"set_thread_locked":
+{ Args: { "lock": boolean,"target_thread": string }; Returns: Json
                            },
 "settle_attempts":
 { Args: { "target_activity": string }; Returns: number
@@ -581,6 +714,9 @@ isOneToOne: false
                            },
 "sweep_submissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"thread_view":
+{ Args: { "known_version"?: number,"target_thread": string }; Returns: Json
                            },
 "touch_live":
 { Args: { "target_session": string }; Returns: string
