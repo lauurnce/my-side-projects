@@ -160,8 +160,8 @@ describe("quiz table grants by behaviour", () => {
   });
 
   it("grants: columns outside the allow list of activities are refused for a teacher", async () => {
-    const insertOnly = ["class_id"];
-    const neither = ["id", "type", "points", "created_by", "created_at"];
+    const insertOnly = ["class_id", "type"];
+    const neither = ["id", "created_by", "created_at"];
     for (const column of [...insertOnly, ...neither]) {
       const patch = { [column]: column === "points" ? 1 : column === "type" ? "quiz" : randomUUID() };
       const { error } = await world.teacher.client.from("activities").update(patch as never).eq("id", activityId);

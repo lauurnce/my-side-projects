@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { deckLimits, deckUpload, megabyte } from "../../src/lib/config";
+import { deckLimits, deckUpload, megabyte, storagePlan } from "../../src/lib/config";
 import { buildPdf, buildPptx } from "../fixtures/deck-files";
 import {
   addDeck,
@@ -361,6 +361,9 @@ describe("storage_usage", () => {
         used_bytes: expect.any(Number),
         reserved_bytes: expect.any(Number),
         budget_bytes: deckLimits.budgetBytes,
+        submission_bytes: expect.any(Number),
+        total_bytes: expect.any(Number),
+        block_bytes: storagePlan.blockBytes,
       });
       expect(usage!.used_bytes).toBeGreaterThanOrEqual(0);
       expect(usage!.reserved_bytes).toBeGreaterThanOrEqual(0);
@@ -384,9 +387,9 @@ describe("storage_usage", () => {
     const pdf = buildPdf(3, 2000);
     const pptx = buildPptx();
     await storeDeckFile(deck.pdf_path, pdf);
-    expect(await usageNow()).toEqual({ ...before, used_bytes: before.used_bytes + pdf.length });
+    expect(await usageNow()).toMatchObject({ used_bytes: before.used_bytes + pdf.length });
     await storeDeckFile(deck.original_path!, pptx, pptxType);
-    expect(await usageNow()).toEqual({ ...before, used_bytes: before.used_bytes + pdf.length + pptx.length });
+    expect(await usageNow()).toMatchObject({ used_bytes: before.used_bytes + pdf.length + pptx.length });
     await removeDecks([world.classroom.id]);
     expect(await usageNow()).toEqual(before);
   });

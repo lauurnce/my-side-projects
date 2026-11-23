@@ -167,12 +167,31 @@ describe("activities insert", () => {
     expect((await readActivity(created.id))?.created_by).toBe(world.teacher.id);
   });
 
-  it("activities insert: published_at, points, type, created_by and created_at cannot be set", async () => {
+  it("activities insert: a quiz ignores points that are sent and starts at zero", async () => {
+    const title = `Quiz with points ${Math.random()}`;
+    const { data, error } = await insertAs(world.teacher, world.classroom.id, { type: "quiz", points: 50 }, { title });
+    expect(error).toBeNull();
+    expect(data?.[0]).toMatchObject({ type: "quiz", points: 0 });
+  });
+
+  it("activities insert: an upload activity needs 1 to 1,000 points", async () => {
+    for (const points of [0, 1001, -5]) {
+      const title = `Upload ${points} ${Math.random()}`;
+      const { error } = await insertAs(world.teacher, world.classroom.id, { type: "upload", points }, { title });
+      expect(error?.code).toBe(checkFailed);
+    }
+    const missing = await insertAs(world.teacher, world.classroom.id, { type: "upload" }, { title: `Upload none ${Math.random()}` });
+    expect(missing.error?.code).toBe(checkFailed);
+    const made = await insertAs(world.teacher, world.classroom.id, { type: "upload", points: 20 }, { title: `Upload ok ${Math.random()}` });
+    expect(made.error).toBeNull();
+    expect(made.data?.[0]).toMatchObject({ type: "upload", points: 20 });
+    const odd = await insertAs(world.teacher, world.classroom.id, { type: "essay", points: 20 }, { title: `Odd ${Math.random()}` });
+    expect(odd.error?.code).toBe(checkFailed);
+  });
+
+  it("activities insert: published_at, created_by and created_at cannot be set", async () => {
     const forbidden: Record<string, unknown>[] = [
       { published_at: new Date().toISOString() },
-      { points: 50 },
-      { type: "upload" },
-      { type: "quiz" },
       { created_by: world.otherTeacher.id },
       { created_by: world.teacher.id },
       { created_at: "2020-01-01T00:00:00Z" },
@@ -236,12 +255,19 @@ describe("activities update", () => {
     await admin.from("activities").delete().eq("id", created.id);
   });
 
-  it("activities update: class_id, points, type, created_by, id and created_at are refused", async () => {
+  it("activities update: points written on a quiz are ignored", async () => {
+    const created = await draft();
+    const { data, error } = await updateAs(world.teacher, created.id, { points: 99 });
+    expect(error).toBeNull();
+    expect(data?.[0]?.points).toBe(created.points);
+    expect((await readActivity(created.id))?.points).toBe(created.points);
+  });
+
+  it("activities update: class_id, type, created_by, id and created_at are refused", async () => {
     const created = await draft();
     const forbidden: Record<string, unknown>[] = [
       { class_id: world.otherClassroom.id },
       { class_id: world.classroom.id },
-      { points: 99 },
       { type: "upload" },
       { created_by: world.otherTeacher.id },
       { id: created.id },
@@ -271,7 +297,9 @@ describe("activities update", () => {
   it("activities update: a student cannot set points on a quiz and anon cannot update at all", async () => {
     const { activity } = await published();
     const points = await updateAs(world.studentA, activity.id, { points: 0 });
-    expect(points.error?.code).toBe(refused);
+    expect(points.error).toBeNull();
+    expect(points.data).toEqual([]);
+    expect((await readActivity(activity.id))?.points).toBe(activity.points);
     const { data, error } = await anon.from("activities").update({ title: "Anon" }).eq("id", activity.id).select("id");
     expect(error?.code).toBe(refused);
     expect(data).toBeNull();
