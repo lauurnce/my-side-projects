@@ -89,7 +89,7 @@ async function signedUploadUrl(path: string): Promise<string> {
 beforeAll(async () => {
   world = await createRouteWorld();
   deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx", slideCount: 2, sizeBytes: storedPdf.length });
-  await storeDeckFile(deck.pdf_path, storedPdf);
+  await storeDeckFile(deck.pdf_path!, storedPdf);
   await storeDeckFile(deck.original_path!, buildPptx(), pptxType);
   callers = [
     ["anon", anon],
@@ -102,12 +102,12 @@ beforeAll(async () => {
 afterAll(removeCreatedUsers);
 
 describe("decks bucket", () => {
-  it("decks bucket: it is private, limited to 50 MB and to the two MIME types", async () => {
+  it("decks bucket: it is private, limited to 50 MB and to the deck and image MIME types", async () => {
     const { data, error } = await admin.storage.getBucket(deckBucket);
     expect(error).toBeNull();
     expect(data).toMatchObject({ id: deckBucket, name: deckBucket, public: false, file_size_limit: deckUpload.maxBytes });
     expect(data!.file_size_limit).toBe(52428800);
-    expect([...data!.allowed_mime_types!].sort()).toEqual([pdfType, pptxType].sort());
+    expect([...data!.allowed_mime_types!].sort()).toEqual([pdfType, pptxType, "image/png", "image/jpeg", "image/webp"].sort());
     expect(Object.values(deckUpload.mimeTypeByExtension).sort()).toEqual([pdfType, pptxType].sort());
   });
 
@@ -128,13 +128,13 @@ describe("decks bucket", () => {
     }
     const { data } = await admin.storage.getBucket(deckBucket);
     expect(data?.public).toBe(false);
-    expect(await deckFileExists(deck.pdf_path)).toBe(true);
+    expect(await deckFileExists(deck.pdf_path!)).toBe(true);
   });
 });
 
 describe("decks objects", () => {
   it("decks objects: the admin client reads the stored file back", async () => {
-    const { data, error } = await admin.storage.from(deckBucket).download(deck.pdf_path);
+    const { data, error } = await admin.storage.from(deckBucket).download(deck.pdf_path!);
     expect(error).toBeNull();
     expect(data!.size).toBe(storedPdf.length);
   });
@@ -151,7 +151,7 @@ describe("decks objects", () => {
 
   it("decks objects: API roles cannot download a file or read its details", async () => {
     for (const [, client] of callers) {
-      for (const path of [deck.pdf_path, deck.original_path!]) {
+      for (const path of [deck.pdf_path!, deck.original_path!]) {
         const downloaded = await files(client).download(path);
         expect(downloaded.error).not.toBeNull();
         expect(downloaded.data).toBeNull();
@@ -164,10 +164,10 @@ describe("decks objects", () => {
 
   it("decks objects: API roles cannot sign a download or an upload", async () => {
     for (const [, client] of callers) {
-      const view = await files(client).createSignedUrl(deck.pdf_path, 60);
+      const view = await files(client).createSignedUrl(deck.pdf_path!, 60);
       expect(view.error).not.toBeNull();
       expect(view.data).toBeNull();
-      const many = await files(client).createSignedUrls([deck.pdf_path, deck.original_path!], 60);
+      const many = await files(client).createSignedUrls([deck.pdf_path!, deck.original_path!], 60);
       expect((many.data ?? []).filter((entry) => entry.signedUrl)).toEqual([]);
       const target = freshPath();
       const upload = await files(client).createSignedUploadUrl(target);
@@ -188,35 +188,35 @@ describe("decks objects", () => {
 
   it("decks objects: API roles cannot replace, move or copy a stored file", async () => {
     for (const [, client] of callers) {
-      const replaced = await files(client).update(deck.pdf_path, buildPdf(1), { contentType: pdfType });
+      const replaced = await files(client).update(deck.pdf_path!, buildPdf(1), { contentType: pdfType });
       expect(replaced.error).not.toBeNull();
-      const upserted = await files(client).upload(deck.pdf_path, buildPdf(1), { contentType: pdfType, upsert: true });
+      const upserted = await files(client).upload(deck.pdf_path!, buildPdf(1), { contentType: pdfType, upsert: true });
       expect(upserted.error).not.toBeNull();
       const movedTo = freshPath();
-      expect((await files(client).move(deck.pdf_path, movedTo)).error).not.toBeNull();
+      expect((await files(client).move(deck.pdf_path!, movedTo)).error).not.toBeNull();
       const copiedTo = freshPath();
-      expect((await files(client).copy(deck.pdf_path, copiedTo)).error).not.toBeNull();
+      expect((await files(client).copy(deck.pdf_path!, copiedTo)).error).not.toBeNull();
       expect(await deckFileExists(movedTo)).toBe(false);
       expect(await deckFileExists(copiedTo)).toBe(false);
     }
-    expect(await storedSize(deck.pdf_path)).toBe(storedPdf.length);
+    expect(await storedSize(deck.pdf_path!)).toBe(storedPdf.length);
   });
 
   it("decks objects: API roles cannot remove a stored file", async () => {
     for (const [, client] of callers) {
-      const { data } = await files(client).remove([deck.pdf_path, deck.original_path!]);
+      const { data } = await files(client).remove([deck.pdf_path!, deck.original_path!]);
       expect(data ?? []).toEqual([]);
-      expect(await deckFileExists(deck.pdf_path)).toBe(true);
+      expect(await deckFileExists(deck.pdf_path!)).toBe(true);
       expect(await deckFileExists(deck.original_path!)).toBe(true);
     }
   });
 
   it("decks objects: the public URL and the signed-in object URL do not serve the file", async () => {
-    const publicUrl = admin.storage.from(deckBucket).getPublicUrl(deck.pdf_path).data.publicUrl;
+    const publicUrl = admin.storage.from(deckBucket).getPublicUrl(deck.pdf_path!).data.publicUrl;
     const asPublic = await fetch(publicUrl);
     expect(asPublic.status).toBeGreaterThanOrEqual(400);
     for (const actor of [world.teacher, world.studentA]) {
-      const response = await fetch(`${apiUrl}/storage/v1/object/authenticated/${deckBucket}/${deck.pdf_path}`, {
+      const response = await fetch(`${apiUrl}/storage/v1/object/authenticated/${deckBucket}/${deck.pdf_path!}`, {
         headers: { authorization: `Bearer ${await accessToken(actor)}`, apikey: anonKey },
       });
       expect(response.status).toBeGreaterThanOrEqual(400);
@@ -274,7 +274,7 @@ describe("decks signed upload", () => {
   });
 
   it("decks signed upload: a new signed URL cannot be made for a path that already has a file", async () => {
-    const { data, error } = await admin.storage.from(deckBucket).createSignedUploadUrl(deck.pdf_path);
+    const { data, error } = await admin.storage.from(deckBucket).createSignedUploadUrl(deck.pdf_path!);
     expect(error).not.toBeNull();
     expect(data).toBeNull();
   });
@@ -300,12 +300,12 @@ describe("decks path access", () => {
       const { data, error } = await actor.client.from("decks").select("id, pdf_path, original_path").eq("id", deck.id).maybeSingle();
       expect(error).toBeNull();
       expect(data).toBeNull();
-      const byPath = await actor.client.from("decks").select("id").eq("pdf_path", deck.pdf_path);
+      const byPath = await actor.client.from("decks").select("id").eq("pdf_path", deck.pdf_path!);
       expect(byPath.data).toEqual([]);
     }
     const asAnon = await anon.from("decks").select("pdf_path").eq("id", deck.id);
     expect(asAnon.data).toBeNull();
     const enrolled = await world.studentA.client.from("decks").select("pdf_path").eq("id", deck.id).maybeSingle();
-    expect(enrolled.data).toEqual({ pdf_path: deck.pdf_path });
+    expect(enrolled.data).toEqual({ pdf_path: deck.pdf_path! });
   });
 });
