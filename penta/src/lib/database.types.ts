@@ -383,6 +383,78 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"submission_grade_log": {
+                  Row: {
+                    "activity_id": string,"feedback": string,"file_etag": string | null,"file_name": string,"file_path": string | null,"graded_at": string,"graded_by": string,"id": string,"new_score": number,"old_score": number | null,"size_bytes": number,"student_id": string,"submission_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id": string,"feedback": string,"file_etag"?: string | null,"file_name": string,"file_path"?: string | null,"graded_at"?: string,"graded_by": string,"id"?: string,"new_score": number,"old_score"?: number | null,"size_bytes": number,"student_id": string,"submission_id": string
+                  }
+                  Update: {
+                    "activity_id"?: string,"feedback"?: string,"file_etag"?: string | null,"file_name"?: string,"file_path"?: string | null,"graded_at"?: string,"graded_by"?: string,"id"?: string,"new_score"?: number,"old_score"?: number | null,"size_bytes"?: number,"student_id"?: string,"submission_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"submission_uploads": {
+                  Row: {
+                    "activity_id": string,"declared_bytes": number,"file_name": string,"file_path": string,"id": string,"mime": string,"reserved_at": string,"student_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id": string,"declared_bytes": number,"file_name": string,"file_path": string,"id"?: string,"mime": string,"reserved_at"?: string,"student_id": string
+                  }
+                  Update: {
+                    "activity_id"?: string,"declared_bytes"?: number,"file_name"?: string,"file_path"?: string,"id"?: string,"mime"?: string,"reserved_at"?: string,"student_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "submission_uploads_activity_id_fkey"
+      columns: ["activity_id"]
+isOneToOne: false
+      referencedRelation: "activities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submission_uploads_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"submissions": {
+                  Row: {
+                    "activity_id": string,"feedback": string | null,"file_etag": string | null,"file_name": string,"file_path": string | null,"files_removed_at": string | null,"graded_at": string | null,"graded_by": string | null,"id": string,"is_late": boolean,"mime": string,"score": number | null,"size_bytes": number,"student_id": string,"submitted_at": string,"upload_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity_id": string,"feedback"?: string | null,"file_etag"?: string | null,"file_name": string,"file_path"?: string | null,"files_removed_at"?: string | null,"graded_at"?: string | null,"graded_by"?: string | null,"id"?: string,"is_late"?: boolean,"mime": string,"score"?: number | null,"size_bytes": number,"student_id": string,"submitted_at": string,"upload_id": string
+                  }
+                  Update: {
+                    "activity_id"?: string,"feedback"?: string | null,"file_etag"?: string | null,"file_name"?: string,"file_path"?: string | null,"files_removed_at"?: string | null,"graded_at"?: string | null,"graded_by"?: string | null,"id"?: string,"is_late"?: boolean,"mime"?: string,"score"?: number | null,"size_bytes"?: number,"student_id"?: string,"submitted_at"?: string,"upload_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "submissions_activity_id_fkey"
+      columns: ["activity_id"]
+isOneToOne: false
+      referencedRelation: "activities"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submissions_graded_by_fkey"
+      columns: ["graded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "submissions_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -395,23 +467,45 @@ isOneToOne: false
 "attempt_review":
 { Args: { "target_attempt": string }; Returns: Json
                            },
+"cancel_submission_upload":
+{ Args: { "target_upload": string }; Returns: string
+                           },
+"class_gradebook":
+{ Args: { "target_class": string }; Returns: {
+              "activity_id": string,"late": boolean,"points": number,"score": number,"state": string,"student_id": string,"submitted_at": string
+            }[]
+                           },
 "class_join_code":
 { Args: { "target_class": string }; Returns: string
                            },
 "complete_deck":
 { Args: { "real_bytes": number,"slides": number,"target_deck": string }; Returns: string
                            },
+"complete_submission":
+{ Args: { "real_bytes": number,"stored_etag": string,"target_upload": string }; Returns: Json
+                           },
 "deck_finished":
 { Args: { "target_deck": string,"target_student": string }; Returns: boolean
                            },
+"deck_view_counts":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "deck_id": string,"viewed": number
+            }[]
+                           },
 "delete_quiz_question":
 { Args: { "target_question": string }; Returns: string
+                           },
+"drop_graded_files":
+{ Args: { "target_activity": string }; Returns: number
                            },
 "end_live":
 { Args: { "target_session": string }; Returns: string
                            },
 "grade_check":
 { Args: { "answer": Json,"key_answers": Json,"question_kind": string }; Returns: boolean
+                           },
+"grade_submission":
+{ Args: { "expected_upload": string,"new_feedback": string,"new_score": number,"target_submission": string }; Returns: Json
                            },
 "join_class":
 { Args: { "code": string }; Returns: Json
@@ -436,6 +530,11 @@ isOneToOne: false
 "move_quiz_question":
 { Args: { "step": number,"target_question": string }; Returns: string
                            },
+"my_grades":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "activity_id": string,"class_id": string,"late": boolean,"points": number,"score": number,"state": string,"submitted_at": string
+            }[]
+                           },
 "quiz_keys":
 { Args: { "target_activity": string }; Returns: {
               "answers": Json,"question_id": string
@@ -449,6 +548,9 @@ isOneToOne: false
                            },
 "reserve_deck":
 { Args: { "deck_kind": string,"deck_title": string,"declared_bytes": number,"target_class": string,"target_lesson": string }; Returns: Json
+                           },
+"reserve_submission":
+{ Args: { "declared_bytes": number,"file_kind": string,"file_name": string,"target_activity": string }; Returns: Json
                            },
 "save_answer":
 { Args: { "answer": Json,"target_attempt": string,"target_question": string }; Returns: Json
@@ -468,10 +570,16 @@ isOneToOne: false
 "storage_usage":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"student_altitude":
+{ Args: { "target_student": string }; Returns: Json
+                           },
 "submit_attempt":
 { Args: { "answers": Json,"target_attempt": string }; Returns: Json
                            },
 "sweep_decks":
+{ Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"sweep_submissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
 "touch_live":
