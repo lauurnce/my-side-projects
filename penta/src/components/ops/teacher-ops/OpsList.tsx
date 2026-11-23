@@ -7,15 +7,16 @@ import styles from "./ops.module.css";
 export type OpsRow = {
   id: string;
   title: string;
+  kind: "Quiz" | "Upload";
   published: boolean;
   points: string;
   due: string;
 };
 
-export const emptyOpsMessage = "No quizzes yet. Create the first one.";
+export const emptyOpsMessage = "No activities yet. Create a quiz or an upload activity.";
 
-export function quizCountLabel(count: number): string {
-  return `${count} ${count === 1 ? "quiz" : "quizzes"}`;
+export function activityCountLabel(count: number): string {
+  return `${count} ${count === 1 ? "activity" : "activities"}`;
 }
 
 export function OpsList({ rows }: { rows: OpsRow[] }) {
@@ -30,6 +31,7 @@ export function OpsList({ rows }: { rows: OpsRow[] }) {
               {row.title}
             </Link>
             <div className={outlineStyles.meta}>
+              <span className={outlineStyles.minutes}>{row.kind}</span>
               <StatusChip status={row.published ? "submitted" : "due"}>
                 {row.published ? "Published" : "Draft"}
               </StatusChip>
@@ -37,15 +39,17 @@ export function OpsList({ rows }: { rows: OpsRow[] }) {
               <span className={outlineStyles.minutes}>{row.due}</span>
             </div>
           </div>
-          <div className={outlineStyles.actions}>
-            <Link
-              className={outlineStyles.button}
-              href={`/ops/${row.id}/results`}
-              aria-label={`Results of ${row.title}`}
-            >
-              Results
-            </Link>
-          </div>
+          {row.kind === "Quiz" && (
+            <div className={outlineStyles.actions}>
+              <Link
+                className={outlineStyles.button}
+                href={`/ops/${row.id}/results`}
+                aria-label={`Results of ${row.title}`}
+              >
+                Results
+              </Link>
+            </div>
+          )}
         </li>
       ))}
     </ul>
