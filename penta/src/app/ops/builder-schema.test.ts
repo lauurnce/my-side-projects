@@ -180,6 +180,7 @@ const baseActivity: Activity = {
   id: activityId,
   classId,
   lessonId,
+  type: "quiz",
   title: "Quiz 1",
   instructionsMd: "Read each item.",
   points: 12,

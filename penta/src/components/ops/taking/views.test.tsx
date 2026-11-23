@@ -17,6 +17,7 @@ function activity(overrides: Partial<Activity> = {}): Activity {
     id: activityId,
     classId,
     lessonId: null,
+    type: "quiz",
     title: "Integration quiz",
     instructionsMd: "",
     points: 5,

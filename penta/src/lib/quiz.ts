@@ -10,9 +10,12 @@ export type ShowAnswers = "after_submit" | "after_due" | "never";
 export type AnswerValue = number | boolean | string | null;
 export type KeyValue = number | boolean | string[];
 
+export type ActivityType = "quiz" | "upload";
+
 export type Activity = {
   id: string;
   classId: string;
+  type: ActivityType;
   lessonId: string | null;
   title: string;
   instructionsMd: string;
@@ -80,7 +83,7 @@ export type Review =
 export type ActivityState = "draft" | "open" | "in_progress" | "done" | "closed";
 
 const activityColumns =
-  "id, class_id, lesson_id, title, instructions_md, points, due_at, published_at, requires_deck_id, attempt_limit, time_limit_min, show_answers";
+  "id, class_id, lesson_id, type, title, instructions_md, points, due_at, published_at, requires_deck_id, attempt_limit, time_limit_min, show_answers";
 const attemptColumns =
   "id, activity_id, student_id, attempt_no, started_at, expires_at, submitted_at, score, max_score";
 const kinds: readonly string[] = ["mcq", "tf", "ident"];
@@ -99,6 +102,7 @@ export function toActivity(row: Pick<ActivityRow, keyof ActivityRow & string>): 
   return {
     id: row.id,
     classId: row.class_id,
+    type: row.type === "upload" ? "upload" : "quiz",
     lessonId: row.lesson_id,
     title: row.title,
     instructionsMd: row.instructions_md,

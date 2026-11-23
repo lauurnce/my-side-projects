@@ -54,6 +54,7 @@ const activity: Activity = {
   id: activityId,
   classId: "3f2b8c1e-6a4d-4e5f-9b7a-1c2d3e4f5a6b",
   lessonId,
+  type: "quiz",
   title: "Quiz 1",
   instructionsMd: "Read **each** item.",
   points: 6,

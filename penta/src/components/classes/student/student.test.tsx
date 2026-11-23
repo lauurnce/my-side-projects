@@ -224,6 +224,7 @@ describe("ClassDetail", () => {
       id,
       classId,
       lessonId: null,
+      type: "quiz",
       title,
       instructionsMd: "",
       points: 12,

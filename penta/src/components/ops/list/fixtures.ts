@@ -7,6 +7,7 @@ export function quiz(id: string, overrides: Partial<Activity> = {}): Activity {
     id,
     classId: "class-1",
     lessonId: null,
+    type: "quiz",
     title: `Quiz ${id}`,
     instructionsMd: "",
     points: 12,

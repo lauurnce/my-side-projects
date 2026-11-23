@@ -308,6 +308,7 @@ describe("QuizPaper", () => {
     id: activityId,
     classId: "9d8c7b6a-52a7-4b6c-8a44-6f0b0f0f9d66",
     lessonId: null,
+    type: "quiz",
     title: "Integration quiz",
     instructionsMd: "",
     points: 4,

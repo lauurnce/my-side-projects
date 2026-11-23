@@ -12,6 +12,7 @@ const activity: Activity = {
   id: "quiz-1",
   classId: "class-1",
   lessonId: null,
+  type: "quiz",
   title: "Message brokers",
   instructionsMd: "",
   points: 3,
