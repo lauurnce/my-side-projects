@@ -117,6 +117,13 @@ describe("message mapping", () => {
     );
   });
 
+  it("names the questions when a lesson delete is refused by a thread", () => {
+    const error = { code: "23503", message: 'violates foreign key constraint "threads_lesson_id_fkey" on table "threads"' };
+    expect(writeErrorMessage(error, routeMessages.lessonHasProgress)).toBe(
+      "Students have asked questions on this lesson, so it cannot be deleted. Unpublish it instead.",
+    );
+  });
+
   it("treats zero rows without an error as gone", () => {
     expect(writeErrorMessage(null)).toBe("That item is no longer here. Reload the page.");
   });
