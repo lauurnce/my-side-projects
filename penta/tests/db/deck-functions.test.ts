@@ -386,7 +386,7 @@ describe("storage_usage", () => {
     const deck = await addDeck(world.classroom.id, world.teacher.id, { kind: "pptx" });
     const pdf = buildPdf(3, 2000);
     const pptx = buildPptx();
-    await storeDeckFile(deck.pdf_path, pdf);
+    await storeDeckFile(deck.pdf_path!, pdf);
     expect(await usageNow()).toMatchObject({ used_bytes: before.used_bytes + pdf.length });
     await storeDeckFile(deck.original_path!, pptx, pptxType);
     expect(await usageNow()).toMatchObject({ used_bytes: before.used_bytes + pdf.length + pptx.length });
@@ -427,24 +427,24 @@ describe("sweep_decks", () => {
     const unfinished = await addUnfinishedDeck(world.classroom.id, world.teacher.id);
     await storeDeckFile(orphan, buildPdf(1));
     await storeDeckFile(strayOriginal, buildPptx(), pptxType);
-    await storeDeckFile(ready.pdf_path, buildPdf(1));
+    await storeDeckFile(ready.pdf_path!, buildPdf(1));
     await storeDeckFile(ready.original_path!, buildPptx(), pptxType);
-    await storeDeckFile(unfinished.pdf_path, buildPdf(1));
+    await storeDeckFile(unfinished.pdf_path!, buildPdf(1));
     const { data, error } = await admin.rpc("sweep_decks");
     expect(error).toBeNull();
     expect(data).toContain(orphan);
     expect(data).toContain(strayOriginal);
-    expect(data).not.toContain(ready.pdf_path);
+    expect(data).not.toContain(ready.pdf_path!);
     expect(data).not.toContain(ready.original_path);
-    expect(data).not.toContain(unfinished.pdf_path);
+    expect(data).not.toContain(unfinished.pdf_path!);
   });
 
   it("sweep_decks: an object becomes an orphan once its deck row is deleted", async () => {
     const deck = await addDeck(world.classroom.id, world.teacher.id);
-    await storeDeckFile(deck.pdf_path, buildPdf(1));
-    expect((await admin.rpc("sweep_decks")).data).not.toContain(deck.pdf_path);
+    await storeDeckFile(deck.pdf_path!, buildPdf(1));
+    expect((await admin.rpc("sweep_decks")).data).not.toContain(deck.pdf_path!);
     await admin.from("decks").delete().eq("id", deck.id);
-    expect((await admin.rpc("sweep_decks")).data).toContain(deck.pdf_path);
+    expect((await admin.rpc("sweep_decks")).data).toContain(deck.pdf_path!);
   });
 
   it("sweep_decks: it deletes an unfinished deck older than 6 hours and keeps a fresh one and a ready old one", async () => {
@@ -452,7 +452,7 @@ describe("sweep_decks", () => {
     const recent = await addUnfinishedDeck(world.classroom.id, world.teacher.id);
     const fresh = await addUnfinishedDeck(world.classroom.id, world.teacher.id);
     const readyOld = await addDeck(world.classroom.id, world.teacher.id);
-    await storeDeckFile(stale.pdf_path, buildPdf(1));
+    await storeDeckFile(stale.pdf_path!, buildPdf(1));
     await admin.from("decks").update({ created_at: hoursAgo(7) }).eq("id", stale.id);
     await admin.from("decks").update({ created_at: hoursAgo(5) }).eq("id", recent.id);
     await admin.from("decks").update({ created_at: hoursAgo(7) }).eq("id", readyOld.id);
@@ -462,7 +462,7 @@ describe("sweep_decks", () => {
     expect(await readDeck(recent.id)).not.toBeNull();
     expect(await readDeck(fresh.id)).not.toBeNull();
     expect(await readDeck(readyOld.id)).not.toBeNull();
-    expect(data).toContain(stale.pdf_path);
+    expect(data).toContain(stale.pdf_path!);
   });
 
   it("sweep_decks: a swept reservation frees its bytes and its pending slot", async () => {

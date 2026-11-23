@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { isClassOwner } from "@/lib/classes";
-import { loadDeck, type DeckDetail } from "@/lib/decks";
+import { isUploadedDeck, loadDeck, type DeckDetail, type UploadedDeck } from "@/lib/decks";
 import { inspectDeckFiles, removeDeckFiles, signDeckUploads, sweepDecks, type DeckPaths } from "@/lib/deck-storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -86,7 +86,8 @@ export async function startDeckUpload(input: unknown): Promise<StartUploadResult
   const reserved = toReserveResult(data);
   if (reserved.status !== "reserved" || !reserved.deckId) return uploadFailure(reserveMessage(reserved, declaredBytes));
 
-  const deck = await loadDeck(supabase, reserved.deckId);
+  const loaded = await loadDeck(supabase, reserved.deckId);
+  const deck = loaded && isUploadedDeck(loaded) ? loaded : null;
   const targets = deck ? await signDeckUploads(deck) : null;
   if (!targets) {
     await removeUnfinishedDeck(reserved.deckId, deck);
@@ -97,7 +98,7 @@ export async function startDeckUpload(input: unknown): Promise<StartUploadResult
   return { status: "ok", deckId: reserved.deckId, targets };
 }
 
-async function applyFinishStep(supabase: Supabase, deck: DeckDetail, step: FinishStep): Promise<UploadStepResult> {
+async function applyFinishStep(supabase: Supabase, deck: UploadedDeck, step: FinishStep): Promise<UploadStepResult> {
   if (step.step === "keep") return uploadFailure(step.message);
   if (step.step === "remove") {
     await removeUnfinishedDeck(deck.id, deck);
@@ -112,7 +113,7 @@ async function applyFinishStep(supabase: Supabase, deck: DeckDetail, step: Finis
   return uploadDone;
 }
 
-async function finishOwnedDeck(supabase: Supabase, deck: DeckDetail, slideCount: number): Promise<UploadStepResult> {
+async function finishOwnedDeck(supabase: Supabase, deck: UploadedDeck, slideCount: number): Promise<UploadStepResult> {
   if (deck.ready) return uploadDone;
 
   const inspection = await inspectDeckFiles(deck);
@@ -134,7 +135,7 @@ export async function finishDeckUpload(input: unknown): Promise<UploadStepResult
 
   const supabase = await createClient();
   const deck = await loadOwnedDeck(supabase, parsed.data.deckId, user.id);
-  if (!deck) return uploadFailure(deckMessages.gone);
+  if (!deck || !isUploadedDeck(deck)) return uploadFailure(deckMessages.gone);
 
   const result = await finishOwnedDeck(supabase, deck, parsed.data.slideCount);
   await sweepDecks();
@@ -148,7 +149,7 @@ export async function cancelDeckUpload(input: unknown): Promise<UploadStepResult
 
   const supabase = await createClient();
   const deck = await loadOwnedDeck(supabase, parsed.data.deckId, user.id);
-  if (!deck) return uploadFailure(deckMessages.gone);
+  if (!deck || !isUploadedDeck(deck)) return uploadFailure(deckMessages.gone);
 
   if (!deck.ready) await removeUnfinishedDeck(deck.id, deck);
   await sweepDecks();

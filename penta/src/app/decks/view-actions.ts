@@ -16,8 +16,9 @@ export async function refreshDeckSource(input: { deckId: string }): Promise<Deck
 
   const supabase = await createClient();
   const deck = await loadDeck(supabase, parsed.data.deckId);
-  if (!deck || !deck.ready) return null;
+  const path = deck?.ready ? deck.pdfPath : null;
+  if (!path) return null;
 
-  const [url, length] = await Promise.all([signDeckView(deck.pdfPath), deckFileSize(deck.pdfPath)]);
+  const [url, length] = await Promise.all([signDeckView(path), deckFileSize(path)]);
   return url && length ? { url, length } : null;
 }

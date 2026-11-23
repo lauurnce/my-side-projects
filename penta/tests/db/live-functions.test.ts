@@ -444,7 +444,7 @@ describe("live_state", () => {
       expect(error).toBeNull();
       expect(state).toEqual(noLiveState);
     }
-    expect(noLiveState).toEqual({ session_id: null, current_slide: null, revision: 0, running: false });
+    expect(noLiveState).toEqual({ session_id: null, current_slide: null, revision: 0, running: false, content_version: null });
   });
 
   it("live_state: a running session is returned to the teacher and an enrolled student", async () => {
@@ -453,7 +453,7 @@ describe("live_state", () => {
     for (const actor of [world.teacher, world.studentA, world.studentB]) {
       const { state, error } = await liveState(actor.client, deck.id);
       expect(error).toBeNull();
-      expect(state).toEqual({ session_id: sessionId, current_slide: 3, revision: created.revision, running: true });
+      expect(state).toEqual({ session_id: sessionId, current_slide: 3, revision: created.revision, running: true, content_version: null });
     }
   });
 
@@ -465,10 +465,11 @@ describe("live_state", () => {
       current_slide: 4,
       revision: moved.result!.revision,
       running: true,
+      content_version: null,
     });
     await world.teacher.client.rpc("end_live", { target_session: sessionId });
     const { state } = await liveState(world.studentA.client, deck.id);
-    expect(state).toMatchObject({ session_id: sessionId, current_slide: 4, running: false });
+    expect(state).toMatchObject({ session_id: sessionId, current_slide: 4, running: false, content_version: null });
     expect(state!.revision).toBeGreaterThan(moved.result!.revision!);
   });
 
@@ -478,7 +479,7 @@ describe("live_state", () => {
     const before = await row(sessionId);
     for (const actor of [world.teacher, world.studentA]) {
       const { state } = await liveState(actor.client, deck.id);
-      expect(state).toEqual({ session_id: sessionId, current_slide: 2, revision: before.revision, running: false });
+      expect(state).toEqual({ session_id: sessionId, current_slide: 2, revision: before.revision, running: false, content_version: null });
     }
     expect(await row(sessionId)).toEqual(before);
   });
@@ -487,7 +488,7 @@ describe("live_state", () => {
     const deck = await readyDeck();
     const firstId = await endedSession(world.teacher.client, deck.id, 5);
     const first = await row(firstId);
-    expect((await liveState(world.studentA.client, deck.id)).state).toMatchObject({ session_id: firstId, running: false });
+    expect((await liveState(world.studentA.client, deck.id)).state).toMatchObject({ session_id: firstId, running: false, content_version: null });
     const secondId = await startedSession(world.teacher.client, deck.id, 2);
     const second = await row(secondId);
     expect(second.revision).toBeGreaterThan(first.revision);
@@ -496,9 +497,10 @@ describe("live_state", () => {
       current_slide: 2,
       revision: second.revision,
       running: true,
+      content_version: null,
     });
     await world.teacher.client.rpc("end_live", { target_session: secondId });
-    expect((await liveState(world.studentA.client, deck.id)).state).toMatchObject({ session_id: secondId, running: false });
+    expect((await liveState(world.studentA.client, deck.id)).state).toMatchObject({ session_id: secondId, running: false, content_version: null });
   });
 
   it("live_state: a student of another class, the outsider and another teacher get the empty answer", async () => {
@@ -521,7 +523,7 @@ describe("live_state", () => {
   it("live_state: a student gets the empty answer for a deck linked to a draft lesson", async () => {
     const { deck, sessionId } = await draftLinkedDeck();
     expect((await liveState(world.studentA.client, deck.id)).state).toEqual(noLiveState);
-    expect((await liveState(world.teacher.client, deck.id)).state).toMatchObject({ session_id: sessionId, running: true });
+    expect((await liveState(world.teacher.client, deck.id)).state).toMatchObject({ session_id: sessionId, running: true, content_version: null });
   });
 
   it("live_state: anon cannot call it", async () => {
@@ -535,7 +537,7 @@ describe("live_state", () => {
     const { deck, sessionId } = await running(2);
     const { data, error } = await world.studentA.client.rpc("live_state", { target_deck: deck.id }, { get: true });
     expect(error).toBeNull();
-    expect(data).toMatchObject({ session_id: sessionId, current_slide: 2, running: true });
+    expect(data).toMatchObject({ session_id: sessionId, current_slide: 2, running: true, content_version: null });
   });
 });
 

@@ -106,8 +106,9 @@ export async function signDeckDownload(path: string, fileName: string): Promise<
   return data?.signedUrl ?? null;
 }
 
-export async function removeDeckFiles(paths: DeckPaths): Promise<boolean> {
+export async function removeDeckFiles(paths: { pdfPath: string | null; originalPath: string | null }): Promise<boolean> {
   const names = [paths.pdfPath, paths.originalPath].filter((path): path is string => path !== null);
+  if (names.length === 0) return true;
   const { error } = await storage().remove(names);
   return !error;
 }

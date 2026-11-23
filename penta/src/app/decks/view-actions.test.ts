@@ -37,6 +37,12 @@ describe("refreshDeckSource", () => {
     expect(mocks.deckFileSize).toHaveBeenCalledWith("class/deck/slides.pdf");
   });
 
+  it("returns null for a deck that has no stored file", async () => {
+    mocks.loadDeck.mockResolvedValue({ ...readyDeck, pdfPath: null });
+    expect(await refreshDeckSource({ deckId })).toBeNull();
+    expect(mocks.signDeckView).not.toHaveBeenCalled();
+  });
+
   it("ignores any path the caller sends", async () => {
     const input = { deckId, pdfPath: "other/deck/slides.pdf" } as { deckId: string };
     await refreshDeckSource(input);

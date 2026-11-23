@@ -22,7 +22,9 @@ export type DeckSummary = {
   viewedCount: number;
 };
 
-export type DeckDetail = DeckSummary & { pdfPath: string; originalPath: string | null };
+export type DeckDetail = DeckSummary & { pdfPath: string | null; originalPath: string | null };
+
+export type UploadedDeck = DeckDetail & { pdfPath: string };
 
 export type StorageUsage = { usedBytes: number; reservedBytes: number; budgetBytes: number };
 
@@ -33,6 +35,10 @@ const deckColumns = "id, class_id, lesson_id, title, kind, slide_count, size_byt
 const deckKinds: readonly DeckKind[] = ["pdf", "pptx"];
 const formatByKind = { pdf: "PDF", pptx: "PPTX" } as const satisfies Record<DeckKind, string>;
 const extensionByKind = { pdf: "pdf", pptx: "pptx" } as const satisfies Record<DeckKind, string>;
+
+export function isUploadedDeck(deck: DeckDetail): deck is UploadedDeck {
+  return deck.pdfPath !== null;
+}
 
 export function toDeckKind(value: string): DeckKind {
   return deckKinds.find((kind) => kind === value) ?? "pdf";

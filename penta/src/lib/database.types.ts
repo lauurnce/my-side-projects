@@ -81,6 +81,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"deck_contents": {
+                  Row: {
+                    "content": NonNullable<Json>,"deck_id": string,"last_save_id": string | null,"updated_at": string,"updated_by": string | null,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content": NonNullable<Json>,"deck_id": string,"last_save_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"version"?: number
+                  }
+                  Update: {
+                    "content"?: NonNullable<Json>,"deck_id"?: string,"last_save_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "deck_contents_deck_id_fkey"
+      columns: ["deck_id"]
+isOneToOne: true
+      referencedRelation: "decks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "deck_contents_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"deck_views": {
                   Row: {
                     "deck_id": string,"slide_no": number,"student_id": string,"viewed_at": string
@@ -109,14 +135,14 @@ isOneToOne: false
                   ]
                 },"decks": {
                   Row: {
-                    "class_id": string,"created_at": string,"created_by": string,"id": string,"kind": string,"lesson_id": string | null,"original_path": string | null,"pdf_path": string,"ready_at": string | null,"size_bytes": number,"slide_count": number | null,"title": string
+                    "class_id": string,"created_at": string,"created_by": string,"id": string,"kind": string,"lesson_id": string | null,"original_path": string | null,"pdf_path": string | null,"ready_at": string | null,"size_bytes": number,"slide_count": number | null,"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_id": string,"created_at"?: string,"created_by": string,"id"?: string,"kind": string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path": string,"ready_at"?: string | null,"size_bytes": number,"slide_count"?: number | null,"title": string
+                    "class_id": string,"created_at"?: string,"created_by": string,"id"?: string,"kind": string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path"?: string | null,"ready_at"?: string | null,"size_bytes": number,"slide_count"?: number | null,"title": string
                   }
                   Update: {
-                    "class_id"?: string,"created_at"?: string,"created_by"?: string,"id"?: string,"kind"?: string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path"?: string,"ready_at"?: string | null,"size_bytes"?: number,"slide_count"?: number | null,"title"?: string
+                    "class_id"?: string,"created_at"?: string,"created_by"?: string,"id"?: string,"kind"?: string,"lesson_id"?: string | null,"original_path"?: string | null,"pdf_path"?: string | null,"ready_at"?: string | null,"size_bytes"?: number,"slide_count"?: number | null,"title"?: string
                   }
                   Relationships: [
                     {
@@ -603,8 +629,14 @@ isOneToOne: false
 "complete_submission":
 { Args: { "real_bytes": number,"stored_etag": string,"target_upload": string }; Returns: Json
                            },
+"create_native_deck":
+{ Args: { "content": Json,"deck_title": string,"editor": string,"target_class": string,"target_lesson": string }; Returns: Json
+                           },
 "deck_finished":
 { Args: { "target_deck": string,"target_student": string }; Returns: boolean
+                           },
+"deck_image_room":
+{ Args: { "editor": string,"image_bytes": number,"target_deck": string }; Returns: string
                            },
 "deck_view_counts":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -662,6 +694,9 @@ isOneToOne: false
               "actor_name": string,"happened_at": string,"kind": string,"old_body": string
             }[]
                            },
+"publish_native_deck":
+{ Args: { "editor": string,"target_deck": string }; Returns: string
+                           },
 "quiz_keys":
 { Args: { "target_activity": string }; Returns: {
               "answers": Json,"question_id": string
@@ -681,6 +716,9 @@ isOneToOne: false
                            },
 "save_answer":
 { Args: { "answer": Json,"target_attempt": string,"target_question": string }; Returns: Json
+                           },
+"save_deck_content":
+{ Args: { "content": Json,"editor": string,"known_version": number,"save_id": string,"target_deck": string }; Returns: Json
                            },
 "save_quiz_question":
 { Args: { "key_answers": Json,"question_kind": string,"question_options": Json,"question_points": number,"question_prompt": string,"target_activity": string,"target_question": string }; Returns: Json
@@ -720,6 +758,9 @@ isOneToOne: false
                            },
 "touch_live":
 { Args: { "target_session": string }; Returns: string
+                           },
+"unused_deck_images":
+{ Args: { "target_deck": string }; Returns: string[]
                            }
           }
           Enums: {

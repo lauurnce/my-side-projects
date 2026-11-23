@@ -64,7 +64,14 @@ export type ClassAltitude = {
 export type Altitude = { overall: number; classes: ClassAltitude[] };
 export type DeckKind = "pdf" | "pptx";
 export type LiveAnswer = { status: string; session_id?: string; revision?: number };
-export type LiveStateAnswer = { session_id: string | null; current_slide: number | null; revision: number; running: boolean };
+export type LiveStateAnswer = {
+  session_id: string | null;
+  current_slide: number | null;
+  revision: number;
+  running: boolean;
+  content_version: number | null;
+};
+export type NativeReply = { status: string; deck_id?: string; version?: number; session_id?: string };
 export type SessionOptions = { slide?: number; activeMinutesAgo?: number; ended?: boolean };
 export type QuizReply = { status: string; [field: string]: Json | undefined };
 export type QuestionKind = "mcq" | "tf" | "ident";
@@ -176,7 +183,7 @@ export const postColumns =
   "id, thread_id, author_id, author_name, body, parent_id, is_question, created_at, edited_at, edit_count, hidden_at, hidden_by";
 export const postEventColumns = "id, post_id, actor_id, kind, old_body, happened_at";
 export const notFound = { status: "not_found" };
-export const noLiveState: LiveStateAnswer = { session_id: null, current_slide: null, revision: 0, running: false };
+export const noLiveState: LiveStateAnswer = { session_id: null, current_slide: null, revision: 0, running: false, content_version: null };
 export const joinCodePattern = /^[A-HJ-NP-Z2-9]{10}$/;
 export const testPassword = randomUUID();
 export const admin = createClient<Database>(url, serviceRoleKey, sessionless);
@@ -1268,4 +1275,65 @@ async function removeRoutes(userIds: string[]) {
   await deleteWhere("lesson_progress", "lesson_id", lessonIds);
   await deleteWhere("lessons", "module_id", moduleIds);
   await deleteWhere("modules", "class_id", classIds);
+}
+
+export function slideContent(slides = 1, images: string[] = []) {
+  return {
+    v: 1,
+    slides: Array.from({ length: slides }, (_, index) => ({
+      id: `slide${String(index).padStart(3, "0")}`,
+      blocks: [
+        { id: `title${String(index).padStart(3, "0")}`, type: "title", x: 120, y: 120, w: 1360, h: 200, text: `Slide ${index + 1}`, tone: "ink" },
+        ...(index === 0 ? images : []).map((file, order) => ({
+          id: `image${String(order).padStart(3, "0")}`,
+          type: "image",
+          x: 120,
+          y: 400,
+          w: 400,
+          h: 300,
+          file,
+          alt: "",
+        })),
+      ],
+    })),
+  };
+}
+
+export async function createNativeDeck(editorId: string | null, classId: string, change: { title?: string; lessonId?: string | null; content?: Json } = {}) {
+  const { data, error } = await admin.rpc("create_native_deck", {
+    editor: editorId as string,
+    target_class: classId,
+    deck_title: change.title ?? `Built ${randomUUID().slice(0, 8)}`,
+    target_lesson: (change.lessonId ?? null) as string,
+    content: change.content === undefined ? slideContent() : change.content,
+  });
+  return { result: data as NativeReply | null, error };
+}
+
+export async function createdNativeDeck(editorId: string, classId: string, change: { lessonId?: string | null; content?: Json } = {}): Promise<string> {
+  const { result, error } = await createNativeDeck(editorId, classId, change);
+  if (error || result?.status !== "created" || !result.deck_id) throw new Error(`create_native_deck answered ${result?.status ?? error?.code}`);
+  return result.deck_id;
+}
+
+export async function saveDeckContent(editorId: string, deckId: string, knownVersion: number | null, content: Json, saveId: string | null = randomUUID()) {
+  const { data, error } = await admin.rpc("save_deck_content", {
+    editor: editorId,
+    target_deck: deckId,
+    known_version: knownVersion as number,
+    save_id: saveId as string,
+    content,
+  });
+  return { result: data as NativeReply | null, error };
+}
+
+export async function publishNativeDeck(editorId: string, deckId: string) {
+  const { data, error } = await admin.rpc("publish_native_deck", { editor: editorId, target_deck: deckId });
+  return { result: data, error };
+}
+
+export async function readDeckContent(deckId: string) {
+  const { data, error } = await admin.from("deck_contents").select("deck_id, content, version, last_save_id, updated_by").eq("deck_id", deckId).maybeSingle();
+  if (error) throw error;
+  return data;
 }

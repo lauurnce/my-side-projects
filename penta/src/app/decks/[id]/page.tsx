@@ -4,7 +4,7 @@ import { z } from "zod";
 import { DeckViewer } from "@/components/decks/DeckViewer";
 import { requireUser } from "@/lib/auth";
 import { isClassOwner } from "@/lib/classes";
-import { loadDeck, loadViewedSlides } from "@/lib/decks";
+import { isUploadedDeck, loadDeck, loadViewedSlides } from "@/lib/decks";
 import { deckFileSize, signDeckView } from "@/lib/deck-storage";
 import { loadLiveState } from "@/lib/live";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +20,7 @@ export default async function DeckPage({ params }: PageProps<"/decks/[id]">) {
 
   const supabase = await createClient();
   const deck = await loadDeck(supabase, deckId.data);
-  if (!deck || !deck.ready) notFound();
+  if (!deck || !deck.ready || !isUploadedDeck(deck)) notFound();
 
   const isStudent = user.role === "student";
   const [url, length, viewedSlides, isOwner, initialLive] = await Promise.all([
