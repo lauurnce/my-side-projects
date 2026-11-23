@@ -342,6 +342,86 @@ const sampleSubmissions = [
     grade: null,
   },
 ];
+const rolesLesson = sampleLessons[1];
+const rolesQuiz = sampleQuizzes[0];
+const sampleThreads = [
+  {
+    id: "5e9a0000-0000-4000-8000-0000000e0001",
+    title: "Why does a role need usage on a schema?",
+    lesson_id: rolesLesson.id,
+    activity_id: null,
+    target_title: rolesLesson.title,
+    locked_minutes_ago: null,
+    posts: [
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0101",
+        author: 0,
+        parent: null,
+        minutes_ago: 50,
+        hidden_minutes_ago: null,
+        body: [
+          "I ran `grant select` on the table for my reporting role, but the query still fails with permission denied.",
+          "",
+          "- The role can log in",
+          "- The grant on the table is there",
+          "",
+          "Why does it also need usage on the schema?",
+        ].join("\n"),
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0102",
+        author: "teacher",
+        parent: null,
+        minutes_ago: 44,
+        hidden_minutes_ago: null,
+        body: "A schema is like a folder. Usage lets the role look inside the folder, and select lets it read one table in it. Without usage the role cannot reach the table at all, so the table grant never gets checked.",
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0103",
+        author: 1,
+        parent: "5e9a0000-0000-4000-8000-0000000e0102",
+        minutes_ago: 39,
+        hidden_minutes_ago: null,
+        body: "That fixed mine too. I had the table grant but not the schema one.",
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0104",
+        author: 2,
+        parent: "5e9a0000-0000-4000-8000-0000000e0102",
+        minutes_ago: 35,
+        hidden_minutes_ago: 30,
+        body: "Just give the role superuser and stop asking, it is faster.",
+      },
+    ],
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000e0002",
+    title: "Is the quiz timed?",
+    lesson_id: null,
+    activity_id: rolesQuiz.id,
+    target_title: rolesQuiz.title,
+    locked_minutes_ago: 15,
+    posts: [
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0201",
+        author: 1,
+        parent: null,
+        minutes_ago: 25,
+        hidden_minutes_ago: null,
+        body: "Does the timer start when I open the quiz, or when I answer the first question?",
+      },
+      {
+        id: "5e9a0000-0000-4000-8000-0000000e0202",
+        author: "teacher",
+        parent: null,
+        minutes_ago: 20,
+        hidden_minutes_ago: null,
+        body: "It starts when you press Start. You have 15 minutes and two attempts.",
+      },
+    ],
+  },
+];
+const hideEventId = "5e9a0000-0000-4000-8000-0000000e1001";
 
 function fail(message: string): never {
   console.error(message);
@@ -435,6 +515,76 @@ async function saveDeck(sampleDeck: (typeof sampleDecks)[number], classId: strin
     ready_at: new Date().toISOString(),
   });
   if (error) fail(`Seed stopped: could not save the deck "${sampleDeck.title}" (${error.message}).`);
+}
+
+async function clearThreads(classId: string) {
+  const found = await admin.from("threads").select("id").eq("class_id", classId);
+  if (found.error) fail(`Seed stopped: could not list the threads (${found.error.message}).`);
+  const threadIds = found.data.map((thread) => thread.id);
+  if (threadIds.length === 0) return;
+  const posts = await admin.from("posts").select("id").in("thread_id", threadIds);
+  if (posts.error) fail(`Seed stopped: could not list the posts (${posts.error.message}).`);
+  const postIds = posts.data.map((post) => post.id);
+  if (postIds.length > 0) {
+    const removedEvents = await admin.from("post_events").delete().in("post_id", postIds);
+    if (removedEvents.error) fail(`Seed stopped: could not clear the post events (${removedEvents.error.message}).`);
+  }
+  const removedReplies = await admin.from("posts").delete().in("thread_id", threadIds).not("parent_id", "is", null);
+  if (removedReplies.error) fail(`Seed stopped: could not clear the replies (${removedReplies.error.message}).`);
+  const removedPosts = await admin.from("posts").delete().in("thread_id", threadIds);
+  if (removedPosts.error) fail(`Seed stopped: could not clear the posts (${removedPosts.error.message}).`);
+  const removedThreads = await admin.from("threads").delete().in("id", threadIds);
+  if (removedThreads.error) fail(`Seed stopped: could not clear the threads (${removedThreads.error.message}).`);
+}
+
+async function saveThread(
+  sampleThread: (typeof sampleThreads)[number],
+  classId: string,
+  teacherAccountId: string,
+  studentAccountIds: string[],
+  names: Map<string, string>,
+  now: number,
+) {
+  const ago = (minutes: number) => new Date(now - minutes * minuteMs).toISOString();
+  const authorOf = (author: number | string) => (typeof author === "number" ? studentAccountIds[author] : teacherAccountId);
+  const [question] = sampleThread.posts;
+  const locked = sampleThread.locked_minutes_ago;
+  const savedThread = await admin.from("threads").insert({
+    id: sampleThread.id,
+    class_id: classId,
+    lesson_id: sampleThread.lesson_id,
+    activity_id: sampleThread.activity_id,
+    title: sampleThread.title,
+    created_by: authorOf(question.author),
+    created_at: ago(question.minutes_ago),
+    locked: locked !== null,
+    locked_by: locked === null ? null : teacherAccountId,
+    locked_at: locked === null ? null : ago(locked),
+  });
+  if (savedThread.error) fail(`Seed stopped: could not save the thread "${sampleThread.title}" (${savedThread.error.message}).`);
+
+  for (const [index, post] of sampleThread.posts.entries()) {
+    const authorId = authorOf(post.author);
+    const hidden = post.hidden_minutes_ago;
+    const savedPost = await admin.from("posts").insert({
+      id: post.id,
+      thread_id: sampleThread.id,
+      author_id: authorId,
+      author_name: names.get(authorId) ?? "Student",
+      body: post.body,
+      parent_id: post.parent,
+      is_question: index === 0,
+      created_at: ago(post.minutes_ago),
+      hidden_at: hidden === null ? null : ago(hidden),
+      hidden_by: hidden === null ? null : teacherAccountId,
+    });
+    if (savedPost.error) fail(`Seed stopped: could not save a post in "${sampleThread.title}" (${savedPost.error.message}).`);
+    if (hidden === null) continue;
+    const savedEvent = await admin
+      .from("post_events")
+      .insert({ id: hideEventId, post_id: post.id, actor_id: teacherAccountId, kind: "hide", happened_at: ago(hidden) });
+    if (savedEvent.error) fail(`Seed stopped: could not save the hide event (${savedEvent.error.message}).`);
+  }
 }
 
 async function clearQuizzes(classId: string) {
@@ -654,6 +804,7 @@ const savedProgress = await admin
   );
 if (savedProgress.error) fail(`Seed stopped: could not save the lesson progress (${savedProgress.error.message}).`);
 
+await clearThreads(routeClassId);
 await clearSubmissions(routeClassId);
 await clearQuizzes(routeClassId);
 await clearDecks(routeClassId);
@@ -686,6 +837,22 @@ for (const sampleUpload of sampleUploads) await saveUpload(sampleUpload, routeCl
 for (const sample of sampleSubmissions) {
   await saveSubmission(sample, routeClassId, studentIds[sample.student], teacherId, seededAt);
 }
+
+const accountIds = [teacherId, ...studentIds];
+const savedNames = await admin.from("profiles").select("id, full_name").in("id", accountIds);
+if (savedNames.error) fail(`Seed stopped: could not read the names (${savedNames.error.message}).`);
+const namesById = new Map(savedNames.data.map((profile) => [profile.id, profile.full_name]));
+for (const sampleThread of sampleThreads) {
+  await saveThread(sampleThread, routeClassId, teacherId, studentIds, namesById, seededAt);
+}
+
+const savedThreads = await admin.from("threads").select("id, title, locked").eq("class_id", routeClassId);
+if (savedThreads.error) fail(`Seed stopped: could not read the threads (${savedThreads.error.message}).`);
+const savedPosts = await admin
+  .from("posts")
+  .select("thread_id, author_name, is_question, hidden_at")
+  .in("thread_id", sampleThreads.map((sampleThread) => sampleThread.id));
+if (savedPosts.error) fail(`Seed stopped: could not read the posts (${savedPosts.error.message}).`);
 
 const savedSubmissions = await admin
   .from("submissions")
@@ -771,3 +938,15 @@ for (const sampleUpload of sampleUploads) {
   }
 }
 console.log(`  ${students[0].fullName} and ${students[2].fullName} have handed in nothing for "${backupPlanUpload.title}".`);
+console.log("Threads in COMP 018");
+for (const sampleThread of sampleThreads) {
+  const saved = savedThreads.data.find((row) => row.id === sampleThread.id);
+  if (!saved) fail(`Seed stopped: the thread "${sampleThread.title}" was not saved.`);
+  const posts = savedPosts.data.filter((row) => row.thread_id === sampleThread.id);
+  const asker = posts.find((row) => row.is_question)?.author_name ?? "nobody";
+  const hidden = posts.filter((row) => row.hidden_at).length;
+  const state = saved.locked ? "Locked" : "Open";
+  const hiddenNote = hidden > 0 ? `, ${hidden} hidden` : "";
+  console.log(`  ${saved.title.padEnd(42)}${state}, on "${sampleThread.target_title}", asked by ${asker}`);
+  console.log(`    posts under the question: ${posts.length - 1}${hiddenNote}`);
+}
