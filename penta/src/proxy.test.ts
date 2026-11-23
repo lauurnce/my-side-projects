@@ -65,6 +65,7 @@ describe("proxy matcher", () => {
       "/decks/:path*",
       "/ops/:path*",
       "/grades/:path*",
+      "/threads/:path*",
       "/login",
       "/signup",
     ]);
@@ -109,6 +110,12 @@ describe("proxy without a user", () => {
     sessionIs(signedOut);
     const grades = await proxy(requestFor("/grades"));
     expect(grades.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fgrades");
+  });
+
+  it("redirects a thread to the login page", async () => {
+    sessionIs(signedOut);
+    const thread = await proxy(requestFor("/threads/abc"));
+    expect(thread.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fthreads%2Fabc");
   });
 
   it("treats a rejected token as no user", async () => {
