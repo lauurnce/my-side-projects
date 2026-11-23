@@ -93,6 +93,37 @@ export function zipEntryNames(directory: Uint8Array, entries: number): string[] 
   return position === directory.length ? names : null;
 }
 
+export type ZipEntry = { name: string; method: number; compressedSize: number; localOffset: number };
+
+export function zipEntries(directory: Uint8Array, entries: number): ZipEntry[] | null {
+  const view = viewOf(directory);
+  const decoder = new TextDecoder();
+  const listed: ZipEntry[] = [];
+  let position = 0;
+  while (listed.length < entries) {
+    if (position + directoryEntryLength > directory.length) return null;
+    if (view.getUint32(position, true) !== directoryEntrySignature) return null;
+    const nameEnd = position + directoryEntryLength + view.getUint16(position + 28, true);
+    if (nameEnd > directory.length) return null;
+    listed.push({
+      name: decoder.decode(directory.subarray(position + directoryEntryLength, nameEnd)),
+      method: view.getUint16(position + 10, true),
+      compressedSize: view.getUint32(position + 20, true),
+      localOffset: view.getUint32(position + 42, true),
+    });
+    position = nameEnd + view.getUint16(position + 30, true) + view.getUint16(position + 32, true);
+  }
+  return position === directory.length ? listed : null;
+}
+
+export const localHeaderLength = 30;
+
+export function localDataOffset(localHeader: Uint8Array, localOffset: number): number | null {
+  if (localHeader.length < localHeaderLength || !hasZipSignature(localHeader)) return null;
+  const view = viewOf(localHeader);
+  return localOffset + localHeaderLength + view.getUint16(26, true) + view.getUint16(28, true);
+}
+
 export function isPresentation(entryNames: string[]): boolean {
   return (
     requiredPresentationEntries.every((name) => entryNames.includes(name)) &&
