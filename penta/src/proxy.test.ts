@@ -64,6 +64,7 @@ describe("proxy matcher", () => {
       "/classes/:path*",
       "/decks/:path*",
       "/ops/:path*",
+      "/grades/:path*",
       "/login",
       "/signup",
     ]);
@@ -102,6 +103,12 @@ describe("proxy without a user", () => {
     expect(attempt.headers.get("location")).toBe(
       "http://localhost:3000/login?next=%2Fops%2Fabc%2Fattempt%2Fdef",
     );
+  });
+
+  it("redirects the grades page to the login page", async () => {
+    sessionIs(signedOut);
+    const grades = await proxy(requestFor("/grades"));
+    expect(grades.headers.get("location")).toBe("http://localhost:3000/login?next=%2Fgrades");
   });
 
   it("treats a rejected token as no user", async () => {

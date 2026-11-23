@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { sessionCookieOptions } from "@/lib/supabase/server";
 
-const guardedRoots = ["/hub", "/classes", "/decks", "/ops"];
+const guardedRoots = ["/hub", "/classes", "/decks", "/ops", "/grades"];
 const guestOnlyPaths = ["/login", "/signup"];
 
 type SessionCheck = "user" | "guest" | "unavailable";
@@ -80,4 +80,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/hub/:path*", "/classes/:path*", "/decks/:path*", "/ops/:path*", "/login", "/signup"] };
+export const config = { matcher: ["/hub/:path*", "/classes/:path*", "/decks/:path*", "/ops/:path*", "/grades/:path*", "/login", "/signup"] };
