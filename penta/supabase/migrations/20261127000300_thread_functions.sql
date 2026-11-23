@@ -306,7 +306,9 @@ begin
     locked_at = case when lock then clock_timestamp() end
   where id = target_thread and locked is distinct from lock;
 
-  perform private.touch_thread(target_thread);
+  if found then
+    perform private.touch_thread(target_thread);
+  end if;
   return jsonb_build_object('status', case when lock then 'locked' else 'unlocked' end);
 end;
 $$;
@@ -442,7 +444,7 @@ begin
           when moderator then jsonb_build_object(
             'hidden', posts.hidden_at is not null,
             'author_id', posts.author_id,
-            'author_in_class', posts.author_id = teacher or exists (
+            'author_in_class', coalesce(posts.author_id = teacher, false) or exists (
               select 1 from public.enrollments
               where enrollments.class_id = thread.class_id and enrollments.student_id = posts.author_id
             ),
