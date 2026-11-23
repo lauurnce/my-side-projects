@@ -8,6 +8,7 @@ import {
   type DeckFileKind,
   type DeckFileProblem,
 } from "@/lib/deck-file";
+import { readRange as readBucketRange, storedFile as storedBucketFile } from "@/lib/stored-file";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type DeckPaths = { pdfPath: string; originalPath: string | null };
@@ -21,8 +22,6 @@ export type Inspection =
   | { status: "incomplete" }
   | { status: "unavailable" }
   | { status: "invalid"; kind: DeckFileKind; problem: DeckFileProblem };
-
-type StoredFile = { size: number; contentType: string };
 
 const bucket = "decks";
 const headBytes = 8;
@@ -44,20 +43,12 @@ export async function signDeckUploads(paths: DeckPaths): Promise<UploadTargets |
   return pptx ? { pdf, pptx } : null;
 }
 
-async function storedFile(path: string): Promise<StoredFile | null | "unavailable"> {
-  const { data, error } = await storage().info(path);
-  if (data && typeof data.size === "number") return { size: data.size, contentType: data.contentType ?? "" };
-  const code = (error as { statusCode?: string } | null)?.statusCode;
-  return code === "404" ? null : "unavailable";
+function storedFile(path: string) {
+  return storedBucketFile(bucket, path);
 }
 
-async function readRange(path: string, start: number, end: number): Promise<Uint8Array | null> {
-  const { data } = await storage().createSignedUrl(path, 60);
-  if (!data) return null;
-  const response = await fetch(data.signedUrl, { headers: { Range: `bytes=${start}-${end}` }, cache: "no-store" });
-  if (response.status !== 206) return null;
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  return bytes.length === end - start + 1 ? bytes : null;
+function readRange(path: string, start: number, end: number) {
+  return readBucketRange(bucket, path, start, end);
 }
 
 async function presentationProblem(path: string, size: number): Promise<DeckFileProblem | null | "unavailable"> {
