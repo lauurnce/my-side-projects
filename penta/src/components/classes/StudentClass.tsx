@@ -4,6 +4,7 @@ import { loadOpsData } from "@/components/ops/list/load";
 import type { CurrentUser } from "@/lib/auth";
 import { unknownTeacherName } from "@/lib/classes";
 import { loadClassDecks } from "@/lib/decks";
+import { altitudeFor, loadAltitude } from "@/lib/grades";
 import { loadLiveDecks } from "@/lib/live";
 import { loadClassActivities } from "@/lib/quiz";
 import { loadClassOutline } from "@/lib/routes";
@@ -19,7 +20,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
     .maybeSingle();
   if (!enrolledClass) notFound();
 
-  const [{ data: teacher }, { data: enrollment }, outline, decks, live, activities] = await Promise.all([
+  const [{ data: teacher }, { data: enrollment }, outline, decks, live, activities, altitude] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", enrolledClass.teacher_id).maybeSingle(),
     supabase
       .from("enrollments")
@@ -31,6 +32,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
     loadClassDecks(supabase, classId),
     loadLiveDecks(supabase),
     loadClassActivities(supabase, classId),
+    loadAltitude(supabase, user.id),
   ]);
   if (!enrollment) notFound();
 
@@ -49,6 +51,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
       decks={decks}
       live={live}
       ops={ops}
+      altitude={altitudeFor(altitude, classId)}
     />
   );
 }

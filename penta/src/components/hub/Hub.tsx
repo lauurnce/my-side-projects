@@ -10,6 +10,7 @@ import {
   unknownClassCode,
 } from "@/components/decks/library/helpers";
 import { HubDeckList } from "@/components/decks/library/HubDeckList";
+import { altitudeLine, anyClassCounts, classMeters } from "@/components/grades/altitude/helpers";
 import { Panel, Panels } from "@/components/landing/Panels";
 import {
   activityCountLabel,
@@ -35,8 +36,8 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import type { Role } from "@/lib/auth";
 import type { DeckSummary } from "@/lib/decks";
 import { formatMeters, nextUp, type ClassProgress } from "@/lib/classes";
+import { noAltitude, type Altitude } from "@/lib/grades";
 import type { LiveDeck } from "@/lib/live";
-import { hubAltitude } from "@/lib/routes";
 import styles from "./Hub.module.css";
 
 export type HubClass = ClassProgress & {
@@ -49,6 +50,7 @@ export type HubClass = ClassProgress & {
 type HubProps = {
   role: Role;
   classes: HubClass[];
+  altitude?: Altitude;
 };
 
 type HubLiveProps = HubProps & {
@@ -83,7 +85,7 @@ function sum(classes: HubClass[], key: "published" | "drafts"): number {
   return classes.reduce((total, item) => total + item[key], 0);
 }
 
-function heroCopy(role: Role, classes: HubClass[]): { lines: [string, string]; lead: string } {
+function heroCopy(role: Role, classes: HubClass[], altitude: Altitude): { lines: [string, string]; lead: string } {
   const published = sum(classes, "published");
   if (role === "teacher") {
     return {
@@ -92,11 +94,10 @@ function heroCopy(role: Role, classes: HubClass[]): { lines: [string, string]; l
     };
   }
   return {
-    lines: ["You’re at", `${formatMeters(hubAltitude(classes))} m`],
-    lead:
-      published > 0
-        ? "Your altitude is the average across your classes."
-        : "Altitude starts counting when your classes have lessons.",
+    lines: ["You’re at", `${formatMeters(altitude.overall)} m`],
+    lead: anyClassCounts(altitude)
+      ? "Your altitude is the average across your classes."
+      : "Altitude starts counting when your classes have lessons, decks or graded work.",
   };
 }
 
@@ -128,9 +129,9 @@ function DueRow({ item }: { item: OpsItem | null }) {
   );
 }
 
-export function HubHero({ role, classes, decks = [], live = [], ops = noOps }: HubLiveProps) {
+export function HubHero({ role, classes, altitude = noAltitude, decks = [], live = [], ops = noOps }: HubLiveProps) {
   const hasClasses = classes.length > 0;
-  const { lines, lead } = heroCopy(role, classes);
+  const { lines, lead } = heroCopy(role, classes, altitude);
 
   return (
     <section className={styles.hero}>
@@ -155,8 +156,8 @@ export function HubHero({ role, classes, decks = [], live = [], ops = noOps }: H
       {role === "student" ? (
         <div className={styles.meter}>
           <AltitudeMeter
-            meters={hubAltitude(classes)}
-            note="Every finished lesson adds meters. Summit = 3,000 m per term."
+            meters={altitude.overall}
+            note="Lessons, decks and graded work add meters. Summit = 3,000 m per term."
           />
         </div>
       ) : null}
@@ -220,7 +221,7 @@ function TeacherCard({ item }: { item: HubClass }) {
   );
 }
 
-function StudentCard({ item }: { item: HubClass }) {
+function StudentCard({ item, meters }: { item: HubClass; meters: number }) {
   return (
     <RouteCard
       href={`/classes/${item.id}`}
@@ -229,12 +230,12 @@ function StudentCard({ item }: { item: HubClass }) {
       title={item.title}
       lessonsDone={item.done}
       lessonsTotal={item.published}
-      meters={item.meters}
+      meters={meters}
     />
   );
 }
 
-function HubRoutes({ role, classes }: HubProps) {
+function HubRoutes({ role, classes, altitude = noAltitude }: HubProps) {
   const shown = classes.slice(0, shownClassLimit);
   const showContinue = role === "student" && sum(classes, "published") > 0;
 
@@ -263,7 +264,11 @@ function HubRoutes({ role, classes }: HubProps) {
           <ul className={styles.cards}>
             {shown.map((item) => (
               <li key={item.id} className={styles.cell}>
-                {role === "teacher" ? <TeacherCard item={item} /> : <StudentCard item={item} />}
+                {role === "teacher" ? (
+                  <TeacherCard item={item} />
+                ) : (
+                  <StudentCard item={item} meters={classMeters(altitude, item.id)} />
+                )}
               </li>
             ))}
           </ul>
@@ -273,6 +278,15 @@ function HubRoutes({ role, classes }: HubProps) {
         <Link href="/classes" className={styles.textLink}>
           See all {classes.length} classes
         </Link>
+      ) : null}
+      {role === "student" && shown.length > 0 ? (
+        <p className={styles.altitudeLine}>
+          <span className={styles.altitudeKey}>Your altitude</span>
+          <span>{altitudeLine(altitude.overall)}</span>
+          <Link href="/grades" className={styles.altitudeLink}>
+            See how it adds up
+          </Link>
+        </p>
       ) : null}
     </Panel>
   );
@@ -369,10 +383,10 @@ function HubOps({ role, classes, ops }: HubProps & { ops: OpsData }) {
   );
 }
 
-export function HubLayers({ role, classes, decks = [], live = [], ops = noOps }: HubLiveProps) {
+export function HubLayers({ role, classes, altitude = noAltitude, decks = [], live = [], ops = noOps }: HubLiveProps) {
   return (
     <Panels>
-      <HubRoutes role={role} classes={classes} />
+      <HubRoutes role={role} classes={classes} altitude={altitude} />
       <HubDecks role={role} classes={classes} decks={decks} liveIds={liveDeckIds(live)} />
       <HubOps role={role} classes={classes} ops={ops} />
     </Panels>

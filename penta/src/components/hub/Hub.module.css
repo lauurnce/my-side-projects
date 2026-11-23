@@ -302,6 +302,42 @@
   line-height: 1.55;
 }
 
+.altitudeLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 18px;
+  min-width: 0;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--fg-rgb), 0.3);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.altitudeKey,
+.altitudeLink {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.altitudeKey {
+  color: var(--fg-muted);
+}
+
+.altitudeLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: auto;
+}
+
 .textLink {
   display: inline-flex;
   align-items: center;

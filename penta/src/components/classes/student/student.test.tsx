@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import type { DeckSummary } from "@/lib/decks";
+import type { ClassAltitude } from "@/lib/grades";
 import type { Activity, Attempt } from "@/lib/quiz";
 import type { ClassOutline } from "@/lib/routes";
 import { ClassDetail } from "./ClassDetail";
@@ -54,6 +55,18 @@ const outline: ClassOutline = {
 
 const emptyOutline: ClassOutline = { classId, modules: [] };
 
+const classAltitude: ClassAltitude = {
+  classId,
+  counts: true,
+  meters: 1708,
+  lessonsDone: 1,
+  lessonsPublished: 3,
+  decksFinished: 1,
+  decks: 2,
+  pointsEarned: 21,
+  pointsPossible: 25,
+};
+
 const idle = async () => ({});
 
 describe("ClassesHeader", () => {
@@ -104,6 +117,14 @@ describe("ClassList", () => {
     expect(second.textContent).toContain("0 meters");
     const fills = [...container.querySelectorAll<HTMLElement>("[data-fill]")].map((fill) => fill.style.width);
     expect(fills).toEqual(["58%", "0%"]);
+  });
+
+  it("shows the meters it is given, not a number worked out from lessons", () => {
+    render(<ClassList classes={[{ ...classes[0], done: 12, published: 12, meters: 1708 }]} />);
+    const card = screen.getByRole("link").textContent ?? "";
+    expect(card).toContain("12 of 12 lessons");
+    expect(card).toContain("1,708 meters");
+    expect(card).not.toContain("3,000");
   });
 
   it("leaves out an empty section and term", () => {
@@ -179,9 +200,11 @@ describe("ClassDetail", () => {
   });
 
   it("shows progress, the next lesson and the outline when lessons exist", () => {
-    render(<ClassDetail {...detail} />);
+    render(<ClassDetail {...detail} altitude={classAltitude} />);
     expect(screen.getByText("1 of 3 lessons done")).toBeTruthy();
-    expect(screen.getByText("1,000 meters")).toBeTruthy();
+    expect(screen.getByText("1,708 meters")).toBeTruthy();
+    expect(screen.getByText("Lessons 1 of 3 · Decks 1 of 2 · Points 21 of 25")).toBeTruthy();
+    expect(screen.queryByText(/^Based on/)).toBeNull();
     const next = screen.getByRole("link", { name: /Continue where you left off/ });
     expect(next.getAttribute("href")).toBe(`/classes/${classId}/lessons/l4`);
     expect(next.textContent).toContain("Message queues");
@@ -191,6 +214,37 @@ describe("ClassDetail", () => {
       "Decks",
       "Ops",
     ]);
+  });
+
+  it("explains an altitude that rests on some parts only", () => {
+    const lessonsOnly = { ...classAltitude, meters: 1000, decksFinished: 0, decks: 0, pointsEarned: 0, pointsPossible: 0 };
+    render(<ClassDetail {...detail} altitude={lessonsOnly} />);
+    const block = within(screen.getByRole("region", { name: "Progress" }));
+    expect(block.getByText("1,000 meters")).toBeTruthy();
+    expect(block.getByText("Lessons 1 of 3 · No decks yet · No graded work yet")).toBeTruthy();
+    expect(block.getByText("Based on lessons only.")).toBeTruthy();
+  });
+
+  it("shows 0 m and says the class is left out when the database has nothing to count", () => {
+    render(<ClassDetail {...detail} />);
+    const block = within(screen.getByRole("region", { name: "Progress" }));
+    expect(block.getByText("0 meters")).toBeTruthy();
+    expect(block.getByText("Nothing to count yet. This class is left out of your average.")).toBeTruthy();
+    cleanup();
+    render(<ClassDetail {...detail} altitude={{ ...classAltitude, counts: false, meters: 900 }} />);
+    expect(screen.getByText("0 meters")).toBeTruthy();
+    expect(screen.queryByText(/900/)).toBeNull();
+  });
+
+  it("shows the altitude of a class with decks or graded work but no lessons", () => {
+    const noLessons = { ...classAltitude, meters: 2100, lessonsDone: 0, lessonsPublished: 0 };
+    render(<ClassDetail {...detail} outline={emptyOutline} altitude={noLessons} />);
+    const block = within(screen.getByRole("region", { name: "Progress" }));
+    expect(block.getByText("2,100 meters")).toBeTruthy();
+    expect(block.getByText("No lessons yet · Decks 1 of 2 · Points 21 of 25")).toBeTruthy();
+    expect(block.getByText("Based on decks and graded work.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull();
+    expect(screen.queryByText("All lessons done.")).toBeNull();
   });
 
   it("shows one empty state and no progress when nothing is published", () => {
@@ -344,6 +398,13 @@ describe("ProgressBlock", () => {
     const fill = container.querySelector<HTMLElement>("[data-fill]");
     expect(fill?.style.width).toBe("58%");
     expect(fill?.parentElement?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("shows the breakdown and the note when given", () => {
+    render(<ProgressBlock done={1} published={3} meters={1708} breakdown="Lessons 1 of 3" note="Based on lessons only." />);
+    const block = within(screen.getByRole("region", { name: "Progress" }));
+    expect(block.getByText("Lessons 1 of 3")).toBeTruthy();
+    expect(block.getByText("Based on lessons only.")).toBeTruthy();
   });
 
   it("clamps the bar", () => {

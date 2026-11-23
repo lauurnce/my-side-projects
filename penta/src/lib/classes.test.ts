@@ -74,7 +74,7 @@ describe("classProgress", () => {
     const progress = classProgress(
       outline("c1", [lesson("a", "done"), lesson("b", "draft")], [lesson("c", "todo"), lesson("d", "todo")]),
     );
-    expect(progress).toEqual({ done: 1, published: 3, drafts: 1, meters: 1000, next: lesson("c", "todo") });
+    expect(progress).toEqual({ done: 1, published: 3, drafts: 1, next: lesson("c", "todo") });
   });
 
   it("is all zero for a class with no modules", () => {
@@ -82,27 +82,29 @@ describe("classProgress", () => {
       done: 0,
       published: 0,
       drafts: 0,
-      meters: 0,
       next: null,
     });
   });
 
   it("reaches the summit with nothing next when everything is done", () => {
     const progress = classProgress(outline("c1", [lesson("a", "done"), lesson("b", "done")]));
-    expect(progress).toMatchObject({ done: 2, published: 2, meters: 3000, next: null });
+    expect(progress).toMatchObject({ done: 2, published: 2, next: null });
   });
 
   it("never counts done above published", () => {
     const unpublishedButDone = { ...lesson("b", "draft"), done: true };
     const progress = classProgress(outline("c1", [lesson("a", "done"), unpublishedButDone]));
-    expect(progress).toMatchObject({ done: 1, published: 1, drafts: 1, meters: 3000 });
+    expect(progress).toMatchObject({ done: 1, published: 1, drafts: 1 });
+  });
+
+  it("carries no altitude, which comes from the database", () => {
+    expect(Object.keys(classProgress(outline("c1", [lesson("a", "done")])))).not.toContain("meters");
   });
 
   it("counts a class of drafts only as nothing published", () => {
     expect(classProgress(outline("c1", [lesson("a", "draft")]))).toMatchObject({
       published: 0,
       drafts: 1,
-      meters: 0,
       next: null,
     });
   });
@@ -117,15 +119,15 @@ describe("withProgress", () => {
       ],
       [outline("c1", [lesson("a", "done"), lesson("b", "todo")]), outline("c2", [lesson("c", "todo")])],
     );
-    expect(joined.map((item) => [item.id, item.title, item.done, item.published, item.meters])).toEqual([
-      ["c2", "Second", 0, 1, 0],
-      ["c1", "First", 1, 2, 1500],
+    expect(joined.map((item) => [item.id, item.title, item.done, item.published])).toEqual([
+      ["c2", "Second", 0, 1],
+      ["c1", "First", 1, 2],
     ]);
   });
 
   it("gives zero progress to a class with no outline", () => {
     expect(withProgress([{ id: "c9" }], [outline("c1", [lesson("a", "done")])])).toEqual([
-      { id: "c9", done: 0, published: 0, drafts: 0, meters: 0, next: null },
+      { id: "c9", done: 0, published: 0, drafts: 0, next: null },
     ]);
   });
 });

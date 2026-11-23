@@ -2,7 +2,7 @@ import Link from "next/link";
 import { formatMeters, progressPercent, type ClassProgress, type StudentClassSummary } from "@/lib/classes";
 import styles from "./ClassCard.module.css";
 
-export type ClassCardProps = StudentClassSummary & Pick<ClassProgress, "done" | "published" | "meters">;
+export type ClassCardProps = StudentClassSummary & Pick<ClassProgress, "done" | "published"> & { meters: number };
 
 export function ClassCard({ id, code, section, term, title, teacherName, done, published, meters }: ClassCardProps) {
   const altitude = formatMeters(meters);

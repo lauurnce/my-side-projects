@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { DeckLibrary } from "@/components/decks/library/DeckLibrary";
 import { liveDeckIds } from "@/components/decks/library/helpers";
+import { basisNote, breakdownText } from "@/components/grades/altitude/helpers";
 import { ClassOps } from "@/components/ops/ClassOps";
 import type { OpsData } from "@/components/ops/list/helpers";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { classProgress } from "@/lib/classes";
 import type { DeckSummary } from "@/lib/decks";
+import type { ClassAltitude } from "@/lib/grades";
 import type { LiveDeck } from "@/lib/live";
 import type { ClassOutline } from "@/lib/routes";
 import { ContinueBlock, OutlineList, ProgressBlock } from "./ClassOutline";
@@ -23,6 +25,7 @@ export type ClassDetailProps = {
   decks: DeckSummary[];
   live?: LiveDeck[];
   ops?: OpsData;
+  altitude?: ClassAltitude | null;
 };
 
 const noOps: OpsData = { activities: [], attempts: [], now: 0 };
@@ -39,9 +42,11 @@ export function ClassDetail({
   decks,
   live = [],
   ops = noOps,
+  altitude = null,
 }: ClassDetailProps) {
   const progress = classProgress(outline);
   const hasLessons = progress.published > 0;
+  const counts = altitude?.counts === true;
 
   return (
     <div className={styles.page}>
@@ -68,10 +73,16 @@ export function ClassDetail({
           ) : null}
         </dl>
       </header>
-      {hasLessons ? (
+      {hasLessons || counts ? (
         <div className={styles.status}>
-          <ProgressBlock {...progress} />
-          <ContinueBlock classId={classId} next={progress.next} />
+          <ProgressBlock
+            done={progress.done}
+            published={progress.published}
+            meters={counts ? altitude.meters : 0}
+            breakdown={breakdownText(altitude)}
+            note={basisNote(altitude)}
+          />
+          {hasLessons ? <ContinueBlock classId={classId} next={progress.next} /> : null}
         </div>
       ) : null}
       <OutlineList classId={classId} outline={outline} />

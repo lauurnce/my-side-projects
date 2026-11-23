@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { routeLimits } from "@/lib/config";
 import type { Database } from "@/lib/database.types";
 
 type Tables = Database["public"]["Tables"];
@@ -106,17 +105,6 @@ export function lessonNeighbours(
   const index = lessons.findIndex((lesson) => lesson.id === lessonId);
   if (index < 0) return { previous: null, next: null };
   return { previous: lessons[index - 1] ?? null, next: lessons[index + 1] ?? null };
-}
-
-export function classAltitude({ done, published }: RouteProgress): number {
-  if (published <= 0) return 0;
-  return Math.round((routeLimits.summitMeters * Math.min(Math.max(done, 0), published)) / published);
-}
-
-export function hubAltitude(progressByClass: RouteProgress[]): number {
-  if (progressByClass.length === 0) return 0;
-  const total = progressByClass.reduce((sum, progress) => sum + classAltitude(progress), 0);
-  return Math.round(total / progressByClass.length);
 }
 
 export async function loadOutlines(supabase: SupabaseClient<Database>, userId: string): Promise<ClassOutline[]> {

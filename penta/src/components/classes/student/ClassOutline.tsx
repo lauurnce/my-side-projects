@@ -16,7 +16,13 @@ export function publishedModules(outline: ClassOutline): OutlineModule[] {
     .filter((moduleItem) => moduleItem.lessons.length > 0);
 }
 
-export function ProgressBlock({ done, published, meters }: Pick<ClassProgress, "done" | "published" | "meters">) {
+export type ProgressBlockProps = Pick<ClassProgress, "done" | "published"> & {
+  meters: number;
+  breakdown?: string;
+  note?: string | null;
+};
+
+export function ProgressBlock({ done, published, meters, breakdown, note }: ProgressBlockProps) {
   const altitude = formatMeters(meters);
   return (
     <section className={styles.progress} aria-label="Progress">
@@ -27,6 +33,8 @@ export function ProgressBlock({ done, published, meters }: Pick<ClassProgress, "
         <span aria-hidden="true">{altitude} m</span>
         <span className="visually-hidden">{altitude} meters</span>
       </p>
+      {breakdown ? <p className={styles.breakdown}>{breakdown}</p> : null}
+      {note ? <p className={styles.breakdownNote}>{note}</p> : null}
       <span className={styles.track} aria-hidden="true">
         <span className={styles.fill} data-fill="" style={{ width: `${progressPercent({ done, published })}%` }} />
       </span>

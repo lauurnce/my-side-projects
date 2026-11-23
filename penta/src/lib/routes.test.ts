@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOutlines,
-  classAltitude,
   firstUnfinished,
-  hubAltitude,
   lessonNeighbours,
   outlineFor,
   progressCount,
@@ -100,27 +98,5 @@ describe("lessonNeighbours", () => {
 
   it("has neither for a lesson that is not in the published list", () => {
     expect(lessonNeighbours(outline, "draft")).toEqual({ previous: null, next: null });
-  });
-});
-
-describe("classAltitude", () => {
-  it("is the share of the 3,000 m summit", () => {
-    expect(classAltitude({ done: 1, published: 1 })).toBe(3000);
-    expect(classAltitude({ done: 7, published: 12 })).toBe(1750);
-    expect(classAltitude({ done: 0, published: 4 })).toBe(0);
-  });
-
-  it("is 0 with nothing published and never passes the summit", () => {
-    expect(classAltitude({ done: 0, published: 0 })).toBe(0);
-    expect(classAltitude({ done: 3, published: 0 })).toBe(0);
-    expect(classAltitude({ done: 5, published: 2 })).toBe(3000);
-    expect(classAltitude({ done: -1, published: 2 })).toBe(0);
-  });
-});
-
-describe("hubAltitude", () => {
-  it("is the mean of the class altitudes", () => {
-    expect(hubAltitude([])).toBe(0);
-    expect(hubAltitude([{ done: 1, published: 1 }, { done: 0, published: 2 }])).toBe(1500);
   });
 });

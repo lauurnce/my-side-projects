@@ -1,8 +1,9 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { HubHero, HubLayers, type HubClass } from "@/components/hub/Hub";
-import { attemptOn, fixedNow, openOn, pastDue, quiz } from "@/components/ops/list/fixtures";
+import { attemptOn, cellOn, fixedNow, openOn, pastDue, quiz, upload } from "@/components/ops/list/fixtures";
 import type { DeckSummary } from "@/lib/decks";
+import type { Altitude, ClassAltitude } from "@/lib/grades";
 
 afterEach(cleanup);
 
@@ -14,7 +15,6 @@ const sampleClass = (index: number, progress: Partial<HubClass> = {}): HubClass 
   done: 0,
   published: 0,
   drafts: 0,
-  meters: 0,
   next: null,
   ...progress,
 });
@@ -33,26 +33,72 @@ const sampleDeck = (index: number, overrides: Partial<DeckSummary> = {}): DeckSu
 });
 
 const nextLesson = { id: "lesson-9", moduleId: "m1", title: "Message queues", estMinutes: 10, published: true, done: false };
-const halfway = sampleClass(1, { done: 2, published: 4, meters: 1500, next: nextLesson });
-const finished = sampleClass(2, { done: 3, published: 3, meters: 3000 });
+const halfway = sampleClass(1, { done: 2, published: 4, next: nextLesson });
+const finished = sampleClass(2, { done: 3, published: 3 });
+
+const classAltitude = (index: number, overrides: Partial<ClassAltitude> = {}): ClassAltitude => ({
+  classId: `class-${index}`,
+  counts: true,
+  meters: 0,
+  lessonsDone: 0,
+  lessonsPublished: 0,
+  decksFinished: 0,
+  decks: 0,
+  pointsEarned: 0,
+  pointsPossible: 0,
+  ...overrides,
+});
+
+const altitude: Altitude = {
+  overall: 2354,
+  classes: [
+    classAltitude(1, { meters: 1708, lessonsDone: 2, lessonsPublished: 4, decksFinished: 1, decks: 2, pointsEarned: 21, pointsPossible: 25 }),
+    classAltitude(2, { meters: 3000, lessonsDone: 3, lessonsPublished: 3 }),
+  ],
+};
+const nothingCounts: Altitude = { overall: 0, classes: [classAltitude(1, { counts: false, meters: 900 })] };
 
 describe("HubHero", () => {
-  it("shows a student the mean altitude in the headline and the meter", () => {
-    render(<HubHero role="student" classes={[halfway, finished]} />);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*2,250 m/);
-    expect(screen.getByText("Your altitude").parentElement?.textContent).toContain("2,250 m");
+  it("shows a student the overall altitude from the database in the headline and the meter", () => {
+    const { container } = render(<HubHero role="student" classes={[halfway, finished]} altitude={altitude} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*2,354 m/);
+    expect(screen.getByText("Your altitude").parentElement?.textContent).toContain("2,354 m");
     expect(screen.getByText("Your altitude is the average across your classes.")).toBeTruthy();
+    expect(container.querySelector<HTMLElement>("[data-marker]")?.style.top).toBe("21.5%");
+  });
+
+  it("does not work the altitude out from lesson counts", () => {
+    render(<HubHero role="student" classes={[halfway, finished]} altitude={{ ...altitude, overall: 1700 }} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*1,700 m/);
+    expect(screen.getByText("Your altitude").parentElement?.textContent).toContain("1,700 m");
   });
 
   it("shows a student with nothing 0 m and says why", () => {
     render(<HubHero role="student" classes={[]} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*0 m/);
-    expect(screen.getByText("Altitude starts counting when your classes have lessons.")).toBeTruthy();
+    expect(
+      screen.getByText("Altitude starts counting when your classes have lessons, decks or graded work."),
+    ).toBeTruthy();
     expect(screen.getByText("Your altitude")).toBeTruthy();
   });
 
+  it("says why when a student has classes but none counts yet", () => {
+    render(<HubHero role="student" classes={[halfway]} altitude={nothingCounts} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You.re at\s*0 m/);
+    expect(
+      screen.getByText("Altitude starts counting when your classes have lessons, decks or graded work."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Your altitude is the average across your classes.")).toBeNull();
+  });
+
   it("shows a teacher the class count and no altitude", () => {
-    render(<HubHero role="teacher" classes={[sampleClass(1, { published: 4, drafts: 1 }), sampleClass(2, { published: 2 })]} />);
+    render(
+      <HubHero
+        role="teacher"
+        classes={[sampleClass(1, { published: 4, drafts: 1 }), sampleClass(2, { published: 2 })]}
+        altitude={altitude}
+      />,
+    );
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/You teach\s*2 classes/);
     expect(screen.getByText("6 published and 1 draft across your classes.")).toBeTruthy();
     expect(screen.queryByText("Your altitude")).toBeNull();
@@ -206,14 +252,39 @@ describe("HubLayers", () => {
     expect(panel.queryByRole("link")).toBeNull();
   });
 
-  it("shows a student real progress on each route card", () => {
-    render(<HubLayers role="student" classes={[halfway, finished]} />);
+  it("shows a student real progress and the database altitude on each route card", () => {
+    render(<HubLayers role="student" classes={[halfway, finished]} altitude={altitude} />);
     const cards = within(screen.getByRole("region", { name: "Routes" })).getAllByRole("listitem");
     expect(cards[0].textContent).toContain("Lesson 2 of 4");
-    expect(cards[0].textContent).toContain("1,500 meters");
+    expect(cards[0].textContent).toContain("1,708 meters");
     expect(cards[1].textContent).toContain("Lesson 3 of 3");
     expect(cards[1].textContent).toContain("3,000 meters");
     expect(within(cards[0]).getByRole("link").getAttribute("href")).toBe("/classes/class-1");
+  });
+
+  it("shows 0 m on the card of a class that does not count or is unknown", () => {
+    render(<HubLayers role="student" classes={[halfway, finished]} altitude={nothingCounts} />);
+    const cards = within(screen.getByRole("region", { name: "Routes" })).getAllByRole("listitem");
+    expect(cards[0].textContent).toContain("Lesson 2 of 4");
+    expect(cards[0].textContent).toContain("0 meters");
+    expect(cards[0].textContent).not.toContain("900");
+    expect(cards[1].textContent).toContain("0 meters");
+  });
+
+  it("shows a student the altitude line under the routes with a link to the grades", () => {
+    render(<HubLayers role="student" classes={[halfway, finished]} altitude={{ ...altitude, overall: 1700 }} />);
+    const routes = within(screen.getByRole("region", { name: "Routes" }));
+    expect(routes.getByText("1,700 m of 3,000 m")).toBeTruthy();
+    expect(routes.getByRole("link", { name: "See how it adds up" }).getAttribute("href")).toBe("/grades");
+  });
+
+  it("shows no altitude line to a student with no classes or to a teacher", () => {
+    render(<HubLayers role="student" classes={[]} altitude={altitude} />);
+    expect(screen.queryByText(/m of 3,000 m/)).toBeNull();
+    cleanup();
+    render(<HubLayers role="teacher" classes={[halfway, finished]} altitude={altitude} />);
+    expect(screen.queryByText(/m of 3,000 m/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "See how it adds up" })).toBeNull();
   });
 
   it("offers a student the next unfinished lesson", () => {
@@ -241,7 +312,7 @@ describe("HubLayers", () => {
 
   it("shows a teacher published and draft counts with no altitude or continue card", () => {
     const classes = [sampleClass(1, { published: 4, drafts: 1, next: nextLesson }), sampleClass(2)];
-    render(<HubLayers role="teacher" classes={classes} />);
+    render(<HubLayers role="teacher" classes={classes} altitude={altitude} />);
     const routes = screen.getByRole("region", { name: "Routes" });
     const links = within(routes).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/classes/class-1", "/classes/class-2"]);
@@ -425,5 +496,53 @@ describe("HubLayers Ops panel", () => {
     cleanup();
     render(<HubLayers role="teacher" classes={[halfway]} />);
     expect(within(screen.getByRole("region", { name: "Ops" })).getByText("Nothing due")).toBeTruthy();
+  });
+});
+
+describe("HubLayers Ops panel with upload activities", () => {
+  const ops = {
+    activities: [
+      upload("handed", { title: "Chapter 1" }),
+      quiz("soon", { title: "Message brokers" }),
+      upload("draft", { title: "Chapter 3 draft", dueAt: "2026-11-27T15:59:00.000Z" }),
+      upload("missed", { title: "Chapter 2", dueAt: pastDue }),
+      upload("scored", { title: "Outline" }),
+    ],
+    attempts: [],
+    cells: [
+      cellOn("handed", { state: "submitted", late: true, submittedAt: "2026-11-27T01:00:00.000Z" }),
+      cellOn("missed", { state: "missing" }),
+      cellOn("scored", { state: "graded", score: 18 }),
+    ],
+    now: fixedNow,
+  };
+
+  it("orders an upload not yet handed in like an open quiz and counts it as due", () => {
+    render(<HubLayers role="student" classes={[halfway]} ops={ops} />);
+    const panel = within(screen.getByRole("region", { name: "Ops" }));
+    expect(panel.getByText("3 due")).toBeTruthy();
+    const links = panel.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/ops/missed",
+      "/ops/draft",
+      "/ops/soon",
+      "/ops/handed",
+      "/ops/scored",
+    ]);
+    expect(links[1].textContent).toContain("Upload · COMP 011");
+    expect(links[1].textContent).toContain("20 points · PDF or DOCX");
+    expect(links.map((link) => [...link.querySelectorAll("[data-status]")].map((chip) => chip.textContent))).toEqual([
+      ["Missing"],
+      ["Due Nov 27, 11:59 PM"],
+      ["Due Nov 28, 11:59 PM"],
+      ["Submitted", "Late"],
+      ["Graded · 18 of 20"],
+    ]);
+  });
+
+  it("points the next due row at an upload that is not past due", () => {
+    render(<HubHero role="student" classes={[halfway]} ops={ops} />);
+    const link = screen.getByRole("link", { name: "Next due: Chapter 3 draft, Nov 27, 11:59 PM" });
+    expect(link.getAttribute("href")).toBe("/ops/draft");
   });
 });

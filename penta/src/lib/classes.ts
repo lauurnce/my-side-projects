@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import {
-  classAltitude,
   firstUnfinished,
   outlineFor,
   progressCount,
@@ -83,7 +82,6 @@ export async function isClassOwner(
 
 export type ClassProgress = RouteProgress & {
   drafts: number;
-  meters: number;
   next: OutlineLesson | null;
 };
 
@@ -93,7 +91,6 @@ export function classProgress(outline: ClassOutline): ClassProgress {
   return {
     ...progress,
     drafts: lessonCount - progress.published,
-    meters: classAltitude(progress),
     next: firstUnfinished(outline),
   };
 }
