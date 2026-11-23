@@ -109,3 +109,27 @@ export const threadLimits = {
   lookJitterMilliseconds: 300,
   rejoinMilliseconds: 2000,
 } as const;
+
+export const slideLimits = {
+  width: 1600,
+  height: 900,
+  slidesMax: 60,
+  blocksPerSlide: 30,
+  blockMinSize: 24,
+  titleLength: 200,
+  textLength: 2000,
+  boxLength: 200,
+  altLength: 200,
+  contentMaxBytes: 512 * 1024,
+  imageMaxBytes: 2 * megabyte,
+  imageMaxSide: 2048,
+  imageSendSide: 1920,
+  imagesPerDeck: 40,
+  historySteps: 50,
+  keyStep: 8,
+  keyFineStep: 1,
+  saveDelayMilliseconds: 1500,
+  saveTimeoutMilliseconds: 15000,
+  saveRetryMilliseconds: [2000, 4000, 8000, 16000, 30000],
+  editorMinWidth: 900,
+} as const;
