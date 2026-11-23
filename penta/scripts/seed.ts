@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { buildPdf, buildPptx } from "../tests/fixtures/deck-files.ts";
+import { buildDocx, buildPdf, buildPptx } from "../tests/fixtures/deck-files.ts";
 import type { Database } from "../src/lib/database.types.ts";
 import { formatJoinCode } from "../src/lib/join-code.ts";
 import { assertLocalSupabase } from "../src/lib/supabase/local.ts";
@@ -270,6 +270,78 @@ const sampleAttempt = {
     { answer: "revoke", is_correct: true },
   ],
 };
+const submissionBucket = "submissions";
+const docxType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const hourMs = 60 * minuteMs;
+const essayDueDays = 5;
+const backupPlanDueDaysAgo = 2;
+const classStartDaysAgo = 30;
+const sampleUploads = [
+  {
+    id: "5e9a0000-0000-4000-8000-0000000b0001",
+    title: "Access review essay",
+    instructions_md:
+      "Write a one page review of who can read and who can write each table in a small schema of your choice. Name the roles, list their privileges, and point out one privilege you would revoke. Hand in a PDF or a DOCX.",
+    lesson_id: sampleLessons[1].id,
+    points: 20,
+    due_offset_ms: essayDueDays * dayMs,
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000b0002",
+    title: "Backup plan",
+    instructions_md:
+      "Describe a backup plan for the class database: what is backed up, how often, where the copies are kept, and how you would test a restore. Hand in a PDF or a DOCX.",
+    lesson_id: null,
+    points: 10,
+    due_offset_ms: -backupPlanDueDaysAgo * dayMs,
+  },
+];
+const essayUpload = sampleUploads[0];
+const backupPlanUpload = sampleUploads[1];
+const sampleSubmissions = [
+  {
+    id: "5e9a0000-0000-4000-8000-0000000c0001",
+    upload_id: "5e9a0000-0000-4000-8000-0000000c1001",
+    activity: essayUpload,
+    student: 0,
+    extension: "pdf",
+    mime: pdfType,
+    file_name: "access-review-ana-reyes.pdf",
+    bytes: buildPdf(1, 20000),
+    submitted_offset_ms: -2 * hourMs,
+    grade: {
+      log_id: "5e9a0000-0000-4000-8000-0000000c2001",
+      score: 17,
+      feedback:
+        "Clear tables and a sensible split between the reader and the writer roles. Say why the reporting role still needs usage on the schema.",
+      graded_offset_ms: -hourMs,
+    },
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000c0002",
+    upload_id: "5e9a0000-0000-4000-8000-0000000c1002",
+    activity: essayUpload,
+    student: 1,
+    extension: "docx",
+    mime: docxType,
+    file_name: "access-review-ben-cruz.docx",
+    bytes: buildDocx({ paddingBytes: 12000 }),
+    submitted_offset_ms: -30 * minuteMs,
+    grade: null,
+  },
+  {
+    id: "5e9a0000-0000-4000-8000-0000000c0003",
+    upload_id: "5e9a0000-0000-4000-8000-0000000c1003",
+    activity: backupPlanUpload,
+    student: 1,
+    extension: "pdf",
+    mime: pdfType,
+    file_name: "backup-plan-ben-cruz.pdf",
+    bytes: buildPdf(2, 8000),
+    submitted_offset_ms: backupPlanUpload.due_offset_ms + dayMs,
+    grade: null,
+  },
+];
 
 function fail(message: string): never {
   console.error(message);
@@ -409,6 +481,102 @@ async function saveQuiz(sampleQuiz: (typeof sampleQuizzes)[number], classId: str
   if (publishedNow.error) fail(`Seed stopped: could not publish the quiz "${sampleQuiz.title}" (${publishedNow.error.message}).`);
 }
 
+async function listStoredSubmissions(folder: string): Promise<string[]> {
+  const { data, error } = await admin.storage.from(submissionBucket).list(folder, { limit: 1000 });
+  if (error) fail(`Seed stopped: could not list the stored submission files (${error.message}).`);
+  const names: string[] = [];
+  for (const entry of data) {
+    const name = `${folder}/${entry.name}`;
+    if (entry.id) names.push(name);
+    else names.push(...(await listStoredSubmissions(name)));
+  }
+  return names;
+}
+
+async function clearSubmissions(classId: string) {
+  const found = await admin.from("activities").select("id").eq("class_id", classId);
+  if (found.error) fail(`Seed stopped: could not list the activities (${found.error.message}).`);
+  const activityIds = found.data.map((activity) => activity.id);
+  if (activityIds.length > 0) {
+    for (const table of ["submissions", "submission_uploads", "submission_grade_log"] as const) {
+      const removed = await admin.from(table).delete().in("activity_id", activityIds);
+      if (removed.error) fail(`Seed stopped: could not clear ${table} (${removed.error.message}).`);
+    }
+  }
+  const names = await listStoredSubmissions(classId);
+  if (names.length === 0) return;
+  const removedFiles = await admin.storage.from(submissionBucket).remove(names);
+  if (removedFiles.error) fail(`Seed stopped: could not clear the stored submission files (${removedFiles.error.message}).`);
+}
+
+async function saveUpload(sampleUpload: (typeof sampleUploads)[number], classId: string, createdBy: string, now: number) {
+  const { due_offset_ms, ...columns } = sampleUpload;
+  const saved = await admin.from("activities").insert({
+    ...columns,
+    type: "upload",
+    class_id: classId,
+    created_by: createdBy,
+    due_at: new Date(now + due_offset_ms).toISOString(),
+  });
+  if (saved.error) fail(`Seed stopped: could not save the activity "${sampleUpload.title}" (${saved.error.message}).`);
+  const publishedNow = await admin.from("activities").update({ published_at: new Date(now).toISOString() }).eq("id", sampleUpload.id);
+  if (publishedNow.error) fail(`Seed stopped: could not publish the activity "${sampleUpload.title}" (${publishedNow.error.message}).`);
+}
+
+async function saveSubmission(
+  sample: (typeof sampleSubmissions)[number],
+  classId: string,
+  studentId: string,
+  gradedBy: string,
+  now: number,
+) {
+  const path = `${classId}/${sample.activity.id}/${studentId}/${sample.upload_id}.${sample.extension}`;
+  const files = admin.storage.from(submissionBucket);
+  const stored = await files.upload(path, sample.bytes, { contentType: sample.mime, upsert: false });
+  if (stored.error) fail(`Seed stopped: could not store ${sample.file_name} (${stored.error.message}).`);
+  const details = await files.info(path);
+  if (details.error) fail(`Seed stopped: could not read back ${sample.file_name} (${details.error.message}).`);
+
+  const submittedAt = now + sample.submitted_offset_ms;
+  const gradedAt = sample.grade ? new Date(now + sample.grade.graded_offset_ms).toISOString() : null;
+  const file = {
+    file_path: path,
+    file_name: sample.file_name,
+    size_bytes: sample.bytes.length,
+    file_etag: details.data.etag ?? null,
+  };
+  const saved = await admin.from("submissions").insert({
+    ...file,
+    id: sample.id,
+    activity_id: sample.activity.id,
+    student_id: studentId,
+    upload_id: sample.upload_id,
+    mime: sample.mime,
+    submitted_at: new Date(submittedAt).toISOString(),
+    is_late: submittedAt >= now + sample.activity.due_offset_ms,
+    score: sample.grade?.score ?? null,
+    feedback: sample.grade?.feedback ?? null,
+    graded_by: sample.grade ? gradedBy : null,
+    graded_at: gradedAt,
+  });
+  if (saved.error) fail(`Seed stopped: could not save the submission ${sample.file_name} (${saved.error.message}).`);
+  if (!sample.grade || !gradedAt) return;
+
+  const logged = await admin.from("submission_grade_log").insert({
+    ...file,
+    id: sample.grade.log_id,
+    submission_id: sample.id,
+    activity_id: sample.activity.id,
+    student_id: studentId,
+    old_score: null,
+    new_score: sample.grade.score,
+    feedback: sample.grade.feedback,
+    graded_by: gradedBy,
+    graded_at: gradedAt,
+  });
+  if (logged.error) fail(`Seed stopped: could not save the grade log (${logged.error.message}).`);
+}
+
 async function saveAttempt(studentId: string) {
   const { quiz, answers } = sampleAttempt;
   const startedAt = Date.now() - sampleAttempt.started_minutes_ago * minuteMs;
@@ -486,6 +654,7 @@ const savedProgress = await admin
   );
 if (savedProgress.error) fail(`Seed stopped: could not save the lesson progress (${savedProgress.error.message}).`);
 
+await clearSubmissions(routeClassId);
 await clearQuizzes(routeClassId);
 await clearDecks(routeClassId);
 for (const sampleDeck of sampleDecks) await saveDeck(sampleDeck, routeClassId, teacherId);
@@ -505,6 +674,25 @@ if (savedViews.error) fail(`Seed stopped: could not save the deck views (${saved
 for (const sampleQuiz of sampleQuizzes) await saveQuiz(sampleQuiz, routeClassId, teacherId);
 await saveAttempt(studentIds[0]);
 
+const seededAt = Date.now();
+const joinedBeforeDue = await admin
+  .from("enrollments")
+  .update({ joined_at: new Date(seededAt - classStartDaysAgo * dayMs).toISOString() })
+  .eq("class_id", routeClassId)
+  .in("student_id", studentIds)
+  .gt("joined_at", new Date(seededAt - classStartDaysAgo * dayMs).toISOString());
+if (joinedBeforeDue.error) fail(`Seed stopped: could not set the join dates (${joinedBeforeDue.error.message}).`);
+for (const sampleUpload of sampleUploads) await saveUpload(sampleUpload, routeClassId, teacherId, seededAt);
+for (const sample of sampleSubmissions) {
+  await saveSubmission(sample, routeClassId, studentIds[sample.student], teacherId, seededAt);
+}
+
+const savedSubmissions = await admin
+  .from("submissions")
+  .select("id, activity_id, student_id, file_name, is_late, score")
+  .in("id", sampleSubmissions.map((sample) => sample.id));
+if (savedSubmissions.error) fail(`Seed stopped: could not read the submissions (${savedSubmissions.error.message}).`);
+
 const savedDecks = await admin
   .from("decks")
   .select("id, title, kind, slide_count")
@@ -519,7 +707,7 @@ if (savedLessons.error) fail(`Seed stopped: could not read the lessons (${savedL
 
 const savedQuizzes = await admin
   .from("activities")
-  .select("id, title, points, published_at, due_at, attempt_limit, time_limit_min")
+  .select("id, title, type, points, published_at, due_at, attempt_limit, time_limit_min")
   .eq("class_id", routeClassId);
 if (savedQuizzes.error) fail(`Seed stopped: could not read the quizzes (${savedQuizzes.error.message}).`);
 
@@ -566,3 +754,20 @@ console.log(
   `  ${students[0].fullName} has finished "${finishedDeck.title}" and scored ${savedAttempts.data.score} of ${savedAttempts.data.max_score} on "${sampleAttempt.quiz.title}".`,
 );
 console.log(`  ${students[1].fullName} has not opened the slides, so the quiz is locked for that account.`);
+console.log("Upload activities in COMP 018");
+for (const sampleUpload of sampleUploads) {
+  const saved = savedQuizzes.data.find((row) => row.id === sampleUpload.id);
+  if (!saved || saved.type !== "upload") fail(`Seed stopped: the activity "${sampleUpload.title}" was not saved.`);
+  const state = saved.published_at ? "Published" : "Draft";
+  const due =
+    sampleUpload.due_offset_ms > 0 ? `due in ${essayDueDays} days` : `due ${backupPlanDueDaysAgo} days ago`;
+  console.log(`  ${saved.title.padEnd(42)}${state}, ${saved.points} points, ${due}`);
+  for (const sample of sampleSubmissions.filter((entry) => entry.activity.id === sampleUpload.id)) {
+    const row = savedSubmissions.data.find((entry) => entry.id === sample.id);
+    if (!row) fail(`Seed stopped: the submission ${sample.file_name} was not saved.`);
+    const timing = row.is_late ? "late" : "on time";
+    const grade = row.score === null ? "not graded" : `graded ${row.score} of ${saved.points}`;
+    console.log(`    ${students[sample.student].fullName.padEnd(16)}${row.file_name.padEnd(34)}${timing}, ${grade}`);
+  }
+}
+console.log(`  ${students[0].fullName} and ${students[2].fullName} have handed in nothing for "${backupPlanUpload.title}".`);
