@@ -52,6 +52,10 @@ revoke execute on function private.has_no_hidden_characters(text) from public, a
 revoke execute on function private.clean_post_body(text) from public, anon, authenticated;
 revoke execute on function private.is_post_body(text) from public, anon, authenticated;
 revoke execute on function private.is_thread_title(text) from public, anon, authenticated;
+grant execute on function private.has_no_hidden_characters(text) to service_role;
+grant execute on function private.clean_post_body(text) to service_role;
+grant execute on function private.is_post_body(text) to service_role;
+grant execute on function private.is_thread_title(text) to service_role;
 
 create table public.threads (
   id uuid primary key default gen_random_uuid(),
