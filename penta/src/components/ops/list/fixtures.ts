@@ -1,3 +1,4 @@
+import type { OwnGradeCell } from "@/lib/grades";
 import type { Activity, Attempt } from "@/lib/quiz";
 
 export const fixedNow = Date.parse("2026-11-27T04:00:00.000Z");
@@ -41,3 +42,20 @@ export function openOn(activityId: string, attemptNo = 1): Attempt {
 }
 
 export const pastDue = "2026-11-26T15:59:00.000Z";
+
+export function upload(id: string, overrides: Partial<Activity> = {}): Activity {
+  return quiz(id, { type: "upload", title: `Upload ${id}`, points: 20, timeLimitMin: null, ...overrides });
+}
+
+export function cellOn(activityId: string, overrides: Partial<OwnGradeCell> = {}): OwnGradeCell {
+  return {
+    classId: "class-1",
+    activityId,
+    state: "none",
+    score: null,
+    points: 20,
+    late: false,
+    submittedAt: null,
+    ...overrides,
+  };
+}

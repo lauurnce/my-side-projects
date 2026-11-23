@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { panelsContent } from "@/content/landing";
 import { ClassOps } from "../ClassOps";
-import { attemptOn, fixedNow, openOn, pastDue, quiz } from "./fixtures";
+import { attemptOn, cellOn, fixedNow, openOn, pastDue, quiz, upload } from "./fixtures";
 
 afterEach(cleanup);
 
@@ -84,5 +85,69 @@ describe("ClassOps", () => {
     const section = renderOps([quiz("x", { title: "<img src=x onerror=alert(1)>" })]);
     expect(document.querySelector("img")).toBeNull();
     expect(section.getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
+  });
+});
+
+describe("ClassOps with upload activities", () => {
+  const uploads = [
+    upload("fresh", { title: "Chapter 1" }),
+    upload("undated", { title: "Reading notes", dueAt: null }),
+    upload("missed", { title: "Chapter 2", dueAt: pastDue }),
+    upload("handed", { title: "Chapter 3" }),
+    upload("handed-late", { title: "Chapter 4", dueAt: pastDue }),
+    upload("scored", { title: "Outline" }),
+    quiz("open", { title: "Message brokers" }),
+  ];
+  const cells = [
+    cellOn("missed", { state: "missing" }),
+    cellOn("handed", { state: "submitted" }),
+    cellOn("handed-late", { state: "submitted", late: true }),
+    cellOn("scored", { state: "graded", score: 18 }),
+  ];
+
+  function renderUploads() {
+    render(<ClassOps classCode="COMP 015" activities={uploads} attempts={[]} cells={cells} now={fixedNow} />);
+    return within(screen.getByRole("region", { name: "Ops" })).getAllByRole("link");
+  }
+
+  const chipsOf = (link: HTMLElement) =>
+    [...link.querySelectorAll("[data-status]")].map((chip) => [chip.getAttribute("data-status"), chip.textContent]);
+
+  it("names an upload with the class code, the points and the file types", () => {
+    const links = renderUploads();
+    expect(links[0].getAttribute("href")).toBe("/ops/fresh");
+    expect(links[0].textContent).toContain("Upload · COMP 015");
+    expect(links[0].textContent).toContain("Chapter 1");
+    expect(links[0].textContent).toContain("20 points · PDF or DOCX");
+    expect(links[6].textContent).toContain("Quiz · COMP 015");
+    expect(links[6].textContent).toContain("12 points · 20 minutes");
+  });
+
+  it("gives an upload the document icon and a quiz the quiz icon", () => {
+    const links = renderUploads();
+    const [uploadIcon, quizIcon] = panelsContent.ops.items.slice(0, 2).reverse().map((item) => item.icon);
+    expect(links[0].querySelector("svg path")?.getAttribute("d")).toBe(uploadIcon);
+    expect(links[0].querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(links[6].querySelector("svg path")?.getAttribute("d")).toBe(quizIcon);
+  });
+
+  it("gives an upload a chip for each state", () => {
+    expect(renderUploads().map(chipsOf)).toEqual([
+      [["due", "Due Nov 28, 11:59 PM"]],
+      [["due", "No due date"]],
+      [["due", "Missing"]],
+      [["submitted", "Submitted"]],
+      [
+        ["submitted", "Submitted"],
+        ["late", "Late"],
+      ],
+      [["graded", "Graded · 18 of 20"]],
+      [["due", "Due Nov 28, 11:59 PM"]],
+    ]);
+  });
+
+  it("treats an upload with no cell as not handed in", () => {
+    render(<ClassOps classCode="COMP 015" activities={[uploads[0]]} attempts={[]} now={fixedNow} />);
+    expect(chipsOf(screen.getByRole("link"))).toEqual([["due", "Due Nov 28, 11:59 PM"]]);
   });
 });

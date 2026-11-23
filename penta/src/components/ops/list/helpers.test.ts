@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { attemptOn, fixedNow, openOn, pastDue, quiz } from "./fixtures";
+import { attemptOn, cellOn, fixedNow, openOn, pastDue, quiz, upload } from "./fixtures";
 import {
   activityCountLabel,
   chipFor,
+  chipsFor,
   detailLine,
   dueCount,
   dueCountLabel,
@@ -13,6 +14,8 @@ import {
   nextDueText,
   opsHref,
   opsItems,
+  uploadChips,
+  uploadState,
 } from "./helpers";
 
 const activities = [
@@ -146,5 +149,105 @@ describe("nextDue", () => {
     const rest = items.filter((item) => !["open-soon", "open-late"].includes(item.activity.id));
     expect(nextDue(rest)).toBeNull();
     expect(nextDue([])).toBeNull();
+  });
+});
+
+describe("upload activities", () => {
+  const uploads = [
+    upload("fresh"),
+    upload("undated", { dueAt: null }),
+    upload("missed", { dueAt: pastDue }),
+    upload("joined-after", { dueAt: pastDue }),
+    upload("handed"),
+    upload("handed-late", { dueAt: pastDue }),
+    upload("scored"),
+    upload("hidden", { publishedAt: null }),
+  ];
+  const cells = [
+    cellOn("fresh"),
+    cellOn("missed", { state: "missing" }),
+    cellOn("joined-after"),
+    cellOn("handed", { state: "submitted", submittedAt: "2026-11-27T01:00:00.000Z" }),
+    cellOn("handed-late", { state: "submitted", late: true, submittedAt: "2026-11-27T01:00:00.000Z" }),
+    cellOn("scored", { state: "graded", score: 18 }),
+  ];
+  const mixed = opsItems({ activities: [...uploads, quiz("open-quiz")], attempts: [], cells, now: fixedNow });
+  const itemOf = (id: string) => mixed.find((item) => item.activity.id === id)!;
+
+  it("takes the state of an upload from its cell and of a quiz from its attempts", () => {
+    expect(mixed.map((item) => [item.activity.id, item.state])).toEqual([
+      ["fresh", "open"],
+      ["undated", "open"],
+      ["missed", "open"],
+      ["joined-after", "closed"],
+      ["handed", "done"],
+      ["handed-late", "done"],
+      ["scored", "done"],
+      ["open-quiz", "open"],
+    ]);
+    expect(itemOf("undated").cell).toBeNull();
+    expect(itemOf("open-quiz").cell).toBeUndefined();
+    expect(uploadState(upload("x", { publishedAt: null }), null, fixedNow)).toBe("draft");
+  });
+
+  it("picks the due chip before the due time", () => {
+    expect(uploadChips(itemOf("fresh"))).toEqual([{ status: "due", text: "Due Nov 28, 11:59 PM" }]);
+    expect(uploadChips(itemOf("undated"))).toEqual([{ status: "due", text: "No due date" }]);
+  });
+
+  it("says Missing on the due chip for past due work that counts", () => {
+    expect(uploadChips(itemOf("missed"))).toEqual([{ status: "due", text: "Missing" }]);
+  });
+
+  it("says Past due without Missing when the work does not count against the student", () => {
+    expect(uploadChips(itemOf("joined-after"))).toEqual([{ status: "due", text: "Past due" }]);
+  });
+
+  it("says Submitted, and adds the gold Late chip when the cell is late", () => {
+    expect(uploadChips(itemOf("handed"))).toEqual([{ status: "submitted", text: "Submitted" }]);
+    expect(uploadChips(itemOf("handed-late"))).toEqual([
+      { status: "submitted", text: "Submitted" },
+      { status: "late", text: "Late" },
+    ]);
+  });
+
+  it("shows the score out of the points when graded", () => {
+    expect(uploadChips(itemOf("scored"))).toEqual([{ status: "graded", text: "Graded · 18 of 20" }]);
+    const unscored = { ...itemOf("scored"), cell: cellOn("scored", { state: "graded" as const }) };
+    expect(uploadChips(unscored)).toEqual([{ status: "graded", text: "Graded · 0 of 20" }]);
+  });
+
+  it("keeps the quiz chip for a quiz", () => {
+    expect(chipsFor(itemOf("open-quiz"))).toEqual([chipFor(itemOf("open-quiz"))]);
+    expect(chipsFor(itemOf("scored"))).toEqual(uploadChips(itemOf("scored")));
+  });
+
+  it("words the kind and the detail of an upload", () => {
+    expect(kindLine("COMP 015", "upload")).toBe("Upload · COMP 015");
+    expect(kindLine("COMP 015", "quiz")).toBe("Quiz · COMP 015");
+    expect(detailLine(upload("x"))).toBe("20 points · PDF or DOCX");
+    expect(detailLine(upload("x", { points: 1 }))).toBe("1 point · PDF or DOCX");
+  });
+
+  it("counts uploads not yet handed in as due", () => {
+    expect(dueCount(mixed)).toBe(4);
+  });
+
+  it("orders uploads not yet handed in with the open quizzes by due time", () => {
+    expect(hubOrder(mixed).map((item) => item.activity.id)).toEqual([
+      "missed",
+      "fresh",
+      "open-quiz",
+      "undated",
+      "handed",
+      "handed-late",
+      "scored",
+      "joined-after",
+    ]);
+  });
+
+  it("never names past due work as the next due", () => {
+    expect(nextDue(mixed)?.activity.id).toBe("fresh");
+    expect(nextDue([itemOf("missed"), itemOf("joined-after")])).toBeNull();
   });
 });

@@ -5,8 +5,8 @@ import { OpsCards } from "./list/OpsCards";
 
 export type ClassOpsProps = OpsData & { classCode: string };
 
-export function ClassOps({ classCode, activities, attempts, now }: ClassOpsProps) {
-  const items = opsItems({ activities, attempts, now });
+export function ClassOps({ classCode, activities, attempts, now, cells }: ClassOpsProps) {
+  const items = opsItems({ activities, attempts, now, cells });
 
   return (
     <section className={styles.section} aria-labelledby="class-ops-title">

@@ -1,8 +1,8 @@
 import { OpsCard } from "@/components/ui/OpsCard";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { chipFor, detailLine, kindLine, opsHref, type OpsItem } from "./helpers";
+import { chipsFor, detailLine, kindLine, opsHref, type OpsItem } from "./helpers";
 import styles from "./list.module.css";
-import { QuizIcon } from "./QuizIcon";
+import { ActivityIcon } from "./QuizIcon";
 
 export type OpsCardsProps = {
   items: OpsItem[];
@@ -13,21 +13,26 @@ export type OpsCardsProps = {
 export function OpsCards({ items, codeFor, compact }: OpsCardsProps) {
   return (
     <ul className={compact ? `${styles.grid} ${styles.compact}` : styles.grid}>
-      {items.map((item) => {
-        const chip = chipFor(item);
-        return (
-          <li key={item.activity.id} className={styles.cell}>
-            <OpsCard
-              href={opsHref(item.activity.id)}
-              icon={<QuizIcon />}
-              kind={kindLine(codeFor(item))}
-              title={item.activity.title}
-              detail={detailLine(item.activity)}
-              status={<StatusChip status={chip.status}>{chip.text}</StatusChip>}
-            />
-          </li>
-        );
-      })}
+      {items.map((item) => (
+        <li key={item.activity.id} className={styles.cell}>
+          <OpsCard
+            href={opsHref(item.activity.id)}
+            icon={<ActivityIcon type={item.activity.type} />}
+            kind={kindLine(codeFor(item), item.activity.type)}
+            title={item.activity.title}
+            detail={detailLine(item.activity)}
+            status={
+              <span className={styles.chips}>
+                {chipsFor(item).map((chip) => (
+                  <StatusChip key={chip.status} status={chip.status}>
+                    {chip.text}
+                  </StatusChip>
+                ))}
+              </span>
+            }
+          />
+        </li>
+      ))}
     </ul>
   );
 }
