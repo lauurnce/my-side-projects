@@ -30,6 +30,7 @@ export const quizMessages = {
   notReady: "Add at least one question before publishing.",
   startedNoUnpublish: "Students have started this quiz, so it cannot be unpublished. Close it instead.",
   startedNoDelete: "Students have attempts on this quiz, so it cannot be deleted. Close it instead.",
+  askedNoDelete: "Students have asked questions on this activity, so it cannot be deleted.",
   published: "Quiz published. Students can take it now.",
   unpublished: "Quiz unpublished. Students no longer see it.",
   closed: "Quiz closed. No more answers are accepted.",
@@ -295,11 +296,16 @@ export function settingsErrorState(error: WriteError): Pick<SaveSettingsState, "
   return { tone: "alert", message: quizWriteErrorMessage(error) };
 }
 
+function askedOn(error: WriteError): boolean {
+  return error?.code === "23503" && (error.message ?? "").includes("threads_activity_id_fkey");
+}
+
 export function quizWriteErrorMessage(error: WriteError): string {
   if (!error) return quizMessages.gone;
   if (raised(error, "activity_not_ready")) return quizMessages.notReady;
   if (raised(error, "activity_has_attempts")) return quizMessages.startedNoUnpublish;
   if (error.code === "23514") return quizMessages.rejected;
+  if (askedOn(error)) return quizMessages.askedNoDelete;
   if (error.code === "23503") return quizMessages.startedNoDelete;
   if (error.code === "42501") return quizMessages.refused;
   return quizMessages.failed;

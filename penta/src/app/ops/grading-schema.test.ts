@@ -240,6 +240,9 @@ describe("database refusals", () => {
     expect(uploadWriteErrorMessage({ code: "23503", message: "submissions_activity_id_fkey" })).toBe(
       "Students have handed in work, so this activity cannot be deleted.",
     );
+    expect(uploadWriteErrorMessage({ code: "23503", message: 'violates "threads_activity_id_fkey"' })).toBe(
+      "Students have asked questions on this activity, so it cannot be deleted.",
+    );
     expect(uploadWriteErrorMessage({ code: "42501", message: "row-level security" })).toBe(uploadMessages.refused);
     expect(uploadWriteErrorMessage({ code: "XX000", message: "secret detail" })).toBe(uploadMessages.failed);
     expect(uploadWriteErrorMessage(null)).toBe(uploadMessages.gone);

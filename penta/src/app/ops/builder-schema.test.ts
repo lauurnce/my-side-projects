@@ -271,6 +271,9 @@ describe("quiz write errors", () => {
     expect(quizWriteErrorMessage({ code: "23503", message: "quiz_attempts_activity_id_fkey" })).toBe(
       "Students have attempts on this quiz, so it cannot be deleted. Close it instead.",
     );
+    expect(quizWriteErrorMessage({ code: "23503", message: 'violates "threads_activity_id_fkey"' })).toBe(
+      "Students have asked questions on this activity, so it cannot be deleted.",
+    );
     expect(quizWriteErrorMessage({ code: "23514", message: "activities_title_clean" })).toBe(quizMessages.rejected);
     expect(quizWriteErrorMessage({ code: "42501" })).toBe(quizMessages.refused);
     expect(quizWriteErrorMessage({ code: "XX000", message: "secret detail" })).toBe(quizMessages.failed);

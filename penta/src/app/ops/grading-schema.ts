@@ -19,6 +19,7 @@ export const uploadMessages = {
   lessonOutsideClass: "That lesson is not in this class.",
   noUnpublish: "Students have handed in work, so this activity cannot be unpublished.",
   noDelete: "Students have handed in work, so this activity cannot be deleted.",
+  askedNoDelete: "Students have asked questions on this activity, so it cannot be deleted.",
   published: "Activity published. Students can hand in work now.",
   unpublished: "Activity unpublished. Students no longer see it.",
   gradeSaved: "Grade saved",
@@ -201,12 +202,17 @@ const settingsRefusals: [string, UploadSettingsField, string][] = [
   ["activity_lesson_outside_class", "lessonId", uploadMessages.lessonOutsideClass],
 ];
 
+function askedOn(error: WriteError): boolean {
+  return error?.code === "23503" && (error.message ?? "").includes("threads_activity_id_fkey");
+}
+
 export function uploadWriteErrorMessage(error: WriteError): string {
   if (!error) return uploadMessages.gone;
   if (raised(error, "activity_has_attempts")) return uploadMessages.noUnpublish;
   const refusal = settingsRefusals.find(([name]) => raised(error, name));
   if (refusal) return refusal[2];
   if (error.code === "23514") return uploadMessages.rejected;
+  if (askedOn(error)) return uploadMessages.askedNoDelete;
   if (error.code === "23503") return uploadMessages.noDelete;
   if (error.code === "42501") return uploadMessages.refused;
   return uploadMessages.failed;
