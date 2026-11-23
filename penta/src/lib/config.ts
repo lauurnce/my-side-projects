@@ -94,3 +94,18 @@ export const submissionLimits = {
 } as const;
 
 export const altitudeWeights = { lessons: 1200, decks: 600, activities: 1200 } as const;
+
+export const threadLimits = {
+  titleLength: 160,
+  bodyLength: 2000,
+  bodyLines: 60,
+  postsPerMinute: 5,
+  editMinutes: 15,
+  editsPerPost: 3,
+  postsPerThread: 200,
+  pollDownMilliseconds: 10000,
+  pollUpMilliseconds: 60000,
+  pollJitterRatio: 0.2,
+  lookJitterMilliseconds: 300,
+  rejoinMilliseconds: 2000,
+} as const;
