@@ -21,21 +21,37 @@ export function manilaInputToIso(value: string): string | null {
   return isoToManilaInput(date.toISOString()) === minute ? date.toISOString() : null;
 }
 
-function format(value: string | Date | null | undefined, options: Intl.DateTimeFormatOptions): string | null {
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+type ManilaParts = { date: string; year: number; hour: number; minute: string; second: string; half: "AM" | "PM" };
+
+function manilaParts(value: string | Date | null | undefined): ManilaParts | null {
   const date = toDate(value);
   if (!date) return null;
-  return new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", hourCycle: "h12", ...options })
-    .format(date)
-    .replace(/\s/g, " ");
+  const shifted = new Date(date.getTime() + manilaOffsetMilliseconds);
+  const hours = shifted.getUTCHours();
+  return {
+    date: `${monthNames[shifted.getUTCMonth()]} ${shifted.getUTCDate()}`,
+    year: shifted.getUTCFullYear(),
+    hour: hours % 12 === 0 ? 12 : hours % 12,
+    minute: String(shifted.getUTCMinutes()).padStart(2, "0"),
+    second: String(shifted.getUTCSeconds()).padStart(2, "0"),
+    half: hours < 12 ? "AM" : "PM",
+  };
+}
+
+function manilaTimeOfDay(parts: ManilaParts): string {
+  return `${parts.hour}:${parts.minute} ${parts.half}`;
 }
 
 export function formatManilaDateTime(value: string | Date | null | undefined): string | null {
-  const text = format(value, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-  return text ? `${text}, Manila time` : null;
+  const parts = manilaParts(value);
+  return parts ? `${parts.date}, ${parts.year}, ${manilaTimeOfDay(parts)}, Manila time` : null;
 }
 
 export function formatManilaClock(value: string | Date | null | undefined): string | null {
-  return format(value, { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  const parts = manilaParts(value);
+  return parts ? `${parts.hour}:${parts.minute}:${parts.second} ${parts.half}` : null;
 }
 
 export function formatCountdown(milliseconds: number): string {
@@ -53,13 +69,15 @@ export function manilaDayNumber(milliseconds: number): number {
 }
 
 export function formatManilaShort(value: string | Date | null | undefined): string | null {
-  return format(value, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const parts = manilaParts(value);
+  return parts ? `${parts.date}, ${manilaTimeOfDay(parts)}` : null;
 }
 
 export function dueLabel(dueAt: string | null | undefined, now: number): string | null {
   const due = toDate(dueAt);
   if (!due) return null;
-  const time = format(due, { hour: "numeric", minute: "2-digit" });
+  const parts = manilaParts(due);
+  const time = parts ? manilaTimeOfDay(parts) : "";
   const days = manilaDayNumber(due.getTime()) - manilaDayNumber(now);
   if (due.getTime() <= now) return `Was due ${formatManilaShort(due)}`;
   if (days === 0) return `Due today, ${time}`;

@@ -132,3 +132,25 @@ describe("late label", () => {
     expect(lateLabel("2026-12-01T00:00:00Z", due)).toBe("Late by 2 days");
   });
 });
+
+describe("formatting without the locale machinery", () => {
+  it("gives the same text whatever the runtime's formatter does", () => {
+    const original = Intl.DateTimeFormat;
+    Intl.DateTimeFormat = function broken() {
+      throw new Error("not used");
+    } as unknown as typeof Intl.DateTimeFormat;
+    try {
+      expect(formatManilaDateTime("2026-11-28T15:59:00Z")).toBe("Nov 28, 2026, 11:59 PM, Manila time");
+      expect(formatManilaClock("2026-11-28T02:42:07Z")).toBe("10:42:07 AM");
+      expect(dueLabel("2026-11-28T15:59:00Z", Date.parse("2026-11-20T00:00:00Z"))).toBe("Due Nov 28, 11:59 PM");
+    } finally {
+      Intl.DateTimeFormat = original;
+    }
+  });
+
+  it("handles noon, midnight and the year boundary in Manila", () => {
+    expect(formatManilaDateTime("2026-11-28T04:00:00Z")).toBe("Nov 28, 2026, 12:00 PM, Manila time");
+    expect(formatManilaDateTime("2026-12-31T16:00:00Z")).toBe("Jan 1, 2027, 12:00 AM, Manila time");
+    expect(formatManilaClock("2026-11-27T16:05:09Z")).toBe("12:05:09 AM");
+  });
+});
