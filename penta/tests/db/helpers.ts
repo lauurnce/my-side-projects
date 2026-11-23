@@ -120,6 +120,7 @@ export type SeededThread = {
   createdAt?: string;
   title?: string;
   body?: string;
+  hidden?: boolean;
 };
 export type SeededPost = {
   authorId?: string | null;
@@ -127,6 +128,7 @@ export type SeededPost = {
   body?: string;
   parentId?: string | null;
   createdAt?: string;
+  hidden?: boolean;
 };
 export type DeckOptions = {
   title?: string;
@@ -1068,6 +1070,7 @@ export async function seedThread(classId: string, target: ThreadTarget, options:
     body: options.body ?? "Where is this covered in the lesson?",
     is_question: true,
     created_at: createdAt,
+    hidden_at: options.hidden ? createdAt : null,
   });
   if (post.error) throw post.error;
   return { threadId, postId };
@@ -1096,6 +1099,7 @@ export async function seedThreads(classId: string, target: ThreadTarget, count: 
         body: options.body ?? "Where is this covered in the lesson?",
         is_question: true,
         created_at: createdAt,
+        hidden_at: options.hidden ? createdAt : null,
       })),
     );
     if (questions.error) throw questions.error;
@@ -1104,15 +1108,19 @@ export async function seedThreads(classId: string, target: ThreadTarget, count: 
 }
 
 export async function seedPosts(threadId: string, posts: SeededPost[]): Promise<string[]> {
-  const rows = posts.map((post) => ({
-    id: randomUUID(),
-    thread_id: threadId,
-    author_id: post.authorId ?? null,
-    author_name: post.authorName ?? "Former classmate",
-    body: post.body ?? "An older answer.",
-    parent_id: post.parentId ?? null,
-    created_at: post.createdAt ?? minutesAgo(2 * 24 * 60),
-  }));
+  const rows = posts.map((post) => {
+    const createdAt = post.createdAt ?? minutesAgo(2 * 24 * 60);
+    return {
+      id: randomUUID(),
+      thread_id: threadId,
+      author_id: post.authorId ?? null,
+      author_name: post.authorName ?? "Former classmate",
+      body: post.body ?? "An older answer.",
+      parent_id: post.parentId ?? null,
+      created_at: createdAt,
+      hidden_at: post.hidden ? createdAt : null,
+    };
+  });
   for (let start = 0; start < rows.length; start += 100) {
     const { error } = await admin.from("posts").insert(rows.slice(start, start + 100));
     if (error) throw error;

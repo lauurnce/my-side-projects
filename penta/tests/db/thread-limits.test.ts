@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
+  addLesson,
   addPost,
   askQuestion,
   asked,
@@ -27,6 +28,7 @@ type Room = Awaited<ReturnType<typeof threadRoom>>;
 const slowDown = { status: "slow_down" };
 const limitReached = { status: "limit_reached" };
 const full = { status: "full" };
+const askedEnough = { status: "asked_enough" };
 
 async function olderPosts(room: Room, author: Actor, count: number, minutes: number) {
   const archive = await seedThread(room.classroom.id, { lesson: room.lesson.id });
@@ -37,7 +39,8 @@ async function olderPosts(room: Room, author: Actor, count: number, minutes: num
 }
 
 async function olderThreads(room: Room, author: Actor, count: number, minutes: number) {
-  await seedThreads(room.classroom.id, { lesson: room.lesson.id }, count, {
+  const elsewhere = await addLesson(room.moduleId, "Restores", true);
+  await seedThreads(room.classroom.id, { lesson: elsewhere.id }, count, {
     createdBy: author.id,
     authorName: "Earlier self",
     createdAt: minutesAgo(minutes),
@@ -243,7 +246,106 @@ describe("new threads per hour and per day", () => {
   });
 });
 
+describe("questions per lesson or activity", () => {
+  it("hiding a question frees a place on a full lesson", async () => {
+    const room = await threadRoom();
+    const target = { lesson: room.lesson.id };
+    await seedThreads(room.classroom.id, target, 49);
+    const fiftieth = await asked(room.studentA, target);
+    expect((await askQuestion(room.studentB.client, target)).result).toEqual(full);
+
+    expect((await setPostHidden(room.teacher.client, fiftieth.postId, true)).result).toEqual({ status: "hidden" });
+    expect((await askQuestion(room.studentB.client, target)).result?.status).toBe("asked");
+    expect((await askQuestion(room.teacher.client, target)).result).toEqual(full);
+    expect(await countThreadsBy(room.studentB.id)).toBe(1);
+  });
+
+  it("a lesson holds at most 300 questions with hidden ones counted", async () => {
+    const room = await threadRoom();
+    const target = { lesson: room.lesson.id };
+    await seedThreads(room.classroom.id, target, 259, { hidden: true });
+    await seedThreads(room.classroom.id, target, 40);
+    expect((await askQuestion(room.studentA.client, target)).result?.status).toBe("asked");
+
+    expect((await askQuestion(room.studentB.client, target)).result).toEqual(full);
+    expect((await askQuestion(room.teacher.client, target)).result).toEqual(full);
+    expect(await countThreadsBy(room.studentB.id)).toBe(0);
+  });
+
+  it("the sixth question by one student on one lesson answers asked_enough, also when the earlier five are hidden", async () => {
+    const room = await threadRoom();
+    const target = { lesson: room.lesson.id };
+    await seedThreads(room.classroom.id, target, 4, { createdBy: room.studentA.id, authorName: "Earlier self", hidden: true });
+    const fifth = await asked(room.studentA, target);
+    expect((await setPostHidden(room.teacher.client, fifth.postId, true)).result).toEqual({ status: "hidden" });
+    const before = await countPostsBy(room.studentA.id);
+
+    expect((await askQuestion(room.studentA.client, target)).result).toEqual(askedEnough);
+    expect(await countThreadsBy(room.studentA.id)).toBe(5);
+    expect(await countPostsBy(room.studentA.id)).toBe(before);
+
+    const elsewhere = await addLesson(room.moduleId, "Restores", true);
+    expect((await askQuestion(room.studentA.client, { lesson: elsewhere.id })).result?.status).toBe("asked");
+    expect((await askQuestion(room.studentB.client, target)).result?.status).toBe("asked");
+  });
+
+  it("ten questions fired at once never leave one student more than five on a lesson", async () => {
+    const room = await threadRoom();
+    const target = { lesson: room.lesson.id };
+    await seedThreads(room.classroom.id, target, 4, { createdBy: room.studentA.id, authorName: "Earlier self" });
+    const answers = await Promise.all(Array.from({ length: 10 }, () => askQuestion(room.studentA.client, target)));
+    for (const answer of answers) {
+      expect(answer.error).toBeNull();
+      expect(["asked", "slow_down", "asked_enough"]).toContain(answer.result!.status);
+    }
+    expect(answers.filter((answer) => answer.result!.status === "asked")).toHaveLength(1);
+    expect(await countThreadsBy(room.studentA.id)).toBe(5);
+    expect((await askQuestion(room.studentA.client, target)).result).toEqual(askedEnough);
+  });
+
+  it("a teacher has no personal cap on one lesson", async () => {
+    const room = await threadRoom();
+    const target = { lesson: room.lesson.id };
+    await seedThreads(room.classroom.id, target, 6, { createdBy: room.teacher.id, authorName: "Earlier self" });
+    expect((await askQuestion(room.teacher.client, target)).result?.status).toBe("asked");
+    expect(await countThreadsBy(room.teacher.id)).toBe(7);
+  });
+});
+
 describe("posts per thread", () => {
+  it("hiding a reply, or a post with its replies, frees places in a full thread", async () => {
+    const room = await threadRoom();
+    const { threadId } = await asked(room.studentA, { lesson: room.lesson.id });
+    const [topId] = await seedPosts(threadId, [{}]);
+    const replyIds = await seedPosts(threadId, Array.from({ length: 197 }, () => ({ parentId: topId })));
+    await posted(room.studentB, threadId);
+    expect(await countPostsIn(threadId)).toBe(200);
+    expect((await addPost(room.studentA.client, threadId)).result).toEqual(full);
+
+    expect((await setPostHidden(room.teacher.client, replyIds[0], true)).result).toEqual({ status: "hidden" });
+    expect((await addPost(room.studentA.client, threadId)).result?.status).toBe("posted");
+    expect((await addPost(room.studentA.client, threadId)).result).toEqual(full);
+
+    expect((await setPostHidden(room.teacher.client, topId, true)).result).toEqual({ status: "hidden" });
+    expect((await addPost(room.studentA.client, threadId)).result?.status).toBe("posted");
+    expect(await countPostsIn(threadId)).toBe(202);
+  });
+
+  it("a thread holds at most 500 posts with hidden ones counted", async () => {
+    const room = await threadRoom();
+    const { threadId } = await asked(room.studentA, { lesson: room.lesson.id });
+    await seedPosts(threadId, Array.from({ length: 100 }, () => ({})));
+    await seedPosts(threadId, Array.from({ length: 398 }, () => ({ hidden: true })));
+    expect((await addPost(room.studentB.client, threadId)).result?.status).toBe("posted");
+    const version = (await readThread(threadId))!.version;
+
+    for (const actor of [room.studentA, room.studentB, room.teacher]) {
+      expect((await addPost(actor.client, threadId)).result).toEqual(full);
+    }
+    expect(await countPostsIn(threadId)).toBe(500);
+    expect((await readThread(threadId))!.version).toBe(version);
+  });
+
   it("the 201st post in a thread answers full", async () => {
     const room = await threadRoom();
     const { threadId, postId } = await asked(room.studentA, { lesson: room.lesson.id });
