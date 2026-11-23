@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { LessonReader } from "@/components/lessons/LessonReader";
+import { QuestionsSection } from "@/components/threads/QuestionsSection";
 import { requireUser } from "@/lib/auth";
 import { isClassOwner } from "@/lib/classes";
 import { loadLesson } from "@/lib/routes";
@@ -21,5 +22,10 @@ export default async function LessonPage({ params }: PageProps<"/classes/[id]/le
   if (!lesson) notFound();
 
   const isOwner = await isClassOwner(supabase, lesson.classId, user.id);
-  return <LessonReader user={user} lesson={lesson} isOwner={isOwner} />;
+  return (
+    <>
+      <LessonReader user={user} lesson={lesson} isOwner={isOwner} />
+      <QuestionsSection user={user} classId={lesson.classId} target={{ lessonId: lesson.id }} />
+    </>
+  );
 }
