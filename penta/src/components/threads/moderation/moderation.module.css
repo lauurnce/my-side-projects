@@ -1,0 +1,140 @@
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.moderation,
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease-out;
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+}
+
+.button[aria-expanded="true"] {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px dashed currentColor;
+}
+
+.warning,
+.message,
+.help,
+.note,
+.eventLine {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.warning {
+  font-weight: 600;
+}
+
+.message {
+  font-weight: 600;
+}
+
+.help {
+  max-width: 640px;
+}
+
+.fact {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.history {
+  display: contents;
+}
+
+.panel {
+  order: 1;
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px dashed currentColor;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.oldBody {
+  margin: 0;
+  max-height: 12rem;
+  padding: 10px 12px;
+  overflow: auto;
+  border-left: 2px solid currentColor;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}
