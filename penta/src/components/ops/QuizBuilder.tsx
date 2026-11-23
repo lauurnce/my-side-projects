@@ -26,7 +26,7 @@ export async function QuizBuilder({ user, activity }: QuizBuilderProps) {
   const supabase = await createClient();
   const [questions, decks, outline, attempts] = await Promise.all([
     loadTeacherQuestions(supabase, activity.id),
-    loadClassDecks(supabase, activity.classId, user.id),
+    loadClassDecks(supabase, activity.classId),
     loadClassOutline(supabase, activity.classId, user.id),
     loadActivityAttempts(supabase, activity.id),
   ]);

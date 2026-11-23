@@ -18,7 +18,7 @@ export async function LessonReader({ user, lesson, isOwner }: LessonReaderProps)
   const supabase = await createClient();
   const [outline, decks, live] = await Promise.all([
     loadClassOutline(supabase, lesson.classId, user.id),
-    loadClassDecks(supabase, lesson.classId, user.id),
+    loadClassDecks(supabase, lesson.classId),
     loadLiveDecks(supabase),
   ]);
   const { previous, next } = lessonNeighbours(outline, lesson.id);

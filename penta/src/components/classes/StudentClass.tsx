@@ -28,7 +28,7 @@ export async function StudentClass({ user, classId }: { user: CurrentUser; class
       .eq("student_id", user.id)
       .maybeSingle(),
     loadClassOutline(supabase, classId, user.id),
-    loadClassDecks(supabase, classId, user.id),
+    loadClassDecks(supabase, classId),
     loadLiveDecks(supabase),
     loadClassActivities(supabase, classId),
   ]);

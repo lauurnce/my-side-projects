@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deckLimits, megabyte, storagePlan } from "@/lib/config";
 import {
-  countViews,
   deckFormat,
   downloadFileName,
   formatBytes,
@@ -61,13 +60,6 @@ describe("deck summary", () => {
   it("names the format of the downloadable file", () => {
     expect(deckFormat("native")).toBe("PPTX");
     expect(deckFormat("pdf")).toBe("PDF");
-  });
-
-  it("counts view rows per deck", () => {
-    const counts = countViews([{ deck_id: "a" }, { deck_id: "a" }, { deck_id: "b" }]);
-    expect(counts.get("a")).toBe(2);
-    expect(counts.get("b")).toBe(1);
-    expect(counts.get("c")).toBeUndefined();
   });
 });
 

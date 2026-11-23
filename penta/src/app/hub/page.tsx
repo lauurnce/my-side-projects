@@ -19,7 +19,7 @@ export default async function HubPage() {
   const [listed, outlines, decks, live, activities] = await Promise.all([
     user.role === "teacher" ? listTeacherClasses(supabase, user.id) : listStudentClasses(supabase, user.id),
     loadOutlines(supabase, user.id),
-    loadDecks(supabase, user.id),
+    loadDecks(supabase),
     loadLiveDecks(supabase),
     loadActivities(supabase),
   ]);

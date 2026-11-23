@@ -19,7 +19,7 @@ export type TeacherDecksProps = {
 export async function TeacherDecks({ user, classId }: TeacherDecksProps) {
   const supabase = await createClient();
   const [decks, usage, outline, live] = await Promise.all([
-    loadClassDecks(supabase, classId, user.id),
+    loadClassDecks(supabase, classId),
     loadStorageUsage(supabase),
     loadClassOutline(supabase, classId, user.id),
     loadLiveDecks(supabase),

@@ -65,12 +65,6 @@ export function toDeckSummary(row: DeckRow, viewedCount = 0): DeckSummary {
   };
 }
 
-export function countViews(viewRows: { deck_id: string }[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const row of viewRows) counts.set(row.deck_id, (counts.get(row.deck_id) ?? 0) + 1);
-  return counts;
-}
-
 export function toStorageUsage(value: unknown): StorageUsage | null {
   if (typeof value !== "object" || value === null) return null;
   const { used_bytes, reserved_bytes, budget_bytes } = value as Record<string, unknown>;
@@ -90,33 +84,26 @@ export function usageLevel(usage: StorageUsage): UsageLevel {
   return taken >= usage.budgetBytes * deckLimits.nearlyFullRatio ? "nearly_full" : "ok";
 }
 
-async function withViewCounts(supabase: Supabase, rows: DeckRow[], userId: string): Promise<DeckSummary[]> {
+async function withViewCounts(supabase: Supabase, rows: DeckRow[]): Promise<DeckSummary[]> {
   if (rows.length === 0) return [];
-  const { data: views } = await supabase
-    .from("deck_views")
-    .select("deck_id")
-    .eq("student_id", userId)
-    .in(
-      "deck_id",
-      rows.map((row) => row.id),
-    );
-  const counts = countViews(views ?? []);
-  return rows.map((row) => toDeckSummary(row, counts.get(row.id)));
+  const { data: counts } = await supabase.rpc("deck_view_counts");
+  const viewed = new Map((counts ?? []).map((row) => [row.deck_id, row.viewed]));
+  return rows.map((row) => toDeckSummary(row, viewed.get(row.id)));
 }
 
-export async function loadClassDecks(supabase: Supabase, classId: string, userId: string): Promise<DeckSummary[]> {
+export async function loadClassDecks(supabase: Supabase, classId: string): Promise<DeckSummary[]> {
   const { data } = await supabase
     .from("decks")
     .select(deckColumns)
     .eq("class_id", classId)
     .order("created_at")
     .order("id");
-  return withViewCounts(supabase, data ?? [], userId);
+  return withViewCounts(supabase, data ?? []);
 }
 
-export async function loadDecks(supabase: Supabase, userId: string): Promise<DeckSummary[]> {
+export async function loadDecks(supabase: Supabase): Promise<DeckSummary[]> {
   const { data } = await supabase.from("decks").select(deckColumns).order("created_at").order("id");
-  return withViewCounts(supabase, data ?? [], userId);
+  return withViewCounts(supabase, data ?? []);
 }
 
 export async function loadDeck(supabase: Supabase, deckId: string): Promise<DeckDetail | null> {
