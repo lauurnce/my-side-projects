@@ -1,9 +1,10 @@
 import smtplib
-from pathlib import Path
 
 import pytest
 
 from app.db import get_db
+from app.services import mailer
+from app.services.qr import ticket_png
 
 
 class FakeSMTP:
@@ -117,7 +118,34 @@ def test_qr_png_is_attached(client, app, valid_form, fake_smtp):
     attachment = attachments[0]
     assert attachment.get_content_type() == "image/png"
     assert attachment.get_filename() == "SEM-2026-0001.png"
-    assert attachment.get_content() == Path(get_row(app)["qr_path"]).read_bytes()
+    served = client.get(f"/ticket/{get_row(app)['ticket_token']}.png").data
+    assert attachment.get_content() == served
+
+
+def test_inline_qr_is_the_attached_png(client, valid_form, fake_smtp):
+    client.post("/events/test-seminar/register", data=valid_form)
+    message = sent_message(fake_smtp)
+    inline = next(part for part in message.walk() if part.get("Content-ID"))
+    attachment = next(message.iter_attachments())
+    assert inline.get_content() == attachment.get_content()
+    assert inline.get_content().startswith(b"\x89PNG")
+
+
+def test_qr_failure_sends_nothing_and_resend_recovers(client, app, valid_form, fake_smtp, monkeypatch):
+    def broken_ticket_png(_attendee):
+        raise RuntimeError("image library broke")
+
+    monkeypatch.setattr(mailer, "ticket_png", broken_ticket_png)
+    response = client.post("/events/test-seminar/register", data=valid_form)
+    assert response.status_code == 302
+    assert fake_smtp.instances == []
+    assert get_row(app)["email_status"] == "failed"
+
+    monkeypatch.setattr(mailer, "ticket_png", ticket_png)
+    result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
+    assert result.exit_code == 0, result.output
+    sent_message(fake_smtp)
+    assert get_row(app)["email_status"] == "sent"
 
 
 def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fake_smtp, monkeypatch):

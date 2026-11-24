@@ -1,4 +1,3 @@
-import os
 import secrets
 import sqlite3
 import time
@@ -7,7 +6,6 @@ from flask import current_app
 
 from ..db import get_db
 from .mailer import send_ticket_email
-from .qr import generate_qr
 
 
 class DuplicateEmailError(Exception):
@@ -52,23 +50,7 @@ def create_attendee(event_id, full_name, email, organization, contact_number):
             raise DuplicateEmailError(email) from exc
         raise
 
-    return deliver_ticket(attach_qr(get_attendee_by_code(code)))
-
-
-def save_qr_path(attendee_id, path):
-    db = get_db()
-    db.execute("UPDATE attendees SET qr_path = ? WHERE id = ?", (path, attendee_id))
-    db.commit()
-
-
-def attach_qr(attendee):
-    try:
-        path = generate_qr(attendee)
-    except Exception:
-        current_app.logger.exception("QR generation failed for %s", attendee["attendee_code"])
-        return attendee
-    save_qr_path(attendee["id"], path)
-    return get_attendee_by_code(attendee["attendee_code"])
+    return deliver_ticket(get_attendee_by_code(code))
 
 
 def save_email_status(attendee_id, status):
@@ -85,8 +67,6 @@ def save_email_status(attendee_id, status):
 
 
 def deliver_ticket(attendee):
-    if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
-        attendee = attach_qr(attendee)
     code = attendee["attendee_code"]
     started = time.perf_counter()
     try:

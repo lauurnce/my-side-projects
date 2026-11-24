@@ -1,4 +1,4 @@
-from pathlib import Path
+from io import BytesIO
 
 import qrcode
 from flask import current_app
@@ -48,15 +48,9 @@ def add_label(image, text):
     return canvas
 
 
-def qr_folder():
-    folder = Path(current_app.config["QR_DIR"])
-    folder.mkdir(parents=True, exist_ok=True)
-    return folder
-
-
-def generate_qr(attendee):
+def ticket_png(attendee):
     image = build_qr_image(checkin_url(attendee["ticket_token"]))
     image = add_label(image, attendee["attendee_code"])
-    path = qr_folder() / f"{attendee['attendee_code']}.png"
-    image.save(path, format="PNG")
-    return str(path)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()

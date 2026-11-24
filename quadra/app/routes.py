@@ -1,22 +1,21 @@
-import os
-
 from flask import (
     Blueprint,
+    Response,
     abort,
+    current_app,
     has_request_context,
     jsonify,
     redirect,
     render_template,
     request,
-    send_file,
     session,
     url_for,
 )
 
 from .services.events import get_event_by_slug, list_upcoming, registration_state
+from .services.qr import ticket_png
 from .services.registration import (
     DuplicateEmailError,
-    attach_qr,
     create_attendee,
     email_exists,
     get_attendee_by_code,
@@ -28,6 +27,7 @@ bp = Blueprint("main", __name__)
 
 DUPLICATE_MSG = "This email is already registered for this event. Check your inbox for your ticket."
 RECENT_CODES_KEY = "registered_codes"
+TICKET_CACHE_CONTROL = "private, max-age=300"
 
 
 @bp.app_context_processor
@@ -98,14 +98,14 @@ def ticket(token):
     attendee = get_attendee_by_token(token)
     if attendee is None:
         abort(404)
-    if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
-        attendee = attach_qr(attendee)
-    path = attendee["qr_path"]
-    if not path or not os.path.isfile(path):
+    code = attendee["attendee_code"]
+    try:
+        png = ticket_png(attendee)
+    except Exception:
+        current_app.logger.exception("QR generation failed for %s", code)
         abort(503, description="The ticket image is not available right now.")
-    return send_file(
-        path,
-        mimetype="image/png",
-        as_attachment=request.args.get("download") == "1",
-        download_name=f"{attendee['attendee_code']}.png",
-    )
+    response = Response(png, mimetype="image/png")
+    disposition = "attachment" if request.args.get("download") == "1" else "inline"
+    response.headers.set("Content-Disposition", disposition, filename=f"{code}.png")
+    response.headers["Cache-Control"] = TICKET_CACHE_CONTROL
+    return response

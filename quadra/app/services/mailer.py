@@ -2,9 +2,10 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
-from pathlib import Path
 
 from flask import current_app, render_template
+
+from .qr import ticket_png
 
 
 class MailConfigError(Exception):
@@ -14,7 +15,7 @@ class MailConfigError(Exception):
 def build_ticket_email(attendee):
     config = current_app.config
     code = attendee["attendee_code"]
-    png = Path(attendee["qr_path"]).read_bytes()
+    png = ticket_png(attendee)
     qr_cid = make_msgid(domain="quadra.local")
 
     message = EmailMessage()
