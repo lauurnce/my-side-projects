@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  {% if session.get('staff') %}
+  <nav class="staff-nav" aria-label="Staff">
+    <a href="{{ url_for('staff.scanner') }}">Scanner</a>
+    <a href="{{ url_for('staff.admin') }}">Admin</a>
+    <form method="post" action="{{ url_for('staff.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Log out</button>
+    </form>
+  </nav>
+  {% endif %}
   <header class="event-header">
     <p class="eyebrow">Seminar Registration</p>
     <h1>{{ event.name }}</h1>
