@@ -30,11 +30,16 @@ def check_in(token):
 def totals(event_id):
     return get_db().execute(
         "SELECT COUNT(*) AS registered,"
-        " COALESCE(SUM(email_status = 'sent'), 0) AS emails_sent,"
+        " COALESCE(SUM(CASE WHEN email_status = 'sent' THEN 1 ELSE 0 END), 0) AS emails_sent,"
         " COALESCE(SUM(checked_in), 0) AS checked_in"
         " FROM attendees WHERE event_id = ?",
         (event_id,),
     ).fetchone()
+
+
+def containing(text):
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
 
 def search_attendees(event_id, query=""):
@@ -43,8 +48,10 @@ def search_attendees(event_id, query=""):
         return get_db().execute(
             f"{ATTENDEE_QUERY} WHERE a.event_id = ? ORDER BY a.id", (event_id,)
         ).fetchall()
-    matches = " OR ".join(f"instr(lower(a.{column}), lower(?)) > 0" for column in SEARCH_COLUMNS)
+    matches = " OR ".join(
+        f"lower(a.{column}) LIKE lower(?) ESCAPE '\\'" for column in SEARCH_COLUMNS
+    )
     return get_db().execute(
         f"{ATTENDEE_QUERY} WHERE a.event_id = ? AND ({matches}) ORDER BY a.id",
-        (event_id, *(query,) * len(SEARCH_COLUMNS)),
+        (event_id, *(containing(query),) * len(SEARCH_COLUMNS)),
     ).fetchall()

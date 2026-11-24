@@ -1,5 +1,4 @@
 import secrets
-import sqlite3
 import time
 
 from flask import current_app
@@ -33,32 +32,29 @@ def create_attendee(event_id, full_name, email, organization, contact_number):
     token = secrets.token_urlsafe(32)
     prefix = current_app.config["ATTENDEE_CODE_PREFIX"]
 
-    try:
-        cur = db.execute(
-            "INSERT INTO attendees"
-            " (event_id, attendee_code, full_name, email, organization, contact_number,"
-            " ticket_token, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                event_id,
-                f"PENDING-{token}",
-                full_name,
-                email,
-                organization,
-                contact_number,
-                token,
-                utc_timestamp(),
-            ),
-        )
-        code = f"{prefix}-{cur.lastrowid:04d}"
-        db.execute(
-            "UPDATE attendees SET attendee_code = ? WHERE id = ?", (code, cur.lastrowid)
-        )
-        db.commit()
-    except sqlite3.IntegrityError as exc:
+    inserted = db.execute(
+        "INSERT INTO attendees"
+        " (event_id, attendee_code, full_name, email, organization, contact_number,"
+        " ticket_token, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        " ON CONFLICT (event_id, email) DO NOTHING RETURNING id",
+        (
+            event_id,
+            f"PENDING-{token}",
+            full_name,
+            email,
+            organization,
+            contact_number,
+            token,
+            utc_timestamp(),
+        ),
+    ).fetchall()
+    if not inserted:
         db.rollback()
-        if "attendees.email" in str(exc):
-            raise DuplicateEmailError(email) from exc
-        raise
+        raise DuplicateEmailError(email)
+    attendee_id = inserted[0]["id"]
+    code = f"{prefix}-{attendee_id:04d}"
+    db.execute("UPDATE attendees SET attendee_code = ? WHERE id = ?", (code, attendee_id))
+    db.commit()
 
     return deliver_ticket(get_attendee_by_code(code))
 

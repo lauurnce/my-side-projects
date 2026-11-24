@@ -115,6 +115,19 @@ def test_duplicate_email_is_rejected(client, app, valid_form):
     assert len(fetch_all(app)) == 1
 
 
+def test_duplicate_that_slips_past_the_form_check_is_refused(app, valid_form):
+    details = {**valid_form, "contact_number": "+639171234567"}
+    with app.app_context():
+        event_id = get_db().execute("SELECT id FROM events").fetchone()["id"]
+        first = registration.create_attendee(event_id, **details)
+        with pytest.raises(registration.DuplicateEmailError):
+            registration.create_attendee(event_id, **{**details, "email": "JUAN@example.com"})
+        second = registration.create_attendee(event_id, **{**details, "email": "maria@example.com"})
+    assert first["attendee_code"] == "SEM-2026-0001"
+    assert second["email"] == "maria@example.com"
+    assert len(fetch_all(app)) == 2
+
+
 def test_typed_values_are_kept_on_error(client, valid_form):
     valid_form["contact_number"] = "123"
     html = client.post("/events/test-seminar/register", data=valid_form).get_data(as_text=True)

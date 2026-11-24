@@ -6,7 +6,7 @@ import pytest
 from app import commands, staff
 from app.db import get_db
 from app.services import registration
-from app.services.checkin import extract_token
+from app.services.checkin import extract_token, totals
 
 PIN = "4321"
 FIRST_CHECKIN_UTC = "2026-11-30T08:15:00+00:00"
@@ -286,6 +286,37 @@ def test_admin_search_filters_the_table(staff_client, valid_form):
     assert "maria@example.com" in html
     assert "juan@example.com" not in html
     assert "No attendee matches" in staff_client.get("/admin?q=zzz").get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    "query, found",
+    [
+        ("100%", True),
+        ("%", True),
+        ("50%", False),
+        ("r_d", True),
+        ("r_and", False),
+        ("_", True),
+        ("lab\\", True),
+        ("R_D LAB", True),
+    ],
+)
+def test_admin_search_treats_wildcards_as_plain_text(staff_client, valid_form, query, found):
+    register(staff_client, {**valid_form, "organization": "100% R_D Lab\\"})
+    register(staff_client, OTHER_FORM)
+    html = staff_client.get("/admin", query_string={"q": query}).get_data(as_text=True)
+    assert ("juan@example.com" in html) is found
+    assert "maria@example.com" not in html
+
+
+def test_admin_totals_count_sent_emails_and_checkins(staff_app, staff_client, valid_form):
+    register(staff_client, valid_form)
+    register(staff_client, OTHER_FORM)
+    staff_client.get(f"/checkin/{row(staff_app)['ticket_token']}")
+    with staff_app.app_context():
+        get_db().execute("UPDATE attendees SET email_status = 'sent'")
+        get_db().commit()
+        assert dict(totals(row(staff_app)["event_id"])) == {"registered": 2, "emails_sent": 2, "checked_in": 1}
 
 
 def test_admin_manual_checkin(staff_app, staff_client, token):
