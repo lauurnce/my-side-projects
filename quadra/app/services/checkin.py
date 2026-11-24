@@ -1,3 +1,4 @@
+from ..clock import utc_timestamp
 from ..db import get_db
 from .registration import ATTENDEE_QUERY, get_attendee_by_token
 
@@ -15,9 +16,9 @@ def extract_token(scanned):
 def check_in(token):
     db = get_db()
     marked = db.execute(
-        "UPDATE attendees SET checked_in = 1, checked_in_at = datetime('now', 'localtime')"
+        "UPDATE attendees SET checked_in = 1, checked_in_at = ?"
         " WHERE ticket_token = ? AND checked_in = 0",
-        (token,),
+        (utc_timestamp(), token),
     ).rowcount
     db.commit()
     attendee = get_attendee_by_token(token)

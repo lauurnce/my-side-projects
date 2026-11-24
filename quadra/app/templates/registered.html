@@ -25,7 +25,7 @@
       <dt>Email Address</dt><dd>{{ attendee.email }}</dd>
       <dt>Organization</dt><dd>{{ attendee.organization }}</dd>
       <dt>Contact Number</dt><dd>{{ attendee.contact_number }}</dd>
-      <dt>Registered</dt><dd>{{ attendee.created_at }}</dd>
+      <dt>Registered</dt><dd>{{ attendee.created_at|manila_time }}</dd>
     </dl>
 
     <div class="row">

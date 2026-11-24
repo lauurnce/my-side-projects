@@ -4,6 +4,7 @@ import time
 
 from flask import current_app
 
+from ..clock import utc_timestamp
 from ..db import get_db
 from .mailer import send_ticket_email
 
@@ -36,8 +37,17 @@ def create_attendee(event_id, full_name, email, organization, contact_number):
         cur = db.execute(
             "INSERT INTO attendees"
             " (event_id, attendee_code, full_name, email, organization, contact_number,"
-            " ticket_token) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (event_id, f"PENDING-{token}", full_name, email, organization, contact_number, token),
+            " ticket_token, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                event_id,
+                f"PENDING-{token}",
+                full_name,
+                email,
+                organization,
+                contact_number,
+                token,
+                utc_timestamp(),
+            ),
         )
         code = f"{prefix}-{cur.lastrowid:04d}"
         db.execute(
@@ -57,9 +67,8 @@ def save_email_status(attendee_id, status):
     db = get_db()
     if status == "sent":
         db.execute(
-            "UPDATE attendees SET email_status = ?, email_sent_at = datetime('now', 'localtime')"
-            " WHERE id = ?",
-            (status, attendee_id),
+            "UPDATE attendees SET email_status = ?, email_sent_at = ? WHERE id = ?",
+            (status, utc_timestamp(), attendee_id),
         )
     else:
         db.execute("UPDATE attendees SET email_status = ? WHERE id = ?", (status, attendee_id))

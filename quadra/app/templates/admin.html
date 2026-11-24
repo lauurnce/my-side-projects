@@ -72,7 +72,7 @@
           <td><span class="pill pill-{{ attendee.email_status }}">{{ attendee.email_status }}</span></td>
           <td>
             {% if attendee.checked_in %}
-              <span class="pill pill-sent">{{ attendee.checked_in_at }}</span>
+              <span class="pill pill-sent">{{ attendee.checked_in_at|manila_time }}</span>
             {% else %}
               <span class="pill pill-wait">Not yet</span>
             {% endif %}

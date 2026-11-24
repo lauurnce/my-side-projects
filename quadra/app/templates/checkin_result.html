@@ -15,11 +15,11 @@
       <div class="result-plate">
         <b>{{ attendee.event_name }}</b>
         <span>{{ attendee.organization }}</span>
-        <span>{{ attendee.checked_in_at }}</span>
+        <span>{{ attendee.checked_in_at|manila_time }}</span>
       </div>
     {% elif status == 'already' %}
       <p class="result-mark" aria-hidden="true">!</p>
-      <h1>ALREADY CHECKED IN at {{ attendee.checked_in_at }}</h1>
+      <h1>ALREADY CHECKED IN at {{ attendee.checked_in_at|manila_time }}</h1>
       <div class="result-plate">
         <b>{{ attendee.full_name }} ({{ attendee.attendee_code }})</b>
         <span>{{ attendee.event_name }}</span>

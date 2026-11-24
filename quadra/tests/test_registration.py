@@ -2,6 +2,7 @@ import pytest
 
 from app import create_app
 from app.db import get_db, init_db
+from app.services import registration
 
 
 def fetch_all(app):
@@ -42,6 +43,13 @@ def test_confirmation_page_shows_summary(client, valid_form):
     assert "SEM-2026-0001" in html
     assert "Juan Dela Cruz" in html
     assert "+639171234567" in html
+
+
+def test_confirmation_page_shows_the_registration_time_in_manila(client, app, valid_form, monkeypatch):
+    monkeypatch.setattr(registration, "utc_timestamp", lambda: "2026-11-01T17:30:00+00:00")
+    response = client.post("/events/test-seminar/register", data=valid_form, follow_redirects=True)
+    assert "<dd>Nov 2, 2026 1:30 AM</dd>" in response.get_data(as_text=True)
+    assert fetch_all(app)[0]["created_at"] == "2026-11-01T17:30:00+00:00"
 
 
 def test_unknown_attendee_code_is_404(client):

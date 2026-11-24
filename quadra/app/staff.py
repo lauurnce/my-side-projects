@@ -19,6 +19,7 @@ from flask import (
     url_for,
 )
 
+from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
 from .services.events import (
     create_event,
@@ -50,6 +51,7 @@ CSV_COLUMNS = (
     "created_at",
 )
 USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization")
+TIME_COLUMNS = ("email_sent_at", "checked_in_at", "created_at")
 
 
 def staff_required(view):
@@ -156,7 +158,7 @@ def api_checkin():
         status=status,
         name=attendee["full_name"],
         code=attendee["attendee_code"],
-        checked_in_at=attendee["checked_in_at"],
+        checked_in_at=manila_time(attendee["checked_in_at"]),
     )
 
 
@@ -226,7 +228,8 @@ def admin_checkin(attendee_id):
     if status == "checked_in":
         flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
     else:
-        flash(f"{attendee['attendee_code']} was already checked in at {attendee['checked_in_at']}.", "warning")
+        checked_in_at = manila_time(attendee["checked_in_at"])
+        flash(f"{attendee['attendee_code']} was already checked in at {checked_in_at}.", "warning")
     return back_to_admin(attendee)
 
 
@@ -247,6 +250,8 @@ def admin_resend(attendee_id):
 
 
 def csv_cell(column, value):
+    if column in TIME_COLUMNS:
+        return manila_time(value)
     text = "" if value is None else str(value)
     if column in USER_TYPED_COLUMNS and text.startswith(FORMULA_STARTERS):
         return "'" + text

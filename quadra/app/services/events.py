@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 from flask import current_app
 
+from ..clock import manila_time, manila_today, utc_timestamp
 from ..db import get_db
 
 DATE_FORMATS = ("%Y-%m-%d", "%B %d, %Y", "%b %d, %Y")
@@ -12,7 +13,7 @@ MAX_VENUE_LENGTH = 150
 
 def today():
     fixed = current_app.config.get("TODAY")
-    return date.fromisoformat(fixed) if fixed else date.today()
+    return date.fromisoformat(fixed) if fixed else manila_today()
 
 
 def parse_date(text):
@@ -41,8 +42,16 @@ def create_event(name, event_date, venue, opens_on=None):
     db = get_db()
     slug = free_slug(name)
     db.execute(
-        "INSERT INTO events (slug, name, event_date, venue, opens_on) VALUES (?, ?, ?, ?, ?)",
-        (slug, name, event_date.isoformat(), venue, opens_on.isoformat() if opens_on else None),
+        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            slug,
+            name,
+            event_date.isoformat(),
+            venue,
+            opens_on.isoformat() if opens_on else None,
+            utc_timestamp(),
+        ),
     )
     db.commit()
     return get_event_by_slug(slug)
@@ -123,6 +132,10 @@ def day_label(iso_date):
 
 def init_app(app):
     app.jinja_env.filters.update(
-        long_date=long_date, short_date=short_date, month_label=month_label, day_label=day_label
+        long_date=long_date,
+        short_date=short_date,
+        month_label=month_label,
+        day_label=day_label,
+        manila_time=manila_time,
     )
     app.jinja_env.globals["registration_state"] = registration_state

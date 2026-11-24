@@ -9,6 +9,8 @@ from app.services import registration
 from app.services.checkin import extract_token
 
 PIN = "4321"
+FIRST_CHECKIN_UTC = "2026-11-30T08:15:00+00:00"
+FIRST_CHECKIN_SHOWN = "Nov 30, 2026 4:15 PM"
 OTHER_FORM = {
     "full_name": "Maria Santos",
     "email": "maria@example.com",
@@ -57,7 +59,13 @@ def token(staff_app, client, valid_form):
 
 def set_first_checkin_time(app, value):
     with app.app_context():
-        get_db().execute("UPDATE attendees SET checked_in_at = ?", (value,))
+        get_db().execute("UPDATE attendees SET checked_in_at = ? WHERE checked_in = 1", (value,))
+        get_db().commit()
+
+
+def set_created_time(app, value):
+    with app.app_context():
+        get_db().execute("UPDATE attendees SET created_at = ?", (value,))
         get_db().commit()
 
 
@@ -145,14 +153,14 @@ def test_checkin_marks_the_attendee(staff_app, staff_client, token):
 
 def test_second_scan_says_already_and_keeps_the_first_time(staff_app, staff_client, token):
     staff_client.get(f"/checkin/{token}")
-    set_first_checkin_time(staff_app, "2026-11-30 08:15:00")
+    set_first_checkin_time(staff_app, FIRST_CHECKIN_UTC)
 
     response = staff_client.get(f"/checkin/{token}")
     html = response.get_data(as_text=True)
     assert response.status_code == 200
-    assert "ALREADY CHECKED IN at 2026-11-30 08:15:00" in html
+    assert f"ALREADY CHECKED IN at {FIRST_CHECKIN_SHOWN}" in html
     assert "status-already" in html
-    assert row(staff_app)["checked_in_at"] == "2026-11-30 08:15:00"
+    assert row(staff_app)["checked_in_at"] == FIRST_CHECKIN_UTC
 
 
 def test_unknown_token_is_an_invalid_ticket(staff_client):
@@ -182,12 +190,12 @@ def test_api_checkin_accepts_the_bare_token(staff_app, staff_client, token):
 
 def test_api_checkin_second_scan_returns_already(staff_app, staff_client, token):
     staff_client.post("/api/checkin", json={"code": token})
-    set_first_checkin_time(staff_app, "2026-11-30 08:15:00")
+    set_first_checkin_time(staff_app, FIRST_CHECKIN_UTC)
 
     body = staff_client.post("/api/checkin", json={"code": token}).get_json()
     assert body["status"] == "already"
-    assert body["checked_in_at"] == "2026-11-30 08:15:00"
-    assert row(staff_app)["checked_in_at"] == "2026-11-30 08:15:00"
+    assert body["checked_in_at"] == FIRST_CHECKIN_SHOWN
+    assert row(staff_app)["checked_in_at"] == FIRST_CHECKIN_UTC
 
 
 @pytest.mark.parametrize("payload", [{"code": "nope"}, {"code": ""}, {}])
@@ -286,8 +294,11 @@ def test_admin_manual_checkin(staff_app, staff_client, token):
     assert "Juan Dela Cruz (SEM-2026-0001) checked in." in response.get_data(as_text=True)
     assert row(staff_app)["checked_in"] == 1
 
+    set_first_checkin_time(staff_app, FIRST_CHECKIN_UTC)
     again = staff_client.post(f"/admin/checkin/{attendee_id}", follow_redirects=True)
-    assert "was already checked in" in again.get_data(as_text=True)
+    html = again.get_data(as_text=True)
+    assert f"SEM-2026-0001 was already checked in at {FIRST_CHECKIN_SHOWN}." in html
+    assert f'<span class="pill pill-sent">{FIRST_CHECKIN_SHOWN}</span>' in html
 
 
 def test_admin_manual_checkin_unknown_attendee(staff_client):
@@ -328,6 +339,8 @@ def test_csv_export_lists_every_attendee(staff_app, staff_client, valid_form):
     register(staff_client, valid_form)
     register(staff_client, OTHER_FORM)
     staff_client.get(f"/checkin/{row(staff_app)['ticket_token']}")
+    set_first_checkin_time(staff_app, FIRST_CHECKIN_UTC)
+    set_created_time(staff_app, "2026-11-01T17:30:00+00:00")
 
     response = staff_client.get("/admin/export.csv")
     assert response.mimetype == "text/csv"
@@ -339,7 +352,9 @@ def test_csv_export_lists_every_attendee(staff_app, staff_client, valid_form):
     assert rows[0]["full_name"] == "Juan Dela Cruz"
     assert rows[0]["contact_number"] == "+639171234567"
     assert rows[0]["checked_in"] == "1"
-    assert rows[0]["checked_in_at"]
+    assert rows[0]["checked_in_at"] == FIRST_CHECKIN_SHOWN
+    assert rows[0]["created_at"] == "Nov 2, 2026 1:30 AM"
+    assert rows[0]["email_sent_at"] == ""
     assert rows[1]["checked_in"] == "0"
     assert rows[1]["checked_in_at"] == ""
     assert "ticket_token" not in rows[0]
