@@ -3,6 +3,7 @@ import sqlite3
 import psycopg
 import pytest
 
+from app import create_app
 from app.db import close_db, get_db
 
 INTEGRITY_ERRORS = (sqlite3.IntegrityError, psycopg.IntegrityError)
@@ -104,3 +105,12 @@ def test_same_email_for_another_event_is_allowed(db):
     db.execute(NEW_ATTENDEE, (first, "SEM-1", "a@example.com", "token-1"))
     db.execute(NEW_ATTENDEE, (second, "SEM-2", "a@example.com", "token-2"))
     assert db.execute("SELECT COUNT(*) AS total FROM attendees").fetchone()["total"] == 2
+
+
+def test_app_starts_without_a_writable_disk_when_using_postgres(monkeypatch):
+    def read_only(*_args, **_kwargs):
+        raise OSError("Read-only file system")
+
+    monkeypatch.setattr("os.makedirs", read_only)
+    app = create_app({"TESTING": True, "DATABASE_URL": "postgresql://user:secret@db.invalid/quadra"})
+    assert app.test_client().get("/health").status_code == 200

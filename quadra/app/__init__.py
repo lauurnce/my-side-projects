@@ -13,7 +13,8 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    os.makedirs(app.instance_path, exist_ok=True)
+    if not app.config["DATABASE_URL"]:
+        os.makedirs(app.instance_path, exist_ok=True)
     app.logger.setLevel(logging.INFO)
 
     from . import commands, csrf, db, errors, routes, security, staff
