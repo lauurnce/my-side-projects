@@ -11,8 +11,8 @@ It runs on one laptop with SQLite, so it needs no server or paid service.
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
 | 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 75 automated tests. Three attendees registered through the form in Chrome. |
-| 2. Database and QR Script | Each registration is saved to SQLite with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is generated right after the insert. | 18 automated tests, including decoding each QR back to its check-in URL. Three PNG files created in `instance/qrcodes/`. |
-| 3. Automated Email | The ticket is emailed through Gmail SMTP right after the QR is made: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 17 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
+| 2. Database and QR Script | Each registration is saved to SQLite with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 20 automated tests, including decoding each served QR back to its check-in URL. |
+| 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 19 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
 | 4. Check-in Scanner | Staff PIN login. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export. | 45 automated tests. A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
@@ -27,9 +27,9 @@ flowchart LR
     routes --> validation[validation.py]
     routes --> registration[services/registration.py]
     registration -->|insert row| db[(SQLite<br>instance/seminar.db)]
-    registration --> qr[services/qr.py]
-    qr -->|writes PNG| files[/instance/qrcodes/]
     registration --> mailer[services/mailer.py]
+    mailer --> qr[services/qr.py<br>PNG built in memory]
+    routes -->|GET /ticket/token.png| qr
     mailer -->|SMTP over SSL| gmail[Gmail]
     gmail -->|ticket email| inbox([Attendee inbox])
 
@@ -116,7 +116,6 @@ that port everywhere below.
 | `flask --app app add-event --name "..." --date 2027-01-18 --venue "..."` | Adds another event. `--opens 2026-12-15` delays registration. |
 | `flask --app app run` | Starts the app. |
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
-| `flask --app app regenerate-qr` | Rebuilds every QR ticket after `PUBLIC_BASE_URL` changes. |
 | `flask --app app resend-ticket --code SEM-2026-0001` | Emails one ticket again. |
 
 ## Event day check-in
@@ -139,10 +138,11 @@ flask --app app run --host 0.0.0.0
 ```
 
 `lan-url` prints the laptop's address, for example `http://192.168.1.23:5000`. Put it in
-`PUBLIC_BASE_URL`, restart the app, then rebuild and resend tickets made with the old address:
+`PUBLIC_BASE_URL` and restart the app. Ticket images are built on request, so the confirmation
+page and ticket downloads use the new address within five minutes. Tickets already emailed keep
+the old address, so resend those:
 
 ```bash
-flask --app app regenerate-qr
 flask --app app resend-ticket --code SEM-2026-0001
 ```
 
@@ -161,7 +161,7 @@ cloudflared tunnel --url http://localhost:5000
 ```
 
 Set `PUBLIC_BASE_URL` to the `https://...trycloudflare.com` address it prints, restart the app,
-then regenerate and resend as above. Over `https` the `/scanner` camera also works on a phone.
+then resend tickets as above. Over `https` the `/scanner` camera also works on a phone.
 
 ## Running tests
 
@@ -171,7 +171,7 @@ pytest
 ruff check .
 ```
 
-There are 155 tests. They use a temporary database and never send real email.
+There are 159 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -186,11 +186,11 @@ quadra/
 │   ├── validation.py        form validation and phone normalization
 │   ├── routes.py            landing page, event pages, confirmation, ticket image
 │   ├── staff.py             login, check-in, scanner, admin, CSV export
-│   ├── commands.py          regenerate-qr, resend-ticket, lan-url
+│   ├── commands.py          resend-ticket, add-event, lan-url
 │   ├── services/
 │   │   ├── events.py        events, dates, registration state
 │   │   ├── registration.py  create attendee, deliver ticket
-│   │   ├── qr.py            QR ticket image
+│   │   ├── qr.py            QR ticket image, built in memory
 │   │   ├── mailer.py        ticket email over Gmail SMTP
 │   │   └── checkin.py       check-in, totals, search
 │   ├── templates/           pages and the ticket email
