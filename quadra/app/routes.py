@@ -12,6 +12,7 @@ from flask import (
     url_for,
 )
 
+from .accounts import current_account
 from .services.events import get_event_by_slug, list_upcoming, registration_state
 from .services.qr import ticket_png
 from .services.registration import (
@@ -51,6 +52,8 @@ def index():
 def event_or_404(slug):
     event = get_event_by_slug(slug)
     if event is None:
+        abort(404)
+    if not event["published"] and not current_account():
         abort(404)
     return event
 

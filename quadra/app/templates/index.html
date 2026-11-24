@@ -51,6 +51,8 @@
       <span class="event-foot">
         {% if state == 'open' %}
         <span>Registration open</span><span class="arrow" aria-hidden="true">&rarr;</span>
+        {% elif state == 'closed' %}
+        <span>Registration closed</span><span class="pill pill-wait">Closed</span>
         {% else %}
         <span>Opens {{ event.opens_on|short_date }}</span><span class="pill pill-wait">Soon</span>
         {% endif %}

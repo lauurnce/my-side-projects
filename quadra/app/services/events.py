@@ -9,6 +9,13 @@ from ..db import get_db
 DATE_FORMATS = ("%Y-%m-%d", "%B %d, %Y", "%b %d, %Y")
 MAX_NAME_LENGTH = 120
 MAX_VENUE_LENGTH = 150
+STATES_BY_PRECEDENCE = (
+    ("ended", lambda event, current: event["event_date"] < current),
+    ("draft", lambda event, current: not event["published"]),
+    ("closed", lambda event, current: bool(event["registration_closed"])),
+    ("soon", lambda event, current: bool(event["opens_on"]) and event["opens_on"] > current),
+    ("open", lambda event, current: True),
+)
 
 
 def today():
@@ -38,12 +45,12 @@ def free_slug(name):
     return slug
 
 
-def create_event(name, event_date, venue, opens_on=None, created_by_id=None):
+def create_event(name, event_date, venue, opens_on=None, created_by_id=None, published=True):
     db = get_db()
     slug = free_slug(name)
     db.execute(
-        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at, created_by_id)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at, created_by_id, published)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (
             slug,
             name,
@@ -52,6 +59,7 @@ def create_event(name, event_date, venue, opens_on=None, created_by_id=None):
             opens_on.isoformat() if opens_on else None,
             utc_timestamp(),
             created_by_id,
+            int(published),
         ),
     )
     db.commit()
@@ -99,18 +107,14 @@ def list_events():
 
 def list_upcoming():
     return get_db().execute(
-        "SELECT * FROM events WHERE event_date >= %s ORDER BY event_date, id",
+        "SELECT * FROM events WHERE published = 1 AND event_date >= %s ORDER BY event_date, id",
         (today().isoformat(),),
     ).fetchall()
 
 
 def registration_state(event):
     current = today().isoformat()
-    if event["event_date"] < current:
-        return "ended"
-    if event["opens_on"] and event["opens_on"] > current:
-        return "soon"
-    return "open"
+    return next(state for state, applies in STATES_BY_PRECEDENCE if applies(event, current))
 
 
 def long_date(iso_date):

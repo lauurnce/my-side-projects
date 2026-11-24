@@ -19,9 +19,8 @@ from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
 from .services.events import (
     create_event,
-    get_event_by_slug,
     list_events,
-    list_upcoming,
+    today,
     validate_event,
 )
 from .services.registration import deliver_ticket, get_attendee_by_id
@@ -76,20 +75,20 @@ def api_checkin():
     )
 
 
-def selected_event(slug):
+def selected_event(events, slug=""):
     if slug:
-        return get_event_by_slug(slug)
-    upcoming = list_upcoming()
+        return next((event for event in events if event["slug"] == slug), None)
+    current = today().isoformat()
+    upcoming = [event for event in events if event["event_date"] >= current]
     if upcoming:
         return upcoming[0]
-    events = list_events()
     return events[-1] if events else None
 
 
-def admin_page(event, query="", new_event=None, errors=None, status=200):
+def admin_page(events, event, query="", new_event=None, errors=None, status=200):
     return render_template(
         "admin.html",
-        events=list_events(),
+        events=events,
         event=event,
         totals=totals(event["id"]) if event else None,
         attendees=search_attendees(event["id"], query) if event else [],
@@ -104,10 +103,11 @@ def admin_page(event, query="", new_event=None, errors=None, status=200):
 @staff_required
 def admin():
     slug = request.args.get("event", "")
-    event = selected_event(slug)
+    events = list_events()
+    event = selected_event(events, slug)
     if slug and event is None:
         abort(404)
-    return admin_page(event, request.args.get("q", ""))
+    return admin_page(events, event, request.args.get("q", ""))
 
 
 @bp.post("/admin/events")
@@ -115,7 +115,8 @@ def admin():
 def admin_create_event():
     data, errors = validate_event(request.form)
     if errors:
-        return admin_page(selected_event(""), new_event=request.form, errors=errors, status=400)
+        events = list_events()
+        return admin_page(events, selected_event(events), new_event=request.form, errors=errors, status=400)
     event = create_event(**data, created_by_id=current_account()["id"])
     flash(f"{event['name']} was added.", "success")
     return redirect(url_for("staff.admin", event=event["slug"]))
@@ -175,7 +176,7 @@ def csv_cell(column, value):
 @bp.get("/admin/export.csv")
 @staff_required
 def export_csv():
-    event = selected_event(request.args.get("event", ""))
+    event = selected_event(list_events(), request.args.get("event", ""))
     if event is None:
         abort(404)
     buffer = io.StringIO()
