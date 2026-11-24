@@ -2,6 +2,7 @@
 import pytest
 from app import staff
 from app.db import get_db
+from app.services.checkin import extract_token
 
 PIN = "4321"
 OTHER_FORM = {
@@ -202,6 +203,22 @@ def test_api_checkin_accepts_the_csrf_header(staff_app, staff_client, token):
         "/api/checkin", json={"code": token}, headers={"X-CSRF-Token": "known-token"}
     )
     assert response.get_json()["status"] == "checked_in"
+
+
+@pytest.mark.parametrize(
+    "scanned, expected",
+    [
+        ("abc123", "abc123"),
+        ("  abc123  ", "abc123"),
+        ("http://192.168.1.5:5000/checkin/abc123", "abc123"),
+        ("https://example.trycloudflare.com/checkin/abc123/", "abc123"),
+        ("http://localhost:5000/checkin/abc123?from=mail#top", "abc123"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_extract_token(scanned, expected):
+    assert extract_token(scanned) == expected
 
 
 def test_five_wrong_pins_lock_login_for_sixty_seconds(staff_app, client, clock):
