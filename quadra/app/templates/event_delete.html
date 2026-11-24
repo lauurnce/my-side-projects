@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ event.name }}{% endblock %}
+
+{% block content %}
+<section class="panel account glass glass-strong">
+  <p class="eyebrow">Delete event</p>
+  <h1>{{ event.name }}</h1>
+  <p class="lead">{{ event.event_date|long_date }} at {{ event.venue }}</p>
+
+  {% if registered %}
+  <div class="alert" role="alert">This event has {{ registered }} registration{% if registered != 1 %}s{% endif %}, so it cannot be deleted. Unpublish it or close registration instead.</div>
+  <div class="row">
+    <a class="btn btn-primary" href="{{ url_for('staff.admin', event=event.slug) }}">Back to the dashboard</a>
+  </div>
+  {% else %}
+  <p>Nobody has registered for this event. Deleting it removes it for good, and the link <span class="code">/events/{{ event.slug }}</span> stops working.</p>
+  <form method="post" action="{{ url_for('staff.admin_delete_event', slug=event.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+      <button type="submit" class="btn btn-primary">Delete this event</button>
+      <a class="btn btn-glass" href="{{ url_for('staff.admin', event=event.slug) }}">Keep it</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

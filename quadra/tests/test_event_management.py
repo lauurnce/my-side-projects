@@ -408,6 +408,132 @@ def test_dashboard_shows_that_an_ended_event_is_also_a_draft(staff_client, chang
     assert '<span class="pill pill-wait">Draft</span>' in html
 
 
+def test_delete_needs_a_confirmation_page_first(app, staff_client):
+    response = staff_client.get("/admin/events/test-seminar/delete")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'action="/admin/events/test-seminar/delete"' in html
+    assert "Delete this event" in html
+    assert event_row(app) is not None
+    assert 'href="/admin/events/test-seminar/delete"' in staff_client.get("/admin").get_data(as_text=True)
+
+
+def test_staff_can_delete_an_event_with_no_registrations(app, visitor, staff_client):
+    response = staff_client.post("/admin/events/test-seminar/delete", follow_redirects=True)
+    assert response.request.path == "/admin"
+    assert "Test Seminar was deleted." in response.get_data(as_text=True)
+    assert event_row(app) is None
+    assert visitor.get("/events/test-seminar").status_code == 404
+    assert "Test Seminar" not in visitor.get("/").get_data(as_text=True)
+
+
+def test_deleting_one_event_keeps_the_others(app, staff_client, registered):
+    staff_client.post("/admin/events", data=NEW_EVENT)
+    assert staff_client.post("/admin/events/talks/delete").status_code == 302
+    assert event_row(app, "talks") is None
+    assert event_row(app) is not None
+    assert attendee_count(app) == 1
+
+
+@pytest.mark.parametrize("columns", [{}, {"published": 0}, {"registration_closed": 1}, {"event_date": PAST}])
+def test_delete_is_refused_once_someone_registered(app, staff_client, registered, change_event, columns):
+    change_event(**columns)
+    response = staff_client.post("/admin/events/test-seminar/delete")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 409
+    assert "This event has 1 registration, so it cannot be deleted." in html
+    assert "Unpublish it or close registration instead." in html
+    assert event_row(app) is not None
+    assert attendee_count(app) == 1
+
+
+def test_confirmation_page_offers_no_delete_once_someone_registered(staff_client, registered):
+    html = staff_client.get("/admin/events/test-seminar/delete").get_data(as_text=True)
+    assert "Unpublish it or close registration instead." in html
+    assert "Delete this event" not in html
+    assert "<form method=\"post\" action=\"/admin/events/test-seminar/delete\"" not in html
+
+
+def test_deleting_an_unknown_event_is_a_404(staff_client):
+    assert staff_client.get("/admin/events/nope/delete").status_code == 404
+    assert staff_client.post("/admin/events/nope/delete").status_code == 404
+
+
+STAFF_ONLY_POSTS = [
+    ("/admin/events/test-seminar/edit", EDITED),
+    ("/admin/events/test-seminar/publish", {}),
+    ("/admin/events/test-seminar/unpublish", {}),
+    ("/admin/events/test-seminar/close", {}),
+    ("/admin/events/test-seminar/reopen", {}),
+    ("/admin/events/test-seminar/delete", {}),
+]
+
+
+@pytest.mark.parametrize("path, form", STAFF_ONLY_POSTS)
+def test_every_action_requires_a_signed_in_account(app, client, path, form):
+    before = event_row(app)
+    response = client.post(path, data=form)
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/staff/login")
+    assert event_row(app) == before
+
+
+@pytest.mark.parametrize("path", ["/admin/events/test-seminar/edit", "/admin/events/test-seminar/delete"])
+def test_staff_pages_require_a_signed_in_account(client, path):
+    response = client.get(path)
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/staff/login")
+
+
+@pytest.mark.parametrize("path, form", STAFF_ONLY_POSTS)
+def test_disabled_account_can_no_longer_act(app, owner_client, staff, sign_in, path, form):
+    staff_client = sign_in(staff)
+    owner_client.post(f"/staff/team/{staff['id']}/disable")
+    before = event_row(app)
+    assert staff_client.post(path, data=form).status_code == 302
+    assert event_row(app) == before
+
+
+@pytest.mark.parametrize("path, form", STAFF_ONLY_POSTS)
+def test_owner_can_use_every_action(app, owner_client, path, form):
+    before = event_row(app)
+    assert owner_client.post(path, data=form).status_code == 302
+    assert event_row(app) != before
+
+
+@pytest.fixture
+def csrf_client(app, staff_client):
+    app.config["CSRF_ENABLED"] = True
+    with staff_client.session_transaction() as browser_session:
+        browser_session["_csrf_token"] = "known-token"
+    return staff_client
+
+
+@pytest.mark.parametrize("path, form", [("/admin/events", NEW_EVENT), *STAFF_ONLY_POSTS])
+def test_every_action_refuses_a_missing_or_wrong_csrf_token(app, csrf_client, path, form):
+    before = event_row(app)
+    assert csrf_client.post(path, data=form).status_code == 400
+    assert csrf_client.post(path, data={**form, "csrf_token": "wrong"}).status_code == 400
+    assert event_row(app) == before
+    assert one(app, "SELECT COUNT(*) AS total FROM events")["total"] == 1
+
+
+@pytest.mark.parametrize("path, form", [("/admin/events", NEW_EVENT), *STAFF_ONLY_POSTS])
+def test_every_action_accepts_the_csrf_token(csrf_client, path, form):
+    assert csrf_client.post(path, data={**form, "csrf_token": "known-token"}).status_code == 302
+
+
+@pytest.mark.parametrize("columns", [{}, {"published": 0}, {"registration_closed": 1}])
+@pytest.mark.parametrize("path", ["/admin?event=test-seminar", "/admin/events/test-seminar/edit", "/admin/events/test-seminar/delete"])
+def test_every_staff_form_carries_a_csrf_token(app, staff_client, change_event, columns, path):
+    app.config["CSRF_ENABLED"] = True
+    change_event(**columns)
+    html = staff_client.get(path).get_data(as_text=True)
+    forms = [form for form in html.split("<form")[1:] if 'method="post"' in form.split(">", 1)[0]]
+    assert forms
+    assert all('name="csrf_token" value="' in form.split("</form>", 1)[0] for form in forms)
+
+
 def test_switcher_labels_draft_and_past_events(app, staff_client, change_event):
     staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Quiet Talks", "visibility": "draft"})
     staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Old Talks", "event_date": PAST})

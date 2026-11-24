@@ -97,6 +97,16 @@ def save_event_details(event_id, account_id, name, event_date, venue, opens_on):
     )
 
 
+def delete_event_without_registrations(event_id):
+    db = get_db()
+    deleted = db.execute(
+        "DELETE FROM events WHERE id = %s AND NOT EXISTS (SELECT 1 FROM attendees WHERE event_id = %s)",
+        (event_id, event_id),
+    ).rowcount
+    db.commit()
+    return deleted == 1
+
+
 def validate_event(form):
     data = {key: (form.get(key) or "").strip() for key in ("name", "event_date", "venue", "opens_on")}
     errors = {}

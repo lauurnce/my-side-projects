@@ -55,6 +55,7 @@
       <a class="btn btn-glass btn-small" href="{{ url_for('main.event_page', slug=event.slug) }}">{% if event.published %}View page{% else %}Preview page{% endif %}</a>
       {{ switch_button('unpublish', 'Unpublish') if event.published else switch_button('publish', 'Publish') }}
       {{ switch_button('reopen', 'Reopen registration') if event.registration_closed else switch_button('close', 'Close registration') }}
+      <a class="btn btn-glass btn-small" href="{{ url_for('staff.admin_confirm_delete_event', slug=event.slug) }}">Delete</a>
     </div>
   </div>
 

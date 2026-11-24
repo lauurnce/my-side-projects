@@ -19,6 +19,7 @@ from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
 from .services.events import (
     create_event,
+    delete_event_without_registrations,
     get_event_with_people,
     list_events,
     save_event_details,
@@ -166,6 +167,27 @@ def admin_switch_event(slug, switch):
     update_event(event["id"], current_account()["id"], **columns)
     flash(message.format(name=event["name"]), "success")
     return redirect(url_for("staff.admin", event=slug))
+
+
+def delete_page(event, status=200):
+    registered = totals(event["id"])["registered"]
+    return render_template("event_delete.html", event=event, registered=registered), status
+
+
+@bp.get("/admin/events/<slug>/delete")
+@staff_required
+def admin_confirm_delete_event(slug):
+    return delete_page(event_or_404(slug))
+
+
+@bp.post("/admin/events/<slug>/delete")
+@staff_required
+def admin_delete_event(slug):
+    event = event_or_404(slug)
+    if not delete_event_without_registrations(event["id"]):
+        return delete_page(event, 409)
+    flash(f"{event['name']} was deleted.", "success")
+    return redirect(url_for("staff.admin"))
 
 
 def attendee_or_404(attendee_id):
