@@ -4,6 +4,7 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 
+from .services.events import create_event, parse_date
 from .services.registration import (
     deliver_ticket,
     get_attendee_by_code,
@@ -40,6 +41,21 @@ def resend_ticket_command(code):
     click.echo(f"Ticket for {code} sent to {attendee['email']}.")
 
 
+@click.command("add-event", help="Add an event that people can register for.")
+@click.option("--name", required=True, help="Event name.")
+@click.option("--date", "event_date", required=True, help="Event date, e.g. 2026-11-30.")
+@click.option("--venue", required=True, help="Where the event is held.")
+@click.option("--opens", help="Date registration opens, e.g. 2026-11-01. Open now if omitted.")
+@with_appcontext
+def add_event_command(name, event_date, venue, opens):
+    day = parse_date(event_date)
+    opens_on = parse_date(opens) if opens else None
+    if day is None or (opens and opens_on is None):
+        raise click.ClickException("Dates must look like 2026-11-30.")
+    event = create_event(name, day, venue, opens_on)
+    click.echo(f"Added {event['name']} at /events/{event['slug']}")
+
+
 def lan_ip():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
         try:
@@ -62,3 +78,4 @@ def init_app(app):
     app.cli.add_command(regenerate_qr_command)
     app.cli.add_command(resend_ticket_command)
     app.cli.add_command(lan_url_command)
+    app.cli.add_command(add_event_command)
