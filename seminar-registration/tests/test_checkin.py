@@ -2,7 +2,8 @@ import csv
 import io
 
 import pytest
-from app import staff
+
+from app import commands, staff
 from app.db import get_db
 from app.services import registration
 from app.services.checkin import extract_token
@@ -347,3 +348,11 @@ def test_csv_export_neutralizes_spreadsheet_formulas(staff_client, valid_form):
     register(staff_client, {**valid_form, "organization": "=HYPERLINK(\"http://evil\")"})
     rows = list(csv.DictReader(io.StringIO(staff_client.get("/admin/export.csv").get_data(as_text=True))))
     assert rows[0]["organization"] == "'=HYPERLINK(\"http://evil\")"
+
+
+def test_lan_url_command_prints_the_address(app, monkeypatch):
+    monkeypatch.setattr(commands, "lan_ip", lambda: "192.168.1.23")
+    result = app.test_cli_runner().invoke(args=["lan-url", "--port", "5001"])
+    assert result.exit_code == 0
+    assert "LAN address: http://192.168.1.23:5001" in result.output
+    assert "PUBLIC_BASE_URL=http://192.168.1.23:5001" in result.output
