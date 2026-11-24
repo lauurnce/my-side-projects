@@ -1,7 +1,8 @@
 # Seminar Registration with QR Tickets
 
-A Flask web app for a seminar: attendees register on a form, each one gets a QR code ticket by
-email, and staff scan the tickets at the door to mark people as checked in.
+A Flask web app for seminars: the landing page lists the upcoming events, attendees register
+for one on a form, each gets a QR code ticket by email, and staff scan the tickets at the door
+to mark people as checked in.
 
 It runs on one laptop with SQLite, so it needs no server or paid service.
 
@@ -9,7 +10,7 @@ It runs on one laptop with SQLite, so it needs no server or paid service.
 
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
-| 1. Registration Form | Form with event name, date, and venue. Browser and server validation, duplicate email check, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 41 automated tests. Three attendees registered through the form in Chrome. |
+| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 75 automated tests. Three attendees registered through the form in Chrome. |
 | 2. Database and QR Script | Each registration is saved to SQLite with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is generated right after the insert. | 18 automated tests, including decoding each QR back to its check-in URL. Three PNG files created in `instance/qrcodes/`. |
 | 3. Automated Email | The ticket is emailed through Gmail SMTP right after the QR is made: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 17 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
 | 4. Check-in Scanner | Staff PIN login. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export. | 45 automated tests. A ticket scanned with a phone camera, a webcam feed, and typed input. |
@@ -20,7 +21,9 @@ The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
 ```mermaid
 flowchart LR
-    attendee([Attendee browser]) -->|fills form| routes[routes.py<br>registration pages]
+    attendee([Attendee browser]) -->|picks an event, fills form| routes[routes.py<br>landing, event pages]
+    routes --> events[services/events.py]
+    events --> db
     routes --> validation[validation.py]
     routes --> registration[services/registration.py]
     registration -->|insert row| db[(SQLite<br>instance/seminar.db)]
@@ -82,9 +85,9 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `SMTP_APP_PASSWORD` | The 16-character Gmail App Password for that account. Spaces are fine. | `abcd efgh ijkl mnop` |
 | `MAIL_FROM_NAME` | The sender name attendees see. | `Seminar Registration` |
 | `STAFF_PIN` | The PIN staff type at `/staff/login`. Staff pages stay locked while it is empty. | `482913` |
-| `EVENT_NAME` | Shown on every page and in the email subject. | `Tech Innovators Seminar 2026` |
-| `EVENT_DATE` | Shown on every page and in the email. | `November 30, 2026` |
-| `EVENT_VENUE` | Shown on every page and in the email. | `PUP Main Campus, Manila` |
+| `EVENT_NAME` | Name of the first event, created by `init-db`. | `Tech Innovators Seminar 2026` |
+| `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
+| `EVENT_VENUE` | Venue of the first event. | `PUP Main Campus, Manila` |
 
 `.env` is ignored by git, so the password and PIN are never committed.
 
@@ -101,15 +104,16 @@ flask --app app init-db
 flask --app app run
 ```
 
-Open http://127.0.0.1:5000 to see the registration form. `init-db` erases every attendee, so run
-it only once.
+Open http://127.0.0.1:5000 to see the landing page. `init-db` creates the first event from the
+`EVENT_` keys in `.env`. It erases every event and attendee, so run it only once.
 
 On macOS, AirPlay Receiver already uses port 5000. Add `--port 5001` to the run command and use
 that port everywhere below.
 
 | Command | What it does |
 | --- | --- |
-| `flask --app app init-db` | Creates the database. Erases existing attendees. |
+| `flask --app app init-db` | Creates the database and the first event. Erases existing data. |
+| `flask --app app add-event --name "..." --date 2027-01-18 --venue "..."` | Adds another event. `--opens 2026-12-15` delays registration. |
 | `flask --app app run` | Starts the app. |
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
 | `flask --app app regenerate-qr` | Rebuilds every QR ticket after `PUBLIC_BASE_URL` changes. |
@@ -123,7 +127,7 @@ Staff log in at `/staff/login` with `STAFF_PIN`. Five wrong PINs lock login for 
 | --- | --- |
 | `/checkin/<ticket_token>` | Opens when a phone camera reads a ticket. Green means checked in, amber means already checked in, red means invalid ticket. |
 | `/scanner` | Scans with the laptop or tablet camera, and takes input from a USB barcode scanner. |
-| `/admin` | Totals, search, manual check-in, resend email, and CSV export. |
+| `/admin` | One event at a time: totals, search, manual check-in, resend email, CSV export. Also adds new events. |
 
 The first check-in time is kept. Scanning the same ticket again never overwrites it.
 
@@ -167,7 +171,7 @@ pytest
 ruff check .
 ```
 
-There are 121 tests. They use a temporary database and never send real email.
+There are 155 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -180,16 +184,17 @@ seminar-registration/
 │   ├── schema.sql           attendees table
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
-│   ├── routes.py            registration form, confirmation, ticket image
+│   ├── routes.py            landing page, event pages, confirmation, ticket image
 │   ├── staff.py             login, check-in, scanner, admin, CSV export
 │   ├── commands.py          regenerate-qr, resend-ticket, lan-url
 │   ├── services/
+│   │   ├── events.py        events, dates, registration state
 │   │   ├── registration.py  create attendee, deliver ticket
 │   │   ├── qr.py            QR ticket image
 │   │   ├── mailer.py        ticket email over Gmail SMTP
 │   │   └── checkin.py       check-in, totals, search
 │   ├── templates/           pages and the ticket email
-│   └── static/              stylesheet, form and scanner scripts
+│   └── static/              stylesheet, form, event filter and scanner scripts
 ├── tests/                   pytest suite
 ├── docs/TEST-REPORT.md      verification results
 ├── screenshots/             screenshots for this README and the report
@@ -212,4 +217,6 @@ seminar-registration/
 - There is one shared staff PIN and no per-person accounts or record of who checked someone in.
 - The wrong-PIN lock is counted per device address and resets when the app restarts.
 - A check-in cannot be undone from the dashboard.
+- Events cannot be edited or deleted from the dashboard once added.
+- The pages load their fonts from Google Fonts and fall back to system fonts offline.
 - Times are saved in the laptop's local time.
