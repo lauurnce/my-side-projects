@@ -118,6 +118,51 @@ that port everywhere below.
 | `flask --app app lan-url` | Prints the laptop's address on the local network. |
 | `flask --app app resend-ticket --code SEM-2026-0001` | Emails one ticket again. |
 
+## Database and migrations
+
+The app picks its database from one setting:
+
+| `DATABASE_URL` | Database used |
+| --- | --- |
+| empty | SQLite file at `instance/seminar.db`. Nothing to install. |
+| a Postgres address, e.g. `postgresql://user:password@host:6543/postgres` | That Postgres database, such as Supabase. |
+
+The tables are built by numbered SQL files in `app/migrations/`, one folder per database:
+`sqlite/0001_initial.sql` and `postgres/0001_initial.sql`. The `schema_migrations` table records
+which files have already run.
+
+| Command | What it does |
+| --- | --- |
+| `flask --app app migrate` | Runs the files that have not run yet and keeps every row. On a database with no events it also creates the first event from the `EVENT_` keys. Running it again changes nothing. |
+| `flask --app app init-db` | Erases every table and rebuilds from the migrations. For a local SQLite file only: it stops with an error when `DATABASE_URL` is set. |
+| `flask --app app init-db --force` | Erases the `DATABASE_URL` database too. |
+
+For a hosted database, put its address in `DATABASE_URL` and run `migrate` once before the first
+deploy and again after adding a migration. Never use `init-db` there.
+
+To change the schema, add the next numbered file with the same name to both folders, for example
+`0002_add_notes.sql`, then run `migrate`. Statements end with `;`. Never edit a file that has
+already run.
+
+Queries in the code use `%s` for values and plain SQL that both databases understand. Times are
+saved in UTC as text like `2026-11-30T08:15:00+00:00` and shown in Manila time as
+`Nov 30, 2026 4:15 PM`. Registration opens and closes by the Manila date.
+
+On Postgres the migration turns on row level security for every table with no policies, so
+Supabase's public API cannot read them. The app must connect as the role that ran `migrate`.
+
+### Running the tests on Postgres
+
+`pytest` uses a temporary SQLite file. To run the same tests on a real Postgres:
+
+```bash
+TEST_DATABASE_URL=pgserver pytest
+```
+
+`pgserver` comes with `requirements-dev.txt` and starts a throwaway Postgres for the run, so
+nothing else needs installing. `TEST_DATABASE_URL` also accepts the address of a Postgres you
+started yourself. Every test erases that database, so never point it at real data.
+
 ## Event day check-in
 
 Staff log in at `/staff/login` with `STAFF_PIN`. Five wrong PINs lock login for 60 seconds.
