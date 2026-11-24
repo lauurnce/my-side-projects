@@ -14,11 +14,11 @@ class Config:
     MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Seminar Registration")
     MAIL_SERVER = "smtp.gmail.com"
     MAIL_PORT = 465
-    MAIL_TIMEOUT = 15  # seconds
+    MAIL_TIMEOUT = 15
     STAFF_PIN = os.environ.get("STAFF_PIN", "")
     EVENT_NAME = os.environ.get("EVENT_NAME", "Seminar")
     EVENT_DATE = os.environ.get("EVENT_DATE", "TBA")
     EVENT_VENUE = os.environ.get("EVENT_VENUE", "TBA")
     ATTENDEE_CODE_PREFIX = "SEM-2026"
-    DATABASE = None  # set in create_app (defaults to instance/seminar.db)
-    QR_DIR = None  # set in create_app (defaults to instance/qrcodes)
+    DATABASE = None
+    QR_DIR = None

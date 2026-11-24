@@ -18,7 +18,6 @@ LABELS = {
 
 
 def normalize_phone(raw):
-    """Return the number as +639XXXXXXXXX, or None if it is not a PH mobile number."""
     cleaned = re.sub(r"[\s\-()]", "", raw or "")
     if not PH_MOBILE_RE.match(cleaned):
         return None
@@ -26,7 +25,6 @@ def normalize_phone(raw):
 
 
 def validate_registration(form):
-    """Trim and validate form input. Returns (clean_data, errors)."""
     data = {key: (form.get(key) or "").strip() for key in LABELS}
     data["full_name"] = re.sub(r"\s+", " ", data["full_name"])
     errors = {}

@@ -12,7 +12,6 @@ def get_csrf_token():
 
 
 def check_csrf():
-    """Reject unsafe requests whose form token does not match the session."""
     if request.method != "POST":
         return
     expected = session.get(SESSION_KEY)

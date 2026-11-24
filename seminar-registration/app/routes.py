@@ -59,7 +59,6 @@ def register():
 
 @bp.get("/registered/<code>")
 def registered(code):
-    # The page shows the ticket QR, so only the browser that registered may see it.
     if code not in session.get(RECENT_CODES_KEY, []):
         abort(404)
     attendee = get_attendee_by_code(code)
