@@ -1,12 +1,19 @@
 import os
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+DEFAULT_SECRET_KEY = "dev-only-change-me"
+
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-only-change-me"
+    SECRET_KEY = os.environ.get("SECRET_KEY") or DEFAULT_SECRET_KEY
+    PRODUCTION = os.environ.get("QUADRA_ENV", "").strip().lower() == "production"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:5000")
     MAIL_ENABLED = os.environ.get("MAIL_ENABLED", "false").lower() == "true"
     SMTP_USER = os.environ.get("SMTP_USER", "")
