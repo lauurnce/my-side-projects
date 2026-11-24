@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Check-in scanner{% endblock %}
+
+{% block content %}
+<section class="card scanner" data-checkin-url="{{ url_for('staff.api_checkin') }}" data-csrf-token="{{ csrf_token() }}">
+  <h2>Check-in scanner</h2>
+  <p class="lead">Hold the ticket QR up to the camera, or scan it with the handheld scanner.</p>
+
+  <div id="scan-result" class="scan-result status-ready" role="status" aria-live="assertive">
+    <p class="scan-result-title">Ready to scan</p>
+    <p class="scan-result-detail">Waiting for a ticket</p>
+  </div>
+
+  <div id="camera" class="camera"></div>
+  <p id="camera-note" class="hint" hidden>The camera is not available. Use the box below instead.</p>
+
+  <form id="code-form" class="field" autocomplete="off">
+    <label for="code-input">Scanner or typed code</label>
+    <input id="code-input" name="code" type="text" autocapitalize="off" spellcheck="false"
+           placeholder="Scan or paste the ticket code, then press Enter" autofocus>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+        integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+"
+        crossorigin="anonymous"></script>
+{% endblock %}
