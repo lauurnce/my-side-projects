@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="panel glass glass-strong error-page">
+  <p class="error-code" aria-hidden="true">{{ code }}</p>
+  <p class="success-badge">Error {{ code }}</p>
+  <h1>{{ title }}</h1>
+  <p class="lead">{{ message }}</p>
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}">Back to home <span aria-hidden="true">&rarr;</span></a>
+</section>
+{% endblock %}

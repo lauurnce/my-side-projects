@@ -284,3 +284,7 @@ button.pill { cursor: pointer; }
   .pillar { animation: none; }
   .btn, .event, .scan-result { transition: none; }
 }
+
+.error-page { justify-items: start; padding: 2rem 1.5rem; overflow: hidden; }
+.error-code { font: 900 clamp(5.5rem, 26vw, 9rem) var(--display); font-stretch: 118%; line-height: 0.82; letter-spacing: -0.04em; color: var(--maroon); font-variant-numeric: tabular-nums; margin-bottom: 0.4rem; }
+.error-page .btn { margin-top: 0.4rem; }
