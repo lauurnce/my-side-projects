@@ -1,3 +1,5 @@
+import socket
+
 import click
 from flask import current_app
 from flask.cli import with_appcontext
@@ -36,6 +38,25 @@ def resend_ticket_command(code):
     click.echo(f"Ticket for {code} sent to {attendee['email']}.")
 
 
+def lan_ip():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        try:
+            probe.connect(("10.255.255.255", 1))
+        except OSError:
+            return "127.0.0.1"
+        return probe.getsockname()[0]
+
+
+@click.command("lan-url", help="Print the address phones on the same network can use.")
+@click.option("--port", default=5000, show_default=True, help="Port the app runs on.")
+def lan_url_command(port):
+    url = f"http://{lan_ip()}:{port}"
+    click.echo(f"LAN address: {url}")
+    click.echo(f"Run the app with: flask --app app run --host 0.0.0.0 --port {port}")
+    click.echo(f"Set PUBLIC_BASE_URL={url} in .env, then run: flask --app app regenerate-qr")
+
+
 def init_app(app):
     app.cli.add_command(regenerate_qr_command)
     app.cli.add_command(resend_ticket_command)
+    app.cli.add_command(lan_url_command)
