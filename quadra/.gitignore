@@ -12,3 +12,7 @@ venv/
 .env
 instance/
 *.db
+
+.env.*
+!.env.example
+.vercel
