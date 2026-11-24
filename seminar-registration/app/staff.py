@@ -14,6 +14,10 @@ from flask import (
     url_for,
 )
 
+from .services.checkin import (
+    check_in,
+)
+
 bp = Blueprint("staff", __name__)
 
 SESSION_KEY = "staff"
@@ -96,3 +100,11 @@ def login():
 def logout():
     session.pop(SESSION_KEY, None)
     return redirect(url_for("staff.login"))
+
+
+@bp.get("/checkin/<token>")
+@staff_required
+def checkin(token):
+    status, attendee = check_in(token)
+    http_status = 404 if status == "invalid" else 200
+    return render_template("checkin_result.html", status=status, attendee=attendee), http_status
