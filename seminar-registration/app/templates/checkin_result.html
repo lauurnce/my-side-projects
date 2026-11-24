@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if status == 'checked_in' %}Checked in{% elif status == 'already' %}Already checked in{% else %}Invalid ticket{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="result-page status-{{ status }}">
+  <main class="result" role="status">
+    {% if status == 'checked_in' %}
+      <p class="result-mark" aria-hidden="true">&#10003;</p>
+      <h1>CHECKED IN: {{ attendee.full_name }} ({{ attendee.attendee_code }})</h1>
+      <p class="result-detail">{{ attendee.organization }} &middot; {{ attendee.checked_in_at }}</p>
+    {% elif status == 'already' %}
+      <p class="result-mark" aria-hidden="true">!</p>
+      <h1>ALREADY CHECKED IN at {{ attendee.checked_in_at }}</h1>
+      <p class="result-detail">{{ attendee.full_name }} ({{ attendee.attendee_code }})</p>
+    {% else %}
+      <p class="result-mark" aria-hidden="true">&#10005;</p>
+      <h1>INVALID TICKET</h1>
+      <p class="result-detail">This QR code does not match any registration.</p>
+    {% endif %}
+    <p class="result-links">
+      <a href="{{ url_for('staff.scanner') }}">Open scanner</a>
+      <a href="{{ url_for('staff.admin') }}">Attendee list</a>
+    </p>
+  </main>
+</body>
+</html>
