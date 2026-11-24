@@ -10,8 +10,8 @@ It runs on a laptop with a SQLite file, and in production on Vercel with a Postg
 
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
-| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 80 automated tests. Three attendees registered through the form in Chrome. |
-| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 60 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
+| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. Staff add, edit, publish, close and delete events from the dashboard. | 236 automated tests. Three attendees registered through the form in Chrome. |
+| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 61 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
 | 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 26 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
 | 4. Check-in Scanner | Each staff member signs in with their own email and password. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export, each check-in marked with who did it. Owners invite and disable staff on a team page. | 233 automated tests (accounts, team, check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
@@ -186,7 +186,7 @@ password. There are two roles:
 
 | Role | Can do |
 | --- | --- |
-| `admin` | Scan tickets, use the admin dashboard, add events, change their own password. |
+| `admin` | Scan tickets, use the admin dashboard, add and manage events, change their own password. |
 | `owner` | Everything an admin can, plus the team page. |
 
 ### The first owner
@@ -244,7 +244,36 @@ answer. `create-owner` always prints its link, because that is the command's pur
 - Logging out signs that account out on every device, so a copied session cookie stops working.
 
 The dashboard table and the CSV export show who checked each attendee in, and the database
-records who added each event.
+records who added each event and who last changed it.
+
+## Managing events
+
+Any signed-in staff account, owner or admin, manages events from `/admin`. Pick an event in the
+switcher at the top: drafts and past events stay in the list, labelled `Draft` and `Past`. The
+panel under it shows the event's state and these buttons:
+
+| Button | What it does |
+| --- | --- |
+| Edit | Changes the name, venue, event date and the date registration opens. Clearing the opening date opens registration right away. The rules are the same as for adding an event. The link `/events/<slug>` never changes, even when the name does. The page also shows who created the event and who last changed it. |
+| View page / Preview page | Opens the public page. For a draft only signed-in staff can open it, and it carries a draft notice. |
+| Publish / Unpublish | A draft is hidden from visitors: it is not on the landing page, and its page and its registration address answer 404. |
+| Close registration / Reopen registration | A closed event still shows publicly, marked "Registration closed", with no form. Reopening hands control back to the dates. |
+| Delete | Asks for confirmation on its own page. Only an event with no registrations can be deleted. Once anyone has registered, unpublish it or close registration instead. |
+
+"Add an event" has two buttons: "Add and publish" and "Save as draft".
+
+An event is in exactly one state. The first rule that matches wins:
+
+| Order | State | When | Visitors can register |
+| --- | --- | --- | --- |
+| 1 | Ended | The event date has passed. | No |
+| 2 | Draft | It is not published. | No, and they cannot see it |
+| 3 | Registration closed | Staff closed registration. | No |
+| 4 | Opens later | The opening date has not arrived. | No |
+| 5 | Registration open | None of the above. | Yes |
+
+Unpublishing or closing an event never touches the people already registered. Their tickets
+still open, still scan, and still appear on the dashboard and in the CSV export.
 
 ## Event day check-in
 
@@ -254,7 +283,7 @@ Staff sign in at `/staff/login` with their own account.
 | --- | --- |
 | `/checkin/<ticket_token>` | Opens when a phone camera reads a ticket. Green means checked in, amber means already checked in, red means invalid ticket. |
 | `/scanner` | Scans with the laptop or tablet camera, and takes input from a USB barcode scanner. |
-| `/admin` | One event at a time: totals, search, manual check-in, resend email, CSV export. Also adds new events. |
+| `/admin` | One event at a time: totals, search, manual check-in, resend email, CSV export. Also adds, edits, publishes, closes and deletes events. |
 
 The first check-in time is kept. Scanning the same ticket again never overwrites it.
 
@@ -358,7 +387,7 @@ pytest
 ruff check .
 ```
 
-There are 405 tests. They use a temporary database and never send real email.
+There are 562 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -376,10 +405,10 @@ quadra/
 │   ├── validation.py        form validation and phone normalization
 │   ├── routes.py            landing page, event pages, confirmation, ticket image
 │   ├── accounts.py          login, logout, password links, account page, team page
-│   ├── staff.py             check-in, scanner, admin, CSV export
+│   ├── staff.py             check-in, scanner, admin, event management, CSV export
 │   ├── commands.py          resend-ticket, add-event, create-owner, lan-url
 │   ├── services/
-│   │   ├── events.py        events, dates, registration state
+│   │   ├── events.py        events, dates, the five event states, edit and delete
 │   │   ├── registration.py  create attendee, deliver ticket
 │   │   ├── qr.py            QR ticket image, built in memory
 │   │   ├── accounts.py      staff accounts, passwords, lockout, one-time links
@@ -415,5 +444,8 @@ quadra/
   changed from the team page. Another owner is added with `create-owner`.
 - Check-ins and events from before staff accounts existed have no recorded person.
 - A check-in cannot be undone from the dashboard.
-- Events cannot be edited or deleted from the dashboard once added.
+- An event with registrations cannot be deleted, only unpublished or closed.
+- The event link is set when the event is added and cannot be changed afterwards.
+- Only the latest change to an event is recorded, not the full history.
+- `add-event` on the command line always publishes the event.
 - The pages load their fonts from Google Fonts and fall back to system fonts offline.

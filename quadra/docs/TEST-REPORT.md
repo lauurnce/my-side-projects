@@ -12,12 +12,13 @@ Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 405 tests on each database: 404 passed with 1 skipped on SQLite, and 404 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
+Automated tests: `pytest` ran 562 tests on each database: 561 passed with 1 skipped on SQLite, and 561 passed with 1 skipped on Postgres 16. `ruff check .` reported no issues.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `tests/test_registration.py` | 33 | form, saving, duplicates, attendee codes, CSRF |
 | `tests/test_events.py` | 36 | landing page, several events, registration opening dates, adding events |
+| `tests/test_event_management.py` | 156 | event states, drafts, closing, editing, deleting, staff-only and CSRF checks |
 | `tests/test_validation.py` | 10 | phone number formats |
 | `tests/test_health.py` | 1 | health check |
 | `tests/test_qr.py` | 20 | QR content, ticket image, ticket download, caching, image failures |
@@ -26,7 +27,7 @@ Automated tests: `pytest` ran 405 tests on each database: 404 passed with 1 skip
 | `tests/test_team.py` | 37 | owner-only team page, invites, disable and enable, last-owner protection |
 | `tests/test_checkin.py` | 50 | check-in, who checked in, scanner API, admin, CSV export |
 | `tests/test_db.py` | 13 | SQLite and Postgres connection, portable queries |
-| `tests/test_migrations.py` | 14 | schema upgrades that keep existing data, row level security |
+| `tests/test_migrations.py` | 15 | schema upgrades that keep existing data, row level security |
 | `tests/test_clock.py` | 13 | UTC storage, Manila display |
 | `tests/test_security.py` | 23 | production mode, cookies, security headers, proxy trust |
 | `tests/test_errors.py` | 17 | error pages and API errors |
