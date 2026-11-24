@@ -23,6 +23,7 @@ from .services.checkin import (
     search_attendees,
     totals,
 )
+from .services.registration import deliver_ticket
 
 bp = Blueprint("staff", __name__)
 
@@ -170,4 +171,20 @@ def admin_checkin(attendee_id):
         flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
     else:
         flash(f"{attendee['attendee_code']} was already checked in at {attendee['checked_in_at']}.", "warning")
+    return back_to_admin()
+
+
+@bp.post("/admin/resend/<int:attendee_id>")
+@staff_required
+def admin_resend(attendee_id):
+    attendee = attendee_or_404(attendee_id)
+    if not current_app.config["MAIL_ENABLED"]:
+        deliver_ticket(attendee)
+        flash("MAIL_ENABLED is off, so the email was logged instead of sent.", "warning")
+        return back_to_admin()
+    attendee = deliver_ticket(attendee)
+    if attendee["email_status"] == "sent":
+        flash(f"Ticket for {attendee['attendee_code']} sent to {attendee['email']}.", "success")
+    else:
+        flash(f"Sending the ticket for {attendee['attendee_code']} failed. Check the log.", "error")
     return back_to_admin()
