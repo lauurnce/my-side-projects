@@ -12,16 +12,20 @@ Seminar Registration with QR Tickets, tested on November 24, 2026 on a MacBook (
 | 3 | Automated Email | Passed |
 | 4 | Check-in Scanner | Passed |
 
-Automated tests: `pytest` ran 121 tests and all passed. `ruff check .` reported no issues.
+Automated tests: `pytest` ran 155 tests and all passed. `ruff check .` reported no issues.
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `tests/test_registration.py` | 30 | form, saving, duplicates, attendee codes, CSRF |
+| `tests/test_events.py` | 34 | landing page, several events, registration opening dates, adding events |
 | `tests/test_validation.py` | 10 | phone number formats |
 | `tests/test_health.py` | 1 | health check |
 | `tests/test_qr.py` | 18 | QR content, ticket image, ticket download, regenerate-qr |
 | `tests/test_mailer.py` | 17 | email content, attachment, failures, resend-ticket |
 | `tests/test_checkin.py` | 45 | login, lockout, check-in, scanner API, admin, CSV export |
+
+The end-to-end run and the phone test below were done before the site was redesigned and before
+it supported several events. The automated tests cover the current version.
 
 ## End-to-end run
 
