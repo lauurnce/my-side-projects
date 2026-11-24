@@ -17,6 +17,8 @@ from flask import (
 from .services.checkin import (
     check_in,
     extract_token,
+    search_attendees,
+    totals,
 )
 
 bp = Blueprint("staff", __name__)
@@ -129,4 +131,17 @@ def api_checkin():
         name=attendee["full_name"],
         code=attendee["attendee_code"],
         checked_in_at=attendee["checked_in_at"],
+    )
+
+
+@bp.get("/admin")
+@staff_required
+def admin():
+    query = request.args.get("q", "")
+    return render_template(
+        "admin.html",
+        totals=totals(),
+        attendees=search_attendees(query),
+        query=query,
+        public_base_url=current_app.config["PUBLIC_BASE_URL"],
     )
