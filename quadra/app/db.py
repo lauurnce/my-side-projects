@@ -21,7 +21,7 @@ def init_db():
     from .services.events import seed_from_config
 
     db = get_db()
-    with current_app.open_resource("schema.sql") as f:
+    with current_app.open_resource("migrations/sqlite/0001_initial.sql") as f:
         db.executescript(f.read().decode("utf-8"))
     return seed_from_config()
 
