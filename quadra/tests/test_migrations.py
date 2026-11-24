@@ -4,7 +4,9 @@ import psycopg
 import pytest
 
 from app import db as database
-from app.db import drop_tables, get_db, migrate
+from app.db import MIGRATIONS, drop_tables, get_db, migrate
+
+SHIPPED_MIGRATIONS = sorted(path.name for path in (MIGRATIONS / "sqlite").glob("*.sql"))
 
 LEGACY_SCHEMA = """
 CREATE TABLE events (
@@ -49,8 +51,8 @@ def count(table):
 
 
 def test_fresh_database_gets_every_migration(blank):
-    assert migrate() == ["0001_initial.sql"]
-    assert applied_names() == ["0001_initial.sql"]
+    assert migrate() == SHIPPED_MIGRATIONS
+    assert applied_names() == SHIPPED_MIGRATIONS
     assert count("events") == 0
     assert count("attendees") == 0
 
@@ -60,7 +62,7 @@ def test_running_again_applies_nothing_and_keeps_the_data(app, client, valid_for
     with app.app_context():
         assert migrate() == []
         assert migrate() == []
-        assert applied_names() == ["0001_initial.sql"]
+        assert applied_names() == SHIPPED_MIGRATIONS
         assert count("events") == 1
         assert count("attendees") == 1
 
@@ -128,7 +130,7 @@ def test_database_from_before_migrations_keeps_its_rows(blank):
         get_db().execute(statement)
     get_db().commit()
 
-    assert migrate() == ["0001_initial.sql"]
+    assert migrate() == SHIPPED_MIGRATIONS
     assert [event["slug"] for event in get_db().execute("SELECT * FROM events").fetchall()] == ["old-seminar"]
     assert count("attendees") == 0
 
