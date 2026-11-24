@@ -124,3 +124,30 @@ def test_scanned_ticket_comes_back_after_login(staff_app, client, token):
 @pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example/", "/\\evil.example"])
 def test_login_never_redirects_off_site(staff_app, client, target):
     assert login(client, next=target).headers["Location"] == "/scanner"
+
+
+def test_five_wrong_pins_lock_login_for_sixty_seconds(staff_app, client, clock):
+    for _ in range(4):
+        assert login(client, pin="0000").status_code == 401
+    locked = login(client, pin="0000")
+    assert locked.status_code == 429
+    assert "Try again in 60 seconds" in locked.get_data(as_text=True)
+
+    clock["seconds"] += 59
+    still_locked = login(client)
+    assert still_locked.status_code == 429
+    assert "Try again in 1 seconds" in still_locked.get_data(as_text=True)
+    assert client.get("/scanner").status_code == 302
+
+    clock["seconds"] += 1
+    assert login(client).status_code == 302
+    assert client.get("/scanner").status_code == 200
+
+
+def test_a_correct_pin_resets_the_wrong_pin_count(staff_app, client, clock):
+    for _ in range(4):
+        login(client, pin="0000")
+    assert login(client).status_code == 302
+    client.post("/staff/logout")
+    for _ in range(4):
+        assert login(client, pin="0000").status_code == 401
