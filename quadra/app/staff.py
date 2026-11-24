@@ -19,7 +19,9 @@ from .clock import manila_time
 from .services.checkin import check_in, extract_token, search_attendees, totals
 from .services.events import (
     create_event,
+    get_event_with_people,
     list_events,
+    save_event_details,
     today,
     validate_event,
 )
@@ -120,6 +122,32 @@ def admin_create_event():
     event = create_event(**data, created_by_id=current_account()["id"])
     flash(f"{event['name']} was added.", "success")
     return redirect(url_for("staff.admin", event=event["slug"]))
+
+
+def event_or_404(slug):
+    event = get_event_with_people(slug)
+    if event is None:
+        abort(404)
+    return event
+
+
+@bp.get("/admin/events/<slug>/edit")
+@staff_required
+def admin_edit_event(slug):
+    event = event_or_404(slug)
+    return render_template("event_edit.html", event=event, values=event, errors={})
+
+
+@bp.post("/admin/events/<slug>/edit")
+@staff_required
+def admin_save_event(slug):
+    event = event_or_404(slug)
+    data, errors = validate_event(request.form)
+    if errors:
+        return render_template("event_edit.html", event=event, values=request.form, errors=errors), 400
+    save_event_details(event["id"], current_account()["id"], **data)
+    flash(f"{data['name']} was saved.", "success")
+    return redirect(url_for("staff.admin", event=slug))
 
 
 def attendee_or_404(attendee_id):

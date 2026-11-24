@@ -24,12 +24,31 @@
     {% for item in events %}
     <a class="pill{% if event and item.id == event.id %} on{% endif %}"
        href="{{ url_for('staff.admin', event=item.slug) }}"
-       {% if event and item.id == event.id %}aria-current="page"{% endif %}>{{ item.name }}</a>
+       {% if event and item.id == event.id %}aria-current="page"{% endif %}>{{ item.name }}{% if not item.published %} &middot; Draft{% endif %}{% if registration_state(item) == 'ended' %} &middot; Past{% endif %}</a>
     {% endfor %}
   </nav>
   {% endif %}
 
   {% if event %}
+  {% set state = registration_state(event) %}
+  <div class="panel glass manage">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">{{ event.event_date|long_date }}</p>
+        <h2>{{ event.name }}</h2>
+        <p class="lead">{{ event.venue }}</p>
+      </div>
+      <div class="chips">
+        <span class="pill pill-{{ {'open': 'sent', 'closed': 'failed'}.get(state, 'wait') }}">{{ state_labels[state] }}{% if state == 'soon' %} &middot; {{ event.opens_on|short_date }}{% endif %}</span>
+        {% if state == 'ended' and not event.published %}<span class="pill pill-wait">Draft</span>{% endif %}
+      </div>
+    </div>
+    <div class="row">
+      <a class="btn btn-primary btn-small" href="{{ url_for('staff.admin_edit_event', slug=event.slug) }}">Edit</a>
+      <a class="btn btn-glass btn-small" href="{{ url_for('main.event_page', slug=event.slug) }}">{% if event.published %}View page{% else %}Preview page{% endif %}</a>
+    </div>
+  </div>
+
   <dl class="totals">
     <div class="glass"><dt>Registered</dt><dd id="total-registered">{{ totals.registered }}</dd></div>
     <div class="glass"><dt>Emails sent</dt><dd id="total-emails-sent">{{ totals.emails_sent }}</dd></div>

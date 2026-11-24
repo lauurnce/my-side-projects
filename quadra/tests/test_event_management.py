@@ -7,7 +7,13 @@ from app.services.events import STATES_BY_PRECEDENCE, registration_state
 
 PAST, FUTURE = "2026-10-05", "2026-11-30"
 OPENED, OPENS_LATER = "2026-10-20", "2026-11-15"
-EVERY_COMBINATION = list(itertools.product((PAST, FUTURE), (1, 0), (0, 1), (None, OPENED, OPENS_LATER)))
+EDITED = {
+    "name": "Renamed Seminar",
+    "venue": "Bulwagang Balagtas",
+    "event_date": "2026-12-05",
+    "opens_on": "2026-11-10",
+}
+EVERY_COMBINATION =list(itertools.product((PAST, FUTURE), (1, 0), (0, 1), (None, OPENED, OPENS_LATER)))
 
 
 @pytest.fixture
@@ -178,3 +184,107 @@ def test_dashboard_selects_an_upcoming_draft_by_default(staff_client, change_eve
     change_event(published=0)
     html = staff_client.get("/admin").get_data(as_text=True)
     assert 'href="/admin?event=test-seminar"\n       aria-current="page"' in html
+
+
+def test_edit_page_shows_the_current_details(staff_client):
+    html = staff_client.get("/admin/events/test-seminar/edit").get_data(as_text=True)
+    assert 'name="name" type="text" value="Test Seminar"' in html
+    assert 'name="venue" type="text" value="Main Hall"' in html
+    assert 'name="event_date" type="date" value="2026-11-30"' in html
+    assert 'name="opens_on" type="date" value=""' in html
+
+
+def test_staff_can_edit_an_event(app, staff_client):
+    response = staff_client.post("/admin/events/test-seminar/edit", data=EDITED)
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/admin?event=test-seminar"
+    event = event_row(app)
+    assert {key: event[key] for key in EDITED} == EDITED
+    page = staff_client.get("/events/test-seminar").get_data(as_text=True)
+    assert "Renamed Seminar" in page
+    assert "Registration opens November 10, 2026" in page
+
+
+def test_slug_stays_the_same_when_the_name_changes(app, client, staff_client):
+    staff_client.post("/admin/events/test-seminar/edit", data=EDITED)
+    assert event_row(app)["slug"] == "test-seminar"
+    assert one(app, "SELECT COUNT(*) AS total FROM events")["total"] == 1
+    assert client.get("/events/test-seminar").status_code == 200
+    assert client.get("/events/renamed-seminar").status_code == 404
+
+
+def test_opening_date_can_be_cleared(app, client, staff_client, change_event, valid_form):
+    change_event(opens_on=OPENS_LATER)
+    staff_client.post("/admin/events/test-seminar/edit", data={**EDITED, "opens_on": ""})
+    assert event_row(app)["opens_on"] is None
+    assert client.post("/events/test-seminar/register", data=valid_form).status_code == 302
+
+
+def test_editing_keeps_visibility_and_registrations(app, staff_client, registered, change_event):
+    change_event(published=0, registration_closed=1)
+    staff_client.post("/admin/events/test-seminar/edit", data=EDITED)
+    event = event_row(app)
+    assert (event["published"], event["registration_closed"]) == (0, 1)
+    assert attendee_count(app) == 1
+    assert "Renamed Seminar" in staff_client.get("/admin/export.csv?event=test-seminar").get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"name": ""}, "Event name is required."),
+        ({"name": "x" * 121}, "Event name must be at most 120 characters."),
+        ({"venue": ""}, "Venue is required."),
+        ({"venue": "x" * 151}, "Venue must be at most 150 characters."),
+        ({"event_date": ""}, "Pick the event date."),
+        ({"opens_on": "someday"}, "Pick a valid opening date, or leave it empty."),
+        ({"opens_on": "2026-12-06"}, "Registration must open on or before the event date."),
+    ],
+)
+def test_editing_follows_the_rules_for_adding(app, staff_client, changes, message):
+    before = event_row(app)
+    response = staff_client.post("/admin/events/test-seminar/edit", data={**EDITED, **changes})
+    assert response.status_code == 400
+    assert message in response.get_data(as_text=True)
+    assert event_row(app) == before
+
+
+def test_failed_edit_keeps_what_was_typed(staff_client):
+    response = staff_client.post("/admin/events/test-seminar/edit", data={**EDITED, "venue": ""})
+    html = response.get_data(as_text=True)
+    assert 'value="Renamed Seminar"' in html
+    assert 'value="2026-12-05"' in html
+
+
+def test_editing_records_who_and_when(app, staff, staff_client, freeze):
+    assert event_row(app)["updated_at"] is None
+    assert "<dd>Never</dd>" in staff_client.get("/admin/events/test-seminar/edit").get_data(as_text=True)
+    freeze("2026-11-20T02:00:00")
+    staff_client.post("/admin/events/test-seminar/edit", data=EDITED)
+    event = event_row(app)
+    assert (event["updated_by_id"], event["updated_at"]) == (staff["id"], "2026-11-20T02:00:00+00:00")
+    assert event["created_by_id"] is None
+
+
+def test_edit_page_shows_who_created_and_last_edited(staff_client, owner, sign_in, freeze):
+    freeze("2026-11-20T02:00:00")
+    staff_client.post("/admin/events", data={"name": "Talks", "venue": "Hall", "event_date": "2027-02-09"})
+    freeze("2026-11-21T03:30:00")
+    sign_in(owner).post("/admin/events/talks/edit", data={**EDITED, "event_date": "2027-02-10"})
+    html = staff_client.get("/admin/events/talks/edit").get_data(as_text=True)
+    assert "<dd>Nov 20, 2026 10:00 AM by Sam Staff</dd>" in html
+    assert "<dd>Nov 21, 2026 11:30 AM by Olivia Owner</dd>" in html
+
+
+def test_event_from_the_command_line_shows_no_creator(staff_client):
+    html = staff_client.get("/admin/events/test-seminar/edit").get_data(as_text=True)
+    assert "by someone not recorded</dd>" in html
+
+
+def test_editing_an_unknown_event_is_a_404(staff_client):
+    assert staff_client.get("/admin/events/nope/edit").status_code == 404
+    assert staff_client.post("/admin/events/nope/edit", data=EDITED).status_code == 404
+
+
+def test_dashboard_links_to_the_edit_page(staff_client):
+    assert 'href="/admin/events/test-seminar/edit"' in staff_client.get("/admin").get_data(as_text=True)

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ event.name }}{% endblock %}
+
+{% macro field(name, label, type="text", maxlength=None, required=True, hint="") %}
+  <div class="field{% if errors.get(name) %} has-error{% endif %}">
+    <label for="event-{{ name }}">{{ label }}</label>
+    <input id="event-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ values.get(name) or '' }}"
+           {% if required %}required{% endif %}
+           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}>
+    {% if hint %}<small class="hint">{{ hint }}</small>{% endif %}
+    <p class="error" role="alert">{{ errors.get(name, '') }}</p>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<section class="panel account glass glass-strong">
+  <p class="eyebrow">Edit event</p>
+  <h1>{{ event.name }}</h1>
+  <p class="lead">The link <span class="code">/events/{{ event.slug }}</span> stays the same when the name changes.</p>
+
+  {% if errors %}
+    <div class="alert" role="alert">Please fix the highlighted fields below.</div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('staff.admin_save_event', slug=event.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {{ field("name", "Event name", maxlength=120) }}
+    {{ field("venue", "Venue", maxlength=150) }}
+    {{ field("event_date", "Event date", type="date") }}
+    {{ field("opens_on", "Registration opens", type="date", required=False, hint="Leave empty to open registration right away.") }}
+    <div class="row">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a class="btn btn-glass" href="{{ url_for('staff.admin', event=event.slug) }}">Cancel</a>
+    </div>
+  </form>
+
+  <dl class="facts">
+    <dt>Created</dt>
+    <dd>{{ event.created_at|manila_time }} by {{ event.created_by or 'someone not recorded' }}</dd>
+    <dt>Last edited</dt>
+    <dd>{% if event.updated_at %}{{ event.updated_at|manila_time }} by {{ event.updated_by or 'someone not recorded' }}{% else %}Never{% endif %}</dd>
+  </dl>
+</section>
+{% endblock %}

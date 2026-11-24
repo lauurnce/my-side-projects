@@ -16,6 +16,18 @@ STATES_BY_PRECEDENCE = (
     ("soon", lambda event, current: bool(event["opens_on"]) and event["opens_on"] > current),
     ("open", lambda event, current: True),
 )
+STATE_LABELS = {
+    "ended": "Ended",
+    "draft": "Draft",
+    "closed": "Registration closed",
+    "soon": "Opens later",
+    "open": "Registration open",
+}
+EVENT_WITH_PEOPLE = (
+    "SELECT e.*, c.name AS created_by, u.name AS updated_by FROM events e"
+    " LEFT JOIN accounts c ON c.id = e.created_by_id"
+    " LEFT JOIN accounts u ON u.id = e.updated_by_id WHERE e.slug = %s"
+)
 
 
 def today():
@@ -66,6 +78,25 @@ def create_event(name, event_date, venue, opens_on=None, created_by_id=None, pub
     return get_event_by_slug(slug)
 
 
+def update_event(event_id, account_id, **columns):
+    columns = {**columns, "updated_at": utc_timestamp(), "updated_by_id": account_id}
+    assignments = ", ".join(f"{column} = %s" for column in columns)
+    db = get_db()
+    db.execute(f"UPDATE events SET {assignments} WHERE id = %s", (*columns.values(), event_id))
+    db.commit()
+
+
+def save_event_details(event_id, account_id, name, event_date, venue, opens_on):
+    update_event(
+        event_id,
+        account_id,
+        name=name,
+        event_date=event_date.isoformat(),
+        venue=venue,
+        opens_on=opens_on.isoformat() if opens_on else None,
+    )
+
+
 def validate_event(form):
     data = {key: (form.get(key) or "").strip() for key in ("name", "event_date", "venue", "opens_on")}
     errors = {}
@@ -99,6 +130,10 @@ def seed_from_config():
 
 def get_event_by_slug(slug):
     return get_db().execute("SELECT * FROM events WHERE slug = %s", (slug,)).fetchone()
+
+
+def get_event_with_people(slug):
+    return get_db().execute(EVENT_WITH_PEOPLE, (slug,)).fetchone()
 
 
 def list_events():
@@ -143,4 +178,4 @@ def init_app(app):
         day_label=day_label,
         manila_time=manila_time,
     )
-    app.jinja_env.globals["registration_state"] = registration_state
+    app.jinja_env.globals.update(registration_state=registration_state, state_labels=STATE_LABELS)
