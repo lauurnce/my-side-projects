@@ -16,6 +16,7 @@ from flask import (
 
 from .services.checkin import (
     check_in,
+    extract_token,
 )
 
 bp = Blueprint("staff", __name__)
@@ -114,3 +115,18 @@ def checkin(token):
 @staff_required
 def scanner():
     return render_template("scanner.html")
+
+
+@bp.post("/api/checkin")
+@staff_required
+def api_checkin():
+    payload = request.get_json(silent=True) or {}
+    status, attendee = check_in(extract_token(str(payload.get("code", ""))))
+    if attendee is None:
+        return jsonify(status=status)
+    return jsonify(
+        status=status,
+        name=attendee["full_name"],
+        code=attendee["attendee_code"],
+        checked_in_at=attendee["checked_in_at"],
+    )
