@@ -5,7 +5,9 @@ from time import monotonic
 
 from flask import (
     Blueprint,
+    abort,
     current_app,
+    flash,
     jsonify,
     redirect,
     render_template,
@@ -17,6 +19,7 @@ from flask import (
 from .services.checkin import (
     check_in,
     extract_token,
+    get_attendee_by_id,
     search_attendees,
     totals,
 )
@@ -145,3 +148,26 @@ def admin():
         query=query,
         public_base_url=current_app.config["PUBLIC_BASE_URL"],
     )
+
+
+def attendee_or_404(attendee_id):
+    attendee = get_attendee_by_id(attendee_id)
+    if attendee is None:
+        abort(404)
+    return attendee
+
+
+def back_to_admin():
+    return redirect(url_for("staff.admin", q=request.form.get("q") or None))
+
+
+@bp.post("/admin/checkin/<int:attendee_id>")
+@staff_required
+def admin_checkin(attendee_id):
+    attendee = attendee_or_404(attendee_id)
+    status, attendee = check_in(attendee["ticket_token"])
+    if status == "checked_in":
+        flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
+    else:
+        flash(f"{attendee['attendee_code']} was already checked in at {attendee['checked_in_at']}.", "warning")
+    return back_to_admin()
