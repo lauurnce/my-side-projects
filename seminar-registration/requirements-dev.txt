@@ -1,2 +1,4 @@
 -r requirements.txt
-opencv-python-headless>=4.8
+pytest==9.2.0
+opencv-python-headless==5.1.0.95
+ruff==0.17.6
