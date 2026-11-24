@@ -136,3 +136,129 @@ body {
   .summary { grid-template-columns: 1fr; }
   .summary dd { margin-bottom: 0.5rem; }
 }
+
+[hidden] { display: none !important; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.mono { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+
+.staff-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.6rem 1rem;
+  background: #131a2e;
+  font-size: 0.9rem;
+}
+.staff-nav a { color: #fff; text-decoration: none; font-weight: 600; }
+.staff-nav a:hover { text-decoration: underline; }
+.staff-nav form { margin-left: auto; }
+.staff-nav button {
+  font: inherit;
+  color: #c9d2ea;
+  background: none;
+  border: 1px solid #3a4568;
+  border-radius: 6px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+.staff-nav button:hover { color: #fff; border-color: #fff; }
+
+.container-wide { max-width: 1280px; }
+.btn-small { width: auto; padding: 0.45rem 0.8rem; font-size: 0.85rem; white-space: nowrap; }
+.notice-warning { background: #fff4d6; color: #7a4b00; }
+
+.totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 1.25rem 0; }
+.totals div { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; }
+.totals dt { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.totals dd { margin: 0; font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; margin-bottom: 1rem; }
+.search { display: flex; flex: 1 1 320px; gap: 0.5rem; }
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.search input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.table-scroll { position: relative; overflow-x: auto; }
+.attendees { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.attendees th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 2px solid var(--border);
+}
+.attendees td { padding: 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.attendees td:nth-child(2) { white-space: nowrap; }
+.attendees td:last-child { padding-right: 0; }
+.attendees tbody tr:hover { background: var(--bg); }
+.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.pill {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #eceff6;
+  color: var(--muted);
+}
+.pill-sent { background: #e3f4ea; color: var(--success); }
+.pill-failed { background: var(--error-bg); color: var(--error); }
+.empty { color: var(--muted); text-align: center; padding: 2rem 0; }
+
+.scan-result {
+  border-radius: var(--radius);
+  padding: 1.25rem 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  color: #fff;
+  transition: background-color 120ms ease-out;
+}
+.scan-result p { margin: 0; }
+.scan-result-title { font-size: 1.6rem; font-weight: 800; letter-spacing: 0.02em; }
+.scan-result-detail { font-size: 1rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
+.status-ready { background: #eceff6; color: var(--muted); }
+.status-checked_in { background: #14804a; }
+.status-already { background: #f5a524; color: #2b1a00; }
+.status-invalid { background: #c62828; }
+.camera { border-radius: var(--radius); overflow: hidden; background: #131a2e; margin-bottom: 1rem; }
+.camera video { display: block; width: 100%; }
+
+.result-page { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; color: #fff; }
+.result-page.status-already { color: #2b1a00; }
+.result { text-align: center; padding: 2rem 1.25rem; max-width: 720px; }
+.result-mark {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.25rem;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  border: 4px solid currentColor;
+  border-radius: 50%;
+}
+.result h1 { margin: 0; font-size: clamp(2rem, 8vw, 3.75rem); line-height: 1.1; overflow-wrap: anywhere; }
+.result-detail { font-size: 1.2rem; margin: 1rem 0 2rem; }
+.result-links { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; justify-content: center; margin: 0; }
+.result-links a { color: inherit; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-result { transition: none; }
+}
