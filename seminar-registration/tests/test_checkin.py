@@ -1,3 +1,5 @@
+import csv
+import io
 
 import pytest
 from app import staff
@@ -319,3 +321,29 @@ def test_admin_resend_reports_a_failed_send(staff_app, staff_client, token, monk
 def test_admin_resend_explains_when_mail_is_disabled(staff_app, staff_client, token):
     response = staff_client.post(f"/admin/resend/{row(staff_app)['id']}", follow_redirects=True)
     assert "MAIL_ENABLED is off" in response.get_data(as_text=True)
+
+
+def test_csv_export_lists_every_attendee(staff_app, staff_client, valid_form):
+    register(staff_client, valid_form)
+    register(staff_client, OTHER_FORM)
+    staff_client.get(f"/checkin/{row(staff_app)['ticket_token']}")
+
+    response = staff_client.get("/admin/export.csv")
+    assert response.mimetype == "text/csv"
+    assert "attachment; filename=attendees.csv" in response.headers["Content-Disposition"]
+
+    rows = list(csv.DictReader(io.StringIO(response.get_data(as_text=True))))
+    assert [r["attendee_code"] for r in rows] == ["SEM-2026-0001", "SEM-2026-0002"]
+    assert rows[0]["full_name"] == "Juan Dela Cruz"
+    assert rows[0]["contact_number"] == "+639171234567"
+    assert rows[0]["checked_in"] == "1"
+    assert rows[0]["checked_in_at"]
+    assert rows[1]["checked_in"] == "0"
+    assert rows[1]["checked_in_at"] == ""
+    assert "ticket_token" not in rows[0]
+
+
+def test_csv_export_neutralizes_spreadsheet_formulas(staff_client, valid_form):
+    register(staff_client, {**valid_form, "organization": "=HYPERLINK(\"http://evil\")"})
+    rows = list(csv.DictReader(io.StringIO(staff_client.get("/admin/export.csv").get_data(as_text=True))))
+    assert rows[0]["organization"] == "'=HYPERLINK(\"http://evil\")"
