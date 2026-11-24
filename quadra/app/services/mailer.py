@@ -15,7 +15,7 @@ def build_ticket_email(attendee):
     config = current_app.config
     code = attendee["attendee_code"]
     png = Path(attendee["qr_path"]).read_bytes()
-    qr_cid = make_msgid(domain="seminar-registration.local")
+    qr_cid = make_msgid(domain="quadra.local")
 
     message = EmailMessage()
     message["Subject"] = f"Your ticket: {attendee['event_name']}"

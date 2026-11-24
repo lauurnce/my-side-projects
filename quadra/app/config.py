@@ -11,7 +11,7 @@ class Config:
     MAIL_ENABLED = os.environ.get("MAIL_ENABLED", "false").lower() == "true"
     SMTP_USER = os.environ.get("SMTP_USER", "")
     SMTP_APP_PASSWORD = os.environ.get("SMTP_APP_PASSWORD", "")
-    MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Seminar Registration")
+    MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Quadra")
     MAIL_SERVER = "smtp.gmail.com"
     MAIL_PORT = 465
     MAIL_TIMEOUT = 15

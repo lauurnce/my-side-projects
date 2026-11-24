@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}PUP Events{% endblock %}</title>
+  <title>{% block title %}Quadra{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Hanken+Grotesk:wght@400;500;600;700&family=Roboto+Slab:wght@900&display=swap">
@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <nav class="nav glass glass-strong" aria-label="Main">
-      <a class="brand" href="{{ url_for('main.index') }}">PUP<b>.</b>Events</a>
+      <a class="brand" href="{{ url_for('main.index') }}">Quadra<b>.</b></a>
       <ul class="nav-links">
         <li><a href="{{ url_for('main.index') }}#events">Events</a></li>
         <li><a href="{{ url_for('main.index') }}#how">How it works</a></li>
@@ -38,8 +38,8 @@
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">
-    <span class="brand">PUP<b>.</b>Events</span>
-    <span>Seminar registration with QR tickets</span>
+    <span class="brand">Quadra<b>.</b></span>
+    <span>Event registration with QR tickets. A student project, not an official PUP website.</span>
     <a href="{{ url_for('staff.login') }}">Staff login</a>
   </footer>
   {% block scripts %}{% endblock %}
