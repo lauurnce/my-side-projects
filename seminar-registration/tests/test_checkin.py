@@ -158,6 +158,52 @@ def test_unknown_token_is_an_invalid_ticket(staff_client):
     assert "status-invalid" in html
 
 
+def test_api_checkin_accepts_the_full_url(staff_app, staff_client, token):
+    response = staff_client.post(
+        "/api/checkin", json={"code": f"http://localhost:5000/checkin/{token}"}
+    )
+    body = response.get_json()
+    assert body["status"] == "checked_in"
+    assert body["name"] == "Juan Dela Cruz"
+    assert body["code"] == "SEM-2026-0001"
+    assert row(staff_app)["checked_in"] == 1
+
+
+def test_api_checkin_accepts_the_bare_token(staff_app, staff_client, token):
+    response = staff_client.post("/api/checkin", json={"code": f"  {token}\n"})
+    assert response.get_json()["status"] == "checked_in"
+    assert row(staff_app)["checked_in"] == 1
+
+
+def test_api_checkin_second_scan_returns_already(staff_app, staff_client, token):
+    staff_client.post("/api/checkin", json={"code": token})
+    set_first_checkin_time(staff_app, "2026-11-30 08:15:00")
+
+    body = staff_client.post("/api/checkin", json={"code": token}).get_json()
+    assert body["status"] == "already"
+    assert body["checked_in_at"] == "2026-11-30 08:15:00"
+    assert row(staff_app)["checked_in_at"] == "2026-11-30 08:15:00"
+
+
+@pytest.mark.parametrize("payload", [{"code": "nope"}, {"code": ""}, {}])
+def test_api_checkin_reports_an_invalid_code(staff_client, payload):
+    response = staff_client.post("/api/checkin", json=payload)
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "invalid"}
+
+
+def test_api_checkin_accepts_the_csrf_header(staff_app, staff_client, token):
+    staff_app.config["CSRF_ENABLED"] = True
+    assert staff_client.post("/api/checkin", json={"code": token}).status_code == 400
+
+    with staff_client.session_transaction() as browser_session:
+        browser_session["_csrf_token"] = "known-token"
+    response = staff_client.post(
+        "/api/checkin", json={"code": token}, headers={"X-CSRF-Token": "known-token"}
+    )
+    assert response.get_json()["status"] == "checked_in"
+
+
 def test_five_wrong_pins_lock_login_for_sixty_seconds(staff_app, client, clock):
     for _ in range(4):
         assert login(client, pin="0000").status_code == 401
