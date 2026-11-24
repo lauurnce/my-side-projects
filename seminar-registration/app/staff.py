@@ -108,3 +108,9 @@ def checkin(token):
     status, attendee = check_in(token)
     http_status = 404 if status == "invalid" else 200
     return render_template("checkin_result.html", status=status, attendee=attendee), http_status
+
+
+@bp.get("/scanner")
+@staff_required
+def scanner():
+    return render_template("scanner.html")
