@@ -163,6 +163,62 @@ cloudflared tunnel --url http://localhost:5000
 Set `PUBLIC_BASE_URL` to the `https://...trycloudflare.com` address it prints, restart the app,
 then resend tickets as above. Over `https` the `/scanner` camera also works on a phone.
 
+## Deploying
+
+### Production settings
+
+Set these wherever the app is hosted. Local development needs none of them.
+
+| Key | Value | What it does |
+| --- | --- | --- |
+| `QUADRA_ENV` | `production` | Turns on production mode. The app refuses to start while `SECRET_KEY` is empty or still the built-in development key, the session cookie is marked `Secure`, and every response carries `Strict-Transport-Security`. |
+| `SECRET_KEY` | Long random text, for example from `python -c "import secrets; print(secrets.token_urlsafe(48))"` | Signs the session cookie. |
+| `TRUSTED_PROXY_HOPS` | `1` on Vercel, `0` (the default) when nothing sits in front of the app | How many proxies in front of the app may say who the visitor is. With `1`, the last `X-Forwarded-For` address and `X-Forwarded-Proto` are believed, so the wrong-PIN lock counts the real visitor and the app knows the request came over `https`. |
+| `PUBLIC_BASE_URL` | The public `https://` address | Written into every QR code. |
+
+Leave `TRUSTED_PROXY_HOPS` at `0` unless a proxy you control overwrites `X-Forwarded-For`. With a
+number above zero and no such proxy, a visitor can send a made-up address and slip past the
+wrong-PIN lock. Vercel overwrites the header with the visitor's public address and does not pass
+on values sent by the client, which is why `1` is safe there
+([Vercel request headers](https://vercel.com/docs/headers/request-headers#x-forwarded-for)).
+
+In every mode the session cookie is `HttpOnly` and `SameSite=Lax` and lasts 12 hours from the last
+request, and every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+`Permissions-Policy` (camera for this site only) and a `Content-Security-Policy`. The policy allows
+scripts from this site and `html5-qrcode` 2.3.8 on unpkg, styles from this site and Google Fonts,
+fonts from Google Fonts, and images from this site. A page that loads anything else needs the
+policy in `app/security.py` updated.
+
+### Vercel
+
+1. Import the repository in Vercel and set the project's Root Directory to `quadra`.
+2. Keep the detected Flask preset. Vercel finds the `app` object in `wsgi.py`, installs
+   `requirements.txt` and sends every request to the app, which also serves `/static`. There is no
+   build command and no `vercel.json`.
+3. Add the keys from the table above and the mail, PIN and event keys from the `.env` section as
+   Environment Variables for Production.
+
+`.vercelignore` keeps the tests, docs, screenshots and `requirements-dev.txt` out of the upload, so
+only the runtime packages are installed.
+
+Platform limits that matter here:
+
+- The filesystem is read-only apart from 500 MB of `/tmp`, which belongs to one instance and is
+  lost when it stops. A SQLite file cannot live there, so the database needs hosted storage
+  before the app can run on Vercel
+  ([runtimes](https://vercel.com/docs/functions/runtimes#file-system-support)).
+- A request may run for 300 seconds on the Hobby plan, far above the 15 second mail timeout
+  ([limits](https://vercel.com/docs/functions/limitations#max-duration)).
+- Outbound SMTP is open on ports 465 and 587 and blocked on port 25, so Gmail on 465 is allowed
+  ([SMTP guide](https://vercel.com/kb/guide/serverless-functions-and-smtp)).
+- Request bodies are limited to 4.5 MB, well above any form here
+  ([limits](https://vercel.com/docs/functions/limitations#request-body-size)).
+- An instance that has been idle starts cold, and a function unused for two weeks is archived and
+  takes at least a second longer on its next request
+  ([runtimes](https://vercel.com/docs/functions/runtimes#archiving)).
+- The wrong-PIN count is kept in memory per instance, so it resets on a cold start and is not
+  shared between instances.
+
 ## Running tests
 
 ```bash
