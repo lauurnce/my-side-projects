@@ -23,6 +23,7 @@ from .services.events import (
     list_events,
     save_event_details,
     today,
+    update_event,
     validate_event,
 )
 from .services.registration import deliver_ticket, get_attendee_by_id
@@ -46,6 +47,12 @@ CSV_COLUMNS = (
 )
 USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization", "checked_in_by")
 TIME_COLUMNS = ("email_sent_at", "checked_in_at", "created_at")
+EVENT_SWITCHES = {
+    "publish": ({"published": 1}, "{name} is published."),
+    "unpublish": ({"published": 0}, "{name} is a draft now. Only staff can see it."),
+    "close": ({"registration_closed": 1}, "Registration for {name} is closed."),
+    "reopen": ({"registration_closed": 0}, "Registration for {name} follows its dates again."),
+}
 
 
 @bp.get("/checkin/<token>")
@@ -119,8 +126,9 @@ def admin_create_event():
     if errors:
         events = list_events()
         return admin_page(events, selected_event(events), new_event=request.form, errors=errors, status=400)
-    event = create_event(**data, created_by_id=current_account()["id"])
-    flash(f"{event['name']} was added.", "success")
+    published = request.form.get("visibility") != "draft"
+    event = create_event(**data, created_by_id=current_account()["id"], published=published)
+    flash(f"{event['name']} was {'added' if published else 'saved as a draft'}.", "success")
     return redirect(url_for("staff.admin", event=event["slug"]))
 
 
@@ -147,6 +155,16 @@ def admin_save_event(slug):
         return render_template("event_edit.html", event=event, values=request.form, errors=errors), 400
     save_event_details(event["id"], current_account()["id"], **data)
     flash(f"{data['name']} was saved.", "success")
+    return redirect(url_for("staff.admin", event=slug))
+
+
+@bp.post("/admin/events/<slug>/<any(publish,unpublish,close,reopen):switch>")
+@staff_required
+def admin_switch_event(slug, switch):
+    event = event_or_404(slug)
+    columns, message = EVENT_SWITCHES[switch]
+    update_event(event["id"], current_account()["id"], **columns)
+    flash(message.format(name=event["name"]), "success")
     return redirect(url_for("staff.admin", event=slug))
 
 

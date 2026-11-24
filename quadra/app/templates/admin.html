@@ -4,6 +4,13 @@
 
 {% block container_class %} container-wide{% endblock %}
 
+{% macro switch_button(switch, label) %}
+      <form method="post" action="{{ url_for('staff.admin_switch_event', slug=event.slug, switch=switch) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-glass btn-small">{{ label }}</button>
+      </form>
+{% endmacro %}
+
 {% block content %}
 <section class="admin">
   <div class="section-head">
@@ -46,6 +53,8 @@
     <div class="row">
       <a class="btn btn-primary btn-small" href="{{ url_for('staff.admin_edit_event', slug=event.slug) }}">Edit</a>
       <a class="btn btn-glass btn-small" href="{{ url_for('main.event_page', slug=event.slug) }}">{% if event.published %}View page{% else %}Preview page{% endif %}</a>
+      {{ switch_button('unpublish', 'Unpublish') if event.published else switch_button('publish', 'Publish') }}
+      {{ switch_button('reopen', 'Reopen registration') if event.registration_closed else switch_button('close', 'Close registration') }}
     </div>
   </div>
 
@@ -151,7 +160,10 @@
         <small class="hint">Leave empty to open registration right away.</small>
         <p class="error" role="alert">{{ errors.get('opens_on', '') }}</p>
       </div>
-      <button type="submit" class="btn btn-primary">Add event</button>
+      <div class="row">
+        <button type="submit" class="btn btn-primary">Add and publish</button>
+        <button type="submit" class="btn btn-glass" name="visibility" value="draft">Save as draft</button>
+      </div>
     </form>
   </details>
 </section>

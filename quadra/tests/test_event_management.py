@@ -13,18 +13,26 @@ EDITED = {
     "event_date": "2026-12-05",
     "opens_on": "2026-11-10",
 }
-EVERY_COMBINATION =list(itertools.product((PAST, FUTURE), (1, 0), (0, 1), (None, OPENED, OPENS_LATER)))
+NEW_EVENT = {"name": "Talks", "venue": "Hall", "event_date": "2027-02-09"}
+EVERY_COMBINATION = list(itertools.product((PAST, FUTURE), (1, 0), (0, 1), (None, OPENED, OPENS_LATER)))
 
 
 @pytest.fixture
 def change_event(app):
     def change(slug="test-seminar", **columns):
+        if not columns:
+            return
         assignments = ", ".join(f"{column} = %s" for column in columns)
         with app.app_context():
             get_db().execute(f"UPDATE events SET {assignments} WHERE slug = %s", (*columns.values(), slug))
             get_db().commit()
 
     return change
+
+
+@pytest.fixture
+def visitor(app):
+    return app.test_client()
 
 
 @pytest.fixture
@@ -205,19 +213,19 @@ def test_staff_can_edit_an_event(app, staff_client):
     assert "Registration opens November 10, 2026" in page
 
 
-def test_slug_stays_the_same_when_the_name_changes(app, client, staff_client):
+def test_slug_stays_the_same_when_the_name_changes(app, visitor, staff_client):
     staff_client.post("/admin/events/test-seminar/edit", data=EDITED)
     assert event_row(app)["slug"] == "test-seminar"
     assert one(app, "SELECT COUNT(*) AS total FROM events")["total"] == 1
-    assert client.get("/events/test-seminar").status_code == 200
-    assert client.get("/events/renamed-seminar").status_code == 404
+    assert visitor.get("/events/test-seminar").status_code == 200
+    assert visitor.get("/events/renamed-seminar").status_code == 404
 
 
-def test_opening_date_can_be_cleared(app, client, staff_client, change_event, valid_form):
+def test_opening_date_can_be_cleared(app, visitor, staff_client, change_event, valid_form):
     change_event(opens_on=OPENS_LATER)
     staff_client.post("/admin/events/test-seminar/edit", data={**EDITED, "opens_on": ""})
     assert event_row(app)["opens_on"] is None
-    assert client.post("/events/test-seminar/register", data=valid_form).status_code == 302
+    assert visitor.post("/events/test-seminar/register", data=valid_form).status_code == 302
 
 
 def test_editing_keeps_visibility_and_registrations(app, staff_client, registered, change_event):
@@ -288,3 +296,122 @@ def test_editing_an_unknown_event_is_a_404(staff_client):
 
 def test_dashboard_links_to_the_edit_page(staff_client):
     assert 'href="/admin/events/test-seminar/edit"' in staff_client.get("/admin").get_data(as_text=True)
+
+
+def test_new_event_is_published_unless_saved_as_a_draft(app, visitor, staff_client):
+    staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Public Talks"})
+    staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Quiet Talks", "visibility": "draft"})
+    assert event_row(app, "public-talks")["published"] == 1
+    assert event_row(app, "quiet-talks")["published"] == 0
+    landing = visitor.get("/").get_data(as_text=True)
+    assert "Public Talks" in landing
+    assert "Quiet Talks" not in landing
+    assert visitor.get("/events/quiet-talks").status_code == 404
+
+
+def test_saving_a_draft_says_so(staff_client):
+    response = staff_client.post("/admin/events", data={**NEW_EVENT, "visibility": "draft"}, follow_redirects=True)
+    assert "Talks was saved as a draft." in response.get_data(as_text=True)
+
+
+def test_staff_can_publish_and_unpublish(app, visitor, staff_client):
+    response = staff_client.post("/admin/events/test-seminar/unpublish")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/admin?event=test-seminar"
+    assert event_row(app)["published"] == 0
+    assert visitor.get("/events/test-seminar").status_code == 404
+
+    staff_client.post("/admin/events/test-seminar/publish")
+    assert event_row(app)["published"] == 1
+    assert visitor.get("/events/test-seminar").status_code == 200
+    assert "Test Seminar" in visitor.get("/").get_data(as_text=True)
+
+
+def test_staff_can_close_and_reopen_registration(app, visitor, staff_client, valid_form):
+    staff_client.post("/admin/events/test-seminar/close")
+    assert event_row(app)["registration_closed"] == 1
+    assert visitor.post("/events/test-seminar/register", data=valid_form).status_code == 403
+
+    staff_client.post("/admin/events/test-seminar/reopen")
+    assert event_row(app)["registration_closed"] == 0
+    assert visitor.post("/events/test-seminar/register", data=valid_form).status_code == 302
+
+
+def test_closing_does_not_change_the_opening_date(app, staff_client, change_event):
+    change_event(opens_on=OPENS_LATER)
+    staff_client.post("/admin/events/test-seminar/close")
+    staff_client.post("/admin/events/test-seminar/reopen")
+    assert event_row(app)["opens_on"] == OPENS_LATER
+
+
+@pytest.mark.parametrize("switch", ["publish", "unpublish", "close", "reopen"])
+def test_switching_records_who_did_it(app, staff, staff_client, switch):
+    staff_client.post(f"/admin/events/test-seminar/{switch}")
+    assert event_row(app)["updated_by_id"] == staff["id"]
+
+
+def test_tickets_issued_before_unpublishing_and_closing_still_scan(app, staff_client, registered):
+    token = one(app, "SELECT ticket_token FROM attendees")["ticket_token"]
+    staff_client.post("/admin/events/test-seminar/unpublish")
+    staff_client.post("/admin/events/test-seminar/close")
+    assert staff_client.post("/api/checkin", json={"code": token}).get_json()["status"] == "checked_in"
+    dashboard = staff_client.get("/admin?event=test-seminar").get_data(as_text=True)
+    assert '<dd id="total-checked-in">1</dd>' in dashboard
+
+
+def test_unknown_switch_or_event_is_a_404(staff_client):
+    assert staff_client.post("/admin/events/test-seminar/archive").status_code == 404
+    assert staff_client.post("/admin/events/nope/publish").status_code == 404
+
+
+def test_switches_only_answer_to_post(app, staff_client):
+    assert staff_client.get("/admin/events/test-seminar/unpublish").status_code == 405
+    assert event_row(app)["published"] == 1
+
+
+@pytest.mark.parametrize(
+    "columns, offered, missing",
+    [
+        ({}, ["/unpublish", "/close"], ["/publish", "/reopen"]),
+        ({"published": 0}, ["/publish", "/close"], ["/unpublish", "/reopen"]),
+        ({"registration_closed": 1}, ["/unpublish", "/reopen"], ["/publish", "/close"]),
+    ],
+)
+def test_dashboard_offers_the_switches_that_apply(staff_client, change_event, columns, offered, missing):
+    change_event(**columns)
+    html = staff_client.get("/admin?event=test-seminar").get_data(as_text=True)
+    for path in offered:
+        assert f'action="/admin/events/test-seminar{path}"' in html
+    for path in missing:
+        assert f'action="/admin/events/test-seminar{path}"' not in html
+
+
+@pytest.mark.parametrize(
+    "columns, label",
+    [
+        ({}, "Registration open</span>"),
+        ({"registration_closed": 1}, "Registration closed</span>"),
+        ({"published": 0}, "Draft</span>"),
+        ({"opens_on": OPENS_LATER}, "Opens later &middot; Nov 15</span>"),
+        ({"event_date": PAST}, "Ended</span>"),
+    ],
+)
+def test_dashboard_shows_the_state_of_the_selected_event(staff_client, change_event, columns, label):
+    change_event(**columns)
+    assert label in staff_client.get("/admin?event=test-seminar").get_data(as_text=True)
+
+
+def test_dashboard_shows_that_an_ended_event_is_also_a_draft(staff_client, change_event):
+    change_event(event_date=PAST, published=0)
+    html = staff_client.get("/admin?event=test-seminar").get_data(as_text=True)
+    assert "Ended</span>" in html
+    assert '<span class="pill pill-wait">Draft</span>' in html
+
+
+def test_switcher_labels_draft_and_past_events(app, staff_client, change_event):
+    staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Quiet Talks", "visibility": "draft"})
+    staff_client.post("/admin/events", data={**NEW_EVENT, "name": "Old Talks", "event_date": PAST})
+    html = staff_client.get("/admin").get_data(as_text=True)
+    assert ">Test Seminar</a>" in html
+    assert ">Quiet Talks &middot; Draft</a>" in html
+    assert ">Old Talks &middot; Past</a>" in html
