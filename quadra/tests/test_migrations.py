@@ -100,6 +100,30 @@ def test_existing_rows_survive_the_accounts_migration(blank):
     assert get_db().execute("SELECT * FROM events").fetchone()["created_by_id"] is None
 
 
+def test_existing_events_stay_published_and_open_after_the_event_management_migration(blank):
+    folder = database.MIGRATIONS / get_db().dialect
+    database.applied_migrations(get_db())
+    for name in SHIPPED_MIGRATIONS[:3]:
+        database.apply_migration(get_db(), folder / name)
+    get_db().execute(
+        "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at)"
+        " VALUES ('old', 'Old Seminar', '2026-11-30', 'Hall', '2026-11-10', '2026-11-01T00:00:00+00:00')"
+    )
+    get_db().execute(
+        "INSERT INTO attendees (event_id, attendee_code, full_name, email, organization, contact_number,"
+        " ticket_token, created_at) VALUES (1, 'SEM-2026-0001', 'Juan', 'juan@example.com',"
+        " 'PUP', '+639171234567', 'token', '2026-11-01T00:00:00+00:00')"
+    )
+    get_db().commit()
+
+    assert migrate() == SHIPPED_MIGRATIONS[3:]
+    event = get_db().execute("SELECT * FROM events").fetchone()
+    assert (event["published"], event["registration_closed"]) == (1, 0)
+    assert (event["updated_at"], event["updated_by_id"]) == (None, None)
+    assert (event["slug"], event["opens_on"]) == ("old", "2026-11-10")
+    assert count("attendees") == 1
+
+
 def test_running_again_applies_nothing_and_keeps_the_data(app, client, valid_form):
     client.post("/events/test-seminar/register", data=valid_form)
     with app.app_context():
