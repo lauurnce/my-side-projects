@@ -113,6 +113,7 @@ def test_staff_can_preview_a_draft(staff_client, change_event):
     assert response.status_code == 200
     assert "Draft. Only signed-in staff can see this page" in html
     assert "Not published yet" in html
+    assert 'href="/admin?event=test-seminar">Open in the dashboard</a>' in html
     assert 'id="registration-form"' not in html
 
 

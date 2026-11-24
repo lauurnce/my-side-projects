@@ -14,7 +14,7 @@
     <a class="btn btn-primary" href="{{ url_for('staff.admin', event=event.slug) }}">Back to the dashboard</a>
   </div>
   {% else %}
-  <p>Nobody has registered for this event. Deleting it removes it for good, and the link <span class="code">/events/{{ event.slug }}</span> stops working.</p>
+  <p>Nobody has registered for this event. Deleting it removes it for good, and the link <b>/events/{{ event.slug }}</b> stops working.</p>
   <form method="post" action="{{ url_for('staff.admin_delete_event', slug=event.slug) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">

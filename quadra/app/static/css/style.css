@@ -295,3 +295,9 @@ button.pill { cursor: pointer; }
 .team td, .attendees .staff-name { white-space: nowrap; }
 .account { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
 .account h2 { font-size: 1.15rem; margin-top: 0.4rem; }
+
+.admin > * { min-width: 0; }
+.admin .chips a.pill { white-space: normal; border-radius: 16px; }
+.manage { overflow-wrap: anywhere; }
+.manage .section-head { align-items: flex-start; }
+.notice + .split { margin-top: 1rem; }

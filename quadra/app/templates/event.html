@@ -71,7 +71,11 @@
     <h2>This event has ended</h2>
     <p class="lead">Registration is closed.</p>
     {% endif %}
+    {% if event.published %}
     <a class="btn btn-glass" href="{{ url_for('main.index') }}#events">See other events</a>
+    {% else %}
+    <a class="btn btn-glass" href="{{ url_for('staff.admin', event=event.slug) }}">Open in the dashboard</a>
+    {% endif %}
   </section>
   {% endif %}
 </div>
