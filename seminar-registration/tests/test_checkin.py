@@ -2,6 +2,7 @@
 import pytest
 from app import staff
 from app.db import get_db
+from app.services import registration
 from app.services.checkin import extract_token
 
 PIN = "4321"
@@ -274,3 +275,47 @@ def test_admin_search_filters_the_table(staff_client, valid_form):
     assert "maria@example.com" in html
     assert "juan@example.com" not in html
     assert "No attendee matches" in staff_client.get("/admin?q=zzz").get_data(as_text=True)
+
+
+def test_admin_manual_checkin(staff_app, staff_client, token):
+    attendee_id = row(staff_app)["id"]
+    response = staff_client.post(f"/admin/checkin/{attendee_id}", follow_redirects=True)
+    assert "Juan Dela Cruz (SEM-2026-0001) checked in." in response.get_data(as_text=True)
+    assert row(staff_app)["checked_in"] == 1
+
+    again = staff_client.post(f"/admin/checkin/{attendee_id}", follow_redirects=True)
+    assert "was already checked in" in again.get_data(as_text=True)
+
+
+def test_admin_manual_checkin_unknown_attendee(staff_client):
+    assert staff_client.post("/admin/checkin/999").status_code == 404
+
+
+def test_admin_resend_sends_the_ticket(staff_app, staff_client, token, monkeypatch):
+    sent_to = []
+    staff_app.config["MAIL_ENABLED"] = True
+    monkeypatch.setattr(
+        registration, "send_ticket_email", lambda attendee: sent_to.append(attendee["email"]) or True
+    )
+
+    response = staff_client.post(f"/admin/resend/{row(staff_app)['id']}", follow_redirects=True)
+    assert "Ticket for SEM-2026-0001 sent to juan@example.com." in response.get_data(as_text=True)
+    assert sent_to == ["juan@example.com"]
+    assert row(staff_app)["email_status"] == "sent"
+
+
+def test_admin_resend_reports_a_failed_send(staff_app, staff_client, token, monkeypatch):
+    def fail(_attendee):
+        raise OSError("network down")
+
+    staff_app.config["MAIL_ENABLED"] = True
+    monkeypatch.setattr(registration, "send_ticket_email", fail)
+
+    response = staff_client.post(f"/admin/resend/{row(staff_app)['id']}", follow_redirects=True)
+    assert "Sending the ticket for SEM-2026-0001 failed." in response.get_data(as_text=True)
+    assert row(staff_app)["email_status"] == "failed"
+
+
+def test_admin_resend_explains_when_mail_is_disabled(staff_app, staff_client, token):
+    response = staff_client.post(f"/admin/resend/{row(staff_app)['id']}", follow_redirects=True)
+    assert "MAIL_ENABLED is off" in response.get_data(as_text=True)
