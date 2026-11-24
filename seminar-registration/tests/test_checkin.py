@@ -246,3 +246,31 @@ def test_a_correct_pin_resets_the_wrong_pin_count(staff_app, client, clock):
     client.post("/staff/logout")
     for _ in range(4):
         assert login(client, pin="0000").status_code == 401
+
+
+def test_admin_shows_totals(staff_app, staff_client, valid_form):
+    register(staff_client, valid_form)
+    register(staff_client, OTHER_FORM)
+    staff_client.get(f"/checkin/{row(staff_app)['ticket_token']}")
+
+    html = staff_client.get("/admin").get_data(as_text=True)
+    assert '<dd id="total-registered">2</dd>' in html
+    assert '<dd id="total-emails-sent">0</dd>' in html
+    assert '<dd id="total-checked-in">1</dd>' in html
+
+
+def test_admin_totals_are_zero_with_no_attendees(staff_client):
+    html = staff_client.get("/admin").get_data(as_text=True)
+    assert '<dd id="total-registered">0</dd>' in html
+    assert '<dd id="total-checked-in">0</dd>' in html
+    assert "Nobody has registered yet." in html
+
+
+def test_admin_search_filters_the_table(staff_client, valid_form):
+    register(staff_client, valid_form)
+    register(staff_client, OTHER_FORM)
+
+    html = staff_client.get("/admin?q=MARIA").get_data(as_text=True)
+    assert "maria@example.com" in html
+    assert "juan@example.com" not in html
+    assert "No attendee matches" in staff_client.get("/admin?q=zzz").get_data(as_text=True)
