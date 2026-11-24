@@ -34,6 +34,7 @@ bp = Blueprint("staff", __name__)
 SESSION_KEY = "staff"
 MAX_WRONG_PINS = 5
 LOCK_SECONDS = 60
+MAX_TRACKED_ADDRESSES = 10000
 FORMULA_STARTERS = ("=", "+", "-", "@", "\t", "\r")
 CSV_COLUMNS = (
     "event_name",
@@ -73,6 +74,8 @@ def safe_next(target):
 
 def pin_attempts():
     by_address = current_app.extensions.setdefault("pin_attempts", {})
+    if request.remote_addr not in by_address and len(by_address) >= MAX_TRACKED_ADDRESSES:
+        del by_address[next(iter(by_address))]
     return by_address.setdefault(request.remote_addr, {"wrong": 0, "locked_until": 0})
 
 
