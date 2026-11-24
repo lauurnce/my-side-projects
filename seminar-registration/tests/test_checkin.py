@@ -126,6 +126,38 @@ def test_login_never_redirects_off_site(staff_app, client, target):
     assert login(client, next=target).headers["Location"] == "/scanner"
 
 
+def test_checkin_marks_the_attendee(staff_app, staff_client, token):
+    response = staff_client.get(f"/checkin/{token}")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "CHECKED IN: Juan Dela Cruz (SEM-2026-0001)" in html
+    assert "status-checked_in" in html
+
+    saved = row(staff_app)
+    assert saved["checked_in"] == 1
+    assert saved["checked_in_at"]
+
+
+def test_second_scan_says_already_and_keeps_the_first_time(staff_app, staff_client, token):
+    staff_client.get(f"/checkin/{token}")
+    set_first_checkin_time(staff_app, "2026-11-30 08:15:00")
+
+    response = staff_client.get(f"/checkin/{token}")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "ALREADY CHECKED IN at 2026-11-30 08:15:00" in html
+    assert "status-already" in html
+    assert row(staff_app)["checked_in_at"] == "2026-11-30 08:15:00"
+
+
+def test_unknown_token_is_an_invalid_ticket(staff_client):
+    response = staff_client.get("/checkin/not-a-real-token")
+    html = response.get_data(as_text=True)
+    assert response.status_code == 404
+    assert "INVALID TICKET" in html
+    assert "status-invalid" in html
+
+
 def test_five_wrong_pins_lock_login_for_sixty_seconds(staff_app, client, clock):
     for _ in range(4):
         assert login(client, pin="0000").status_code == 401
