@@ -1,7 +1,13 @@
 import sqlite3
+from pathlib import Path
 
 import click
 from flask import current_app, g
+
+from .clock import utc_timestamp
+
+MIGRATIONS = Path(__file__).parent / "migrations"
+TABLES = ("attendees", "events", "schema_migrations")
 
 
 def get_db():
@@ -17,16 +23,69 @@ def close_db(_exc=None):
         db.close()
 
 
-def init_db():
-    from .services.events import seed_from_config
+def applied_migrations(db):
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS schema_migrations"
+        " (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"
+    )
+    db.commit()
+    return {row["name"] for row in db.execute("SELECT name FROM schema_migrations").fetchall()}
 
+
+def apply_migration(db, path):
+    for statement in path.read_text(encoding="utf-8").split(";"):
+        if statement.strip():
+            db.execute(statement)
+    db.execute(
+        "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+        (path.name, utc_timestamp()),
+    )
+    db.commit()
+
+
+def migrate():
     db = get_db()
-    with current_app.open_resource("migrations/sqlite/0001_initial.sql") as f:
-        db.executescript(f.read().decode("utf-8"))
+    applied = applied_migrations(db)
+    pending = [path for path in sorted((MIGRATIONS / "sqlite").glob("*.sql")) if path.name not in applied]
+    for path in pending:
+        apply_migration(db, path)
+    return [path.name for path in pending]
+
+
+def seed_first_event():
+    from .services.events import list_events, seed_from_config
+
+    if list_events():
+        return None
     return seed_from_config()
 
 
-@click.command("init-db", help="Drop and recreate the database tables.")
+def drop_tables():
+    db = get_db()
+    for table in TABLES:
+        db.execute(f"DROP TABLE IF EXISTS {table}")
+    db.commit()
+
+
+def init_db():
+    drop_tables()
+    migrate()
+    return seed_first_event()
+
+
+@click.command("migrate", help="Apply pending database migrations. Keeps existing data.")
+def migrate_command():
+    applied = migrate()
+    for name in applied:
+        click.echo(f"Applied {name}")
+    if not applied:
+        click.echo("The database is already up to date.")
+    event = seed_first_event()
+    if event is not None:
+        click.echo(f"Created the event {event['name']} from .env.")
+
+
+@click.command("init-db", help="Erase the database and rebuild it from the migrations.")
 def init_db_command():
     event = init_db()
     click.echo("Initialized the database.")
@@ -38,4 +97,5 @@ def init_db_command():
 
 def init_app(app):
     app.teardown_appcontext(close_db)
+    app.cli.add_command(migrate_command)
     app.cli.add_command(init_db_command)
