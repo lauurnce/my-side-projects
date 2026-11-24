@@ -17,21 +17,13 @@ def create_app(test_config=None):
     os.makedirs(app.instance_path, exist_ok=True)
     app.logger.setLevel(logging.INFO)
 
-    @app.context_processor
-    def inject_event():
-        return {
-            "event": {
-                "name": app.config["EVENT_NAME"],
-                "date": app.config["EVENT_DATE"],
-                "venue": app.config["EVENT_VENUE"],
-            }
-        }
-
     from . import commands, csrf, db, routes, staff
+    from .services import events
 
     db.init_app(app)
     csrf.init_app(app)
     commands.init_app(app)
+    events.init_app(app)
     app.register_blueprint(routes.bp)
     app.register_blueprint(staff.bp)
 

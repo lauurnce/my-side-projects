@@ -41,7 +41,7 @@ def staff_client(staff_app, client):
 
 
 def register(client, form):
-    assert client.post("/register", data=form).status_code == 302
+    assert client.post("/events/test-seminar/register", data=form).status_code == 302
 
 
 def row(app, email="juan@example.com"):
@@ -331,10 +331,11 @@ def test_csv_export_lists_every_attendee(staff_app, staff_client, valid_form):
 
     response = staff_client.get("/admin/export.csv")
     assert response.mimetype == "text/csv"
-    assert "attachment; filename=attendees.csv" in response.headers["Content-Disposition"]
+    assert "attachment; filename=test-seminar-attendees.csv" in response.headers["Content-Disposition"]
 
     rows = list(csv.DictReader(io.StringIO(response.get_data(as_text=True))))
     assert [r["attendee_code"] for r in rows] == ["SEM-2026-0001", "SEM-2026-0002"]
+    assert rows[0]["event_name"] == "Test Seminar"
     assert rows[0]["full_name"] == "Juan Dela Cruz"
     assert rows[0]["contact_number"] == "+639171234567"
     assert rows[0]["checked_in"] == "1"

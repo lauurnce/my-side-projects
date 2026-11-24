@@ -18,15 +18,22 @@ def close_db(_exc=None):
 
 
 def init_db():
+    from .services.events import seed_from_config
+
     db = get_db()
     with current_app.open_resource("schema.sql") as f:
         db.executescript(f.read().decode("utf-8"))
+    return seed_from_config()
 
 
 @click.command("init-db", help="Drop and recreate the database tables.")
 def init_db_command():
-    init_db()
+    event = init_db()
     click.echo("Initialized the database.")
+    if event is None:
+        click.echo("No event was created. Add one with: flask --app app add-event")
+    else:
+        click.echo(f"Created the event {event['name']} from .env.")
 
 
 def init_app(app):

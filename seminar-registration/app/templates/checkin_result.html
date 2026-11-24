@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if status == 'checked_in' %}Checked in{% elif status == 'already' %}Already checked in{% else %}Invalid ticket{% endif %}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="result-page status-{{ status }}">
@@ -11,15 +12,22 @@
     {% if status == 'checked_in' %}
       <p class="result-mark" aria-hidden="true">&#10003;</p>
       <h1>CHECKED IN: {{ attendee.full_name }} ({{ attendee.attendee_code }})</h1>
-      <p class="result-detail">{{ attendee.organization }} &middot; {{ attendee.checked_in_at }}</p>
+      <div class="result-plate">
+        <b>{{ attendee.event_name }}</b>
+        <span>{{ attendee.organization }}</span>
+        <span>{{ attendee.checked_in_at }}</span>
+      </div>
     {% elif status == 'already' %}
       <p class="result-mark" aria-hidden="true">!</p>
       <h1>ALREADY CHECKED IN at {{ attendee.checked_in_at }}</h1>
-      <p class="result-detail">{{ attendee.full_name }} ({{ attendee.attendee_code }})</p>
+      <div class="result-plate">
+        <b>{{ attendee.full_name }} ({{ attendee.attendee_code }})</b>
+        <span>{{ attendee.event_name }}</span>
+      </div>
     {% else %}
       <p class="result-mark" aria-hidden="true">&#10005;</p>
       <h1>INVALID TICKET</h1>
-      <p class="result-detail">This QR code does not match any registration.</p>
+      <div class="result-plate"><span>This QR code does not match any registration.</span></div>
     {% endif %}
     <p class="result-links">
       <a href="{{ url_for('staff.scanner') }}">Open scanner</a>

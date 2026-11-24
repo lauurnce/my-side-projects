@@ -18,7 +18,7 @@ def build_ticket_email(attendee):
     qr_cid = make_msgid(domain="seminar-registration.local")
 
     message = EmailMessage()
-    message["Subject"] = f"Your ticket: {config['EVENT_NAME']}"
+    message["Subject"] = f"Your ticket: {attendee['event_name']}"
     message["From"] = formataddr((config["MAIL_FROM_NAME"], config["SMTP_USER"]))
     message["To"] = attendee["email"]
 

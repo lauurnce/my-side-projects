@@ -9,7 +9,7 @@ from app.services.qr import checkin_url
 
 
 def register(client, form, **changes):
-    return client.post("/register", data={**form, **changes})
+    return client.post("/events/test-seminar/register", data={**form, **changes})
 
 
 def get_row(app, email="juan@example.com"):
@@ -117,7 +117,7 @@ def test_qr_failure_is_logged(client, valid_form, monkeypatch, caplog):
 
 
 def test_registered_page_shows_qr_and_download_button(client, app, valid_form):
-    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    html = client.post("/events/test-seminar/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
     token = get_row(app)["ticket_token"]
     assert f'src="/ticket/{token}.png"' in html
     assert f'href="/ticket/{token}.png?download=1"' in html
@@ -125,7 +125,7 @@ def test_registered_page_shows_qr_and_download_button(client, app, valid_form):
 
 
 def test_registered_page_hidden_from_other_browsers(app, valid_form):
-    app.test_client().post("/register", data=valid_form)
+    app.test_client().post("/events/test-seminar/register", data=valid_form)
     assert app.test_client().get("/registered/SEM-2026-0001").status_code == 404
 
 

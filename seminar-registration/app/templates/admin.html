@@ -5,32 +5,49 @@
 {% block container_class %} container-wide{% endblock %}
 
 {% block content %}
-<section class="card">
-  <h2>Admin dashboard</h2>
-  <p class="lead">Ticket QR codes point to <strong>{{ public_base_url }}</strong>.</p>
+<section class="admin">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Staff</p>
+      <h1>Admin dashboard</h1>
+      <p class="lead">Ticket QR codes point to <strong>{{ public_base_url }}</strong>.</p>
+    </div>
+    {% if event %}
+    <a class="btn btn-glass btn-small" href="{{ url_for('staff.export_csv', event=event.slug) }}">Export CSV</a>
+    {% endif %}
+  </div>
 
   {% for category, message in get_flashed_messages(with_categories=true) %}
     <p class="notice notice-{{ category }}" role="status">{{ message }}</p>
   {% endfor %}
 
+  {% if events %}
+  <nav class="chips" aria-label="Events">
+    {% for item in events %}
+    <a class="pill{% if event and item.id == event.id %} on{% endif %}"
+       href="{{ url_for('staff.admin', event=item.slug) }}"
+       {% if event and item.id == event.id %}aria-current="page"{% endif %}>{{ item.name }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  {% if event %}
   <dl class="totals">
-    <div><dt>Registered</dt><dd id="total-registered">{{ totals.registered }}</dd></div>
-    <div><dt>Emails sent</dt><dd id="total-emails-sent">{{ totals.emails_sent }}</dd></div>
-    <div><dt>Checked in</dt><dd id="total-checked-in">{{ totals.checked_in }}</dd></div>
+    <div class="glass"><dt>Registered</dt><dd id="total-registered">{{ totals.registered }}</dd></div>
+    <div class="glass"><dt>Emails sent</dt><dd id="total-emails-sent">{{ totals.emails_sent }}</dd></div>
+    <div class="glass glass-maroon"><dt>Checked in</dt><dd id="total-checked-in">{{ totals.checked_in }}</dd></div>
   </dl>
 
-  <div class="toolbar">
-    <form method="get" action="{{ url_for('staff.admin') }}" class="search" role="search">
-      <label for="q" class="visually-hidden">Search attendees</label>
-      <input id="q" name="q" type="search" value="{{ query }}" placeholder="Search name, email, code, organization">
-      <button type="submit" class="btn btn-small">Search</button>
-      {% if query %}<a class="btn btn-small btn-secondary" href="{{ url_for('staff.admin') }}">Clear</a>{% endif %}
-    </form>
-    <a class="btn btn-small btn-secondary" href="{{ url_for('staff.export_csv') }}">Export CSV</a>
-  </div>
+  <form method="get" action="{{ url_for('staff.admin') }}" class="search" role="search">
+    <input type="hidden" name="event" value="{{ event.slug }}">
+    <label for="q" class="visually-hidden">Search attendees</label>
+    <input id="q" name="q" type="search" value="{{ query }}" placeholder="Search name, email, code, organization">
+    <button type="submit" class="btn btn-primary btn-small">Search</button>
+    {% if query %}<a class="btn btn-glass btn-small" href="{{ url_for('staff.admin', event=event.slug) }}">Clear</a>{% endif %}
+  </form>
 
   {% if attendees %}
-  <div class="table-scroll">
+  <div class="table-scroll glass glass-strong">
     <table class="attendees">
       <thead>
         <tr>
@@ -39,7 +56,7 @@
           <th scope="col">Email</th>
           <th scope="col">Organization</th>
           <th scope="col">Contact</th>
-          <th scope="col">Email</th>
+          <th scope="col">Ticket email</th>
           <th scope="col">Check-in</th>
           <th scope="col"><span class="visually-hidden">Actions</span></th>
         </tr>
@@ -47,7 +64,7 @@
       <tbody>
         {% for attendee in attendees %}
         <tr>
-          <td class="mono">{{ attendee.attendee_code }}</td>
+          <td><span class="code">{{ attendee.attendee_code }}</span></td>
           <td>{{ attendee.full_name }}</td>
           <td>{{ attendee.email }}</td>
           <td>{{ attendee.organization }}</td>
@@ -57,7 +74,7 @@
             {% if attendee.checked_in %}
               <span class="pill pill-sent">{{ attendee.checked_in_at }}</span>
             {% else %}
-              <span class="pill">Not yet</span>
+              <span class="pill pill-wait">Not yet</span>
             {% endif %}
           </td>
           <td>
@@ -66,13 +83,13 @@
             <form method="post" action="{{ url_for('staff.admin_checkin', attendee_id=attendee.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="q" value="{{ query }}">
-              <button type="submit" class="btn btn-small">Check in</button>
+              <button type="submit" class="btn btn-primary btn-small">Check in</button>
             </form>
             {% endif %}
             <form method="post" action="{{ url_for('staff.admin_resend', attendee_id=attendee.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="q" value="{{ query }}">
-              <button type="submit" class="btn btn-small btn-secondary">Resend email</button>
+              <button type="submit" class="btn btn-glass btn-small">Resend email</button>
             </form>
             </div>
           </td>
@@ -82,9 +99,41 @@
     </table>
   </div>
   {% elif query %}
-    <p class="empty">No attendee matches "{{ query }}".</p>
+    <p class="empty glass">No attendee matches "{{ query }}".</p>
   {% else %}
-    <p class="empty">Nobody has registered yet.</p>
+    <p class="empty glass">Nobody has registered yet.</p>
   {% endif %}
+  {% else %}
+    <p class="empty glass">There are no events yet. Add the first one below.</p>
+  {% endif %}
+
+  <details class="new-event glass"{% if errors or not events %} open{% endif %}>
+    <summary>Add an event</summary>
+    <form method="post" action="{{ url_for('staff.admin_create_event') }}" class="new-event-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field{% if errors.get('name') %} has-error{% endif %}">
+        <label for="event-name">Event name</label>
+        <input id="event-name" name="name" type="text" maxlength="120" required value="{{ new_event.get('name', '') }}">
+        <p class="error" role="alert">{{ errors.get('name', '') }}</p>
+      </div>
+      <div class="field{% if errors.get('venue') %} has-error{% endif %}">
+        <label for="event-venue">Venue</label>
+        <input id="event-venue" name="venue" type="text" maxlength="150" required value="{{ new_event.get('venue', '') }}">
+        <p class="error" role="alert">{{ errors.get('venue', '') }}</p>
+      </div>
+      <div class="field{% if errors.get('event_date') %} has-error{% endif %}">
+        <label for="event-date">Event date</label>
+        <input id="event-date" name="event_date" type="date" required value="{{ new_event.get('event_date', '') }}">
+        <p class="error" role="alert">{{ errors.get('event_date', '') }}</p>
+      </div>
+      <div class="field{% if errors.get('opens_on') %} has-error{% endif %}">
+        <label for="event-opens">Registration opens</label>
+        <input id="event-opens" name="opens_on" type="date" value="{{ new_event.get('opens_on', '') }}">
+        <small class="hint">Leave empty to open registration right away.</small>
+        <p class="error" role="alert">{{ errors.get('opens_on', '') }}</p>
+      </div>
+      <button type="submit" class="btn btn-primary">Add event</button>
+    </form>
+  </details>
 </section>
 {% endblock %}

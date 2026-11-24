@@ -14,14 +14,21 @@ class DuplicateEmailError(Exception):
     pass
 
 
-def email_exists(email):
+ATTENDEE_QUERY = (
+    "SELECT a.*, e.name AS event_name, e.event_date AS event_date,"
+    " e.venue AS event_venue, e.slug AS event_slug"
+    " FROM attendees a JOIN events e ON e.id = a.event_id"
+)
+
+
+def email_exists(event_id, email):
     row = get_db().execute(
-        "SELECT 1 FROM attendees WHERE email = ?", (email.lower(),)
+        "SELECT 1 FROM attendees WHERE event_id = ? AND email = ?", (event_id, email.lower())
     ).fetchone()
     return row is not None
 
 
-def create_attendee(full_name, email, organization, contact_number):
+def create_attendee(event_id, full_name, email, organization, contact_number):
     db = get_db()
     email = email.lower()
     token = secrets.token_urlsafe(32)
@@ -30,9 +37,9 @@ def create_attendee(full_name, email, organization, contact_number):
     try:
         cur = db.execute(
             "INSERT INTO attendees"
-            " (attendee_code, full_name, email, organization, contact_number, ticket_token)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (f"PENDING-{token}", full_name, email, organization, contact_number, token),
+            " (event_id, attendee_code, full_name, email, organization, contact_number,"
+            " ticket_token) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (event_id, f"PENDING-{token}", full_name, email, organization, contact_number, token),
         )
         code = f"{prefix}-{cur.lastrowid:04d}"
         db.execute(
@@ -98,23 +105,21 @@ def deliver_ticket(attendee):
 
 def regenerate_qr_codes(code=None):
     if code:
-        rows = get_db().execute(
-            "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
-        ).fetchall()
+        rows = get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = ?", (code,)).fetchall()
     else:
-        rows = get_db().execute("SELECT * FROM attendees ORDER BY id").fetchall()
+        rows = get_db().execute(f"{ATTENDEE_QUERY} ORDER BY a.id").fetchall()
     for row in rows:
         save_qr_path(row["id"], generate_qr(row))
     return [row["attendee_code"] for row in rows]
 
 
 def get_attendee_by_code(code):
-    return get_db().execute(
-        "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
-    ).fetchone()
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = ?", (code,)).fetchone()
 
 
 def get_attendee_by_token(token):
-    return get_db().execute(
-        "SELECT * FROM attendees WHERE ticket_token = ?", (token,)
-    ).fetchone()
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.ticket_token = ?", (token,)).fetchone()
+
+
+def get_attendee_by_id(attendee_id):
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.id = ?", (attendee_id,)).fetchone()

@@ -19,14 +19,15 @@ from flask import (
     url_for,
 )
 
-from .services.checkin import (
-    check_in,
-    extract_token,
-    get_attendee_by_id,
-    search_attendees,
-    totals,
+from .services.checkin import check_in, extract_token, search_attendees, totals
+from .services.events import (
+    create_event,
+    get_event_by_slug,
+    list_events,
+    list_upcoming,
+    validate_event,
 )
-from .services.registration import deliver_ticket
+from .services.registration import deliver_ticket, get_attendee_by_id
 
 bp = Blueprint("staff", __name__)
 
@@ -35,6 +36,7 @@ MAX_WRONG_PINS = 5
 LOCK_SECONDS = 60
 FORMULA_STARTERS = ("=", "+", "-", "@", "\t", "\r")
 CSV_COLUMNS = (
+    "event_name",
     "attendee_code",
     "full_name",
     "email",
@@ -46,7 +48,7 @@ CSV_COLUMNS = (
     "checked_in_at",
     "created_at",
 )
-USER_TYPED_COLUMNS = ("full_name", "email", "organization")
+USER_TYPED_COLUMNS = ("event_name", "full_name", "email", "organization")
 
 
 def staff_required(view):
@@ -155,17 +157,49 @@ def api_checkin():
     )
 
 
+def selected_event(slug):
+    if slug:
+        return get_event_by_slug(slug)
+    upcoming = list_upcoming()
+    if upcoming:
+        return upcoming[0]
+    events = list_events()
+    return events[-1] if events else None
+
+
+def admin_page(event, query="", new_event=None, errors=None, status=200):
+    return render_template(
+        "admin.html",
+        events=list_events(),
+        event=event,
+        totals=totals(event["id"]) if event else None,
+        attendees=search_attendees(event["id"], query) if event else [],
+        query=query,
+        new_event=new_event or {},
+        errors=errors or {},
+        public_base_url=current_app.config["PUBLIC_BASE_URL"],
+    ), status
+
+
 @bp.get("/admin")
 @staff_required
 def admin():
-    query = request.args.get("q", "")
-    return render_template(
-        "admin.html",
-        totals=totals(),
-        attendees=search_attendees(query),
-        query=query,
-        public_base_url=current_app.config["PUBLIC_BASE_URL"],
-    )
+    slug = request.args.get("event", "")
+    event = selected_event(slug)
+    if slug and event is None:
+        abort(404)
+    return admin_page(event, request.args.get("q", ""))
+
+
+@bp.post("/admin/events")
+@staff_required
+def admin_create_event():
+    data, errors = validate_event(request.form)
+    if errors:
+        return admin_page(selected_event(""), new_event=request.form, errors=errors, status=400)
+    event = create_event(**data)
+    flash(f"{event['name']} was added.", "success")
+    return redirect(url_for("staff.admin", event=event["slug"]))
 
 
 def attendee_or_404(attendee_id):
@@ -175,8 +209,10 @@ def attendee_or_404(attendee_id):
     return attendee
 
 
-def back_to_admin():
-    return redirect(url_for("staff.admin", q=request.form.get("q") or None))
+def back_to_admin(attendee):
+    return redirect(
+        url_for("staff.admin", event=attendee["event_slug"], q=request.form.get("q") or None)
+    )
 
 
 @bp.post("/admin/checkin/<int:attendee_id>")
@@ -188,7 +224,7 @@ def admin_checkin(attendee_id):
         flash(f"{attendee['full_name']} ({attendee['attendee_code']}) checked in.", "success")
     else:
         flash(f"{attendee['attendee_code']} was already checked in at {attendee['checked_in_at']}.", "warning")
-    return back_to_admin()
+    return back_to_admin(attendee)
 
 
 @bp.post("/admin/resend/<int:attendee_id>")
@@ -198,13 +234,13 @@ def admin_resend(attendee_id):
     if not current_app.config["MAIL_ENABLED"]:
         deliver_ticket(attendee)
         flash("MAIL_ENABLED is off, so the email was logged instead of sent.", "warning")
-        return back_to_admin()
+        return back_to_admin(attendee)
     attendee = deliver_ticket(attendee)
     if attendee["email_status"] == "sent":
         flash(f"Ticket for {attendee['attendee_code']} sent to {attendee['email']}.", "success")
     else:
         flash(f"Sending the ticket for {attendee['attendee_code']} failed. Check the log.", "error")
-    return back_to_admin()
+    return back_to_admin(attendee)
 
 
 def csv_cell(column, value):
@@ -217,13 +253,16 @@ def csv_cell(column, value):
 @bp.get("/admin/export.csv")
 @staff_required
 def export_csv():
+    event = selected_event(request.args.get("event", ""))
+    if event is None:
+        abort(404)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(CSV_COLUMNS)
-    for attendee in search_attendees():
+    for attendee in search_attendees(event["id"]):
         writer.writerow(csv_cell(column, attendee[column]) for column in CSV_COLUMNS)
     return Response(
         buffer.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=attendees.csv"},
+        headers={"Content-Disposition": f"attachment; filename={event['slug']}-attendees.csv"},
     )

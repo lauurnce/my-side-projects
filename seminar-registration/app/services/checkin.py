@@ -1,5 +1,5 @@
 from ..db import get_db
-from .registration import get_attendee_by_token
+from .registration import ATTENDEE_QUERY, get_attendee_by_token
 
 CHECKIN_PATH = "/checkin/"
 SEARCH_COLUMNS = ("attendee_code", "full_name", "email", "organization", "contact_number")
@@ -26,25 +26,24 @@ def check_in(token):
     return ("checked_in" if marked else "already"), attendee
 
 
-def get_attendee_by_id(attendee_id):
-    return get_db().execute("SELECT * FROM attendees WHERE id = ?", (attendee_id,)).fetchone()
-
-
-def totals():
+def totals(event_id):
     return get_db().execute(
         "SELECT COUNT(*) AS registered,"
         " COALESCE(SUM(email_status = 'sent'), 0) AS emails_sent,"
         " COALESCE(SUM(checked_in), 0) AS checked_in"
-        " FROM attendees"
+        " FROM attendees WHERE event_id = ?",
+        (event_id,),
     ).fetchone()
 
 
-def search_attendees(query=""):
+def search_attendees(event_id, query=""):
     query = query.strip()
     if not query:
-        return get_db().execute("SELECT * FROM attendees ORDER BY id").fetchall()
-    matches = " OR ".join(f"instr(lower({column}), lower(?)) > 0" for column in SEARCH_COLUMNS)
+        return get_db().execute(
+            f"{ATTENDEE_QUERY} WHERE a.event_id = ? ORDER BY a.id", (event_id,)
+        ).fetchall()
+    matches = " OR ".join(f"instr(lower(a.{column}), lower(?)) > 0" for column in SEARCH_COLUMNS)
     return get_db().execute(
-        f"SELECT * FROM attendees WHERE {matches} ORDER BY id",
-        (query,) * len(SEARCH_COLUMNS),
+        f"{ATTENDEE_QUERY} WHERE a.event_id = ? AND ({matches}) ORDER BY a.id",
+        (event_id, *(query,) * len(SEARCH_COLUMNS)),
     ).fetchall()

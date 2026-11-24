@@ -1,14 +1,14 @@
 <!doctype html>
 <html lang="en">
-<body style="margin:0;padding:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#1c2333;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:24px 0;">
+<body style="margin:0;padding:0;background:#f3f0ee;font-family:Arial,Helvetica,sans-serif;color:#1a1112;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f0ee;padding:24px 0;">
     <tr>
       <td align="center">
-        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border-radius:10px;">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border-radius:16px;">
           <tr>
-            <td style="background:#2952cc;color:#ffffff;padding:24px;text-align:center;border-radius:10px 10px 0 0;">
-              <p style="margin:0;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Your seminar ticket</p>
-              <h1 style="margin:8px 0 0;font-size:22px;">{{ event.name }}</h1>
+            <td style="background:#9c1b1c;color:#ffffff;padding:26px 24px;text-align:center;border-radius:16px 16px 0 0;">
+              <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Your seminar ticket</p>
+              <h1 style="margin:8px 0 0;font-size:22px;">{{ attendee.event_name }}</h1>
             </td>
           </tr>
           <tr>
@@ -16,13 +16,13 @@
               <p style="margin:0 0 12px;font-size:16px;">Hi {{ attendee.full_name }},</p>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">You're registered! Here are your event details and your ticket.</p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px;margin:0 0 20px;">
-                <tr><td style="color:#5b6478;padding:3px 16px 3px 0;">Date</td><td style="padding:3px 0;">{{ event.date }}</td></tr>
-                <tr><td style="color:#5b6478;padding:3px 16px 3px 0;">Venue</td><td style="padding:3px 0;">{{ event.venue }}</td></tr>
-                <tr><td style="color:#5b6478;padding:3px 16px 3px 0;">Attendee code</td><td style="padding:3px 0;font-family:Consolas,monospace;font-weight:bold;">{{ attendee.attendee_code }}</td></tr>
+                <tr><td style="color:#645657;padding:3px 16px 3px 0;">Date</td><td style="padding:3px 0;">{{ attendee.event_date|long_date }}</td></tr>
+                <tr><td style="color:#645657;padding:3px 16px 3px 0;">Venue</td><td style="padding:3px 0;">{{ attendee.event_venue }}</td></tr>
+                <tr><td style="color:#645657;padding:3px 16px 3px 0;">Attendee code</td><td style="padding:3px 0;font-family:Consolas,monospace;font-weight:bold;color:#6e0f12;">{{ attendee.attendee_code }}</td></tr>
               </table>
-              <img src="cid:{{ qr_cid }}" alt="QR ticket {{ attendee.attendee_code }}" width="240" style="display:block;margin:0 auto;width:240px;max-width:100%;height:auto;border:1px solid #d5dae6;border-radius:8px;">
+              <img src="cid:{{ qr_cid }}" alt="QR ticket {{ attendee.attendee_code }}" width="240" style="display:block;margin:0 auto;width:240px;max-width:100%;height:auto;border:1px solid #e6dedc;border-radius:12px;">
               <p style="margin:16px 0 0;text-align:center;font-size:15px;font-weight:bold;">Show this QR code at the check-in desk.</p>
-              <p style="margin:8px 0 0;text-align:center;font-size:13px;color:#5b6478;">Your ticket is also attached as a PNG in case the image does not load.</p>
+              <p style="margin:8px 0 0;text-align:center;font-size:13px;color:#645657;">Your ticket is also attached as a PNG in case the image does not load.</p>
             </td>
           </tr>
         </table>

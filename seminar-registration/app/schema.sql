@@ -1,10 +1,22 @@
 DROP TABLE IF EXISTS attendees;
+DROP TABLE IF EXISTS events;
+
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    event_date TEXT NOT NULL,
+    venue TEXT NOT NULL,
+    opens_on TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
 
 CREATE TABLE attendees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL REFERENCES events (id),
     attendee_code TEXT NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
     organization TEXT NOT NULL,
     contact_number TEXT NOT NULL,
     ticket_token TEXT NOT NULL UNIQUE,
@@ -13,5 +25,6 @@ CREATE TABLE attendees (
     email_sent_at TEXT,
     checked_in INTEGER NOT NULL DEFAULT 0 CHECK (checked_in IN (0, 1)),
     checked_in_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE (event_id, email)
 );

@@ -3,31 +3,45 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ event.name }}{% endblock %}</title>
+  <title>{% block title %}PUP Events{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Hanken+Grotesk:wght@400;500;600;700&family=Roboto+Slab:wght@900&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
-  {% if session.get('staff') %}
-  <nav class="staff-nav" aria-label="Staff">
-    <a href="{{ url_for('staff.scanner') }}">Scanner</a>
-    <a href="{{ url_for('staff.admin') }}">Admin</a>
-    <form method="post" action="{{ url_for('staff.logout') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit">Log out</button>
-    </form>
-  </nav>
-  {% endif %}
-  <header class="event-header">
-    <p class="eyebrow">Seminar Registration</p>
-    <h1>{{ event.name }}</h1>
-    <ul class="event-meta">
-      <li><span>Date</span> {{ event.date }}</li>
-      <li><span>Venue</span> {{ event.venue }}</li>
-    </ul>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="nav glass glass-strong" aria-label="Main">
+      <a class="brand" href="{{ url_for('main.index') }}">PUP<b>.</b>Events</a>
+      <ul class="nav-links">
+        <li><a href="{{ url_for('main.index') }}#events">Events</a></li>
+        <li><a href="{{ url_for('main.index') }}#how">How it works</a></li>
+        {% if session.get('staff') %}
+        <li><a href="{{ url_for('staff.scanner') }}">Scanner</a></li>
+        <li><a href="{{ url_for('staff.admin') }}">Admin</a></li>
+        {% endif %}
+      </ul>
+      {% if session.get('staff') %}
+      <form method="post" action="{{ url_for('staff.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-glass btn-small">Log out</button>
+      </form>
+      {% elif last_ticket_code %}
+      <a class="btn btn-glass btn-small" href="{{ url_for('main.registered', code=last_ticket_code) }}">My ticket <span aria-hidden="true">&rarr;</span></a>
+      {% else %}
+      <a class="btn btn-glass btn-small" href="{{ url_for('main.index') }}#events">Register <span aria-hidden="true">&rarr;</span></a>
+      {% endif %}
+    </nav>
   </header>
-  <main class="container{% block container_class %}{% endblock %}">
+  <main id="main" class="container{% block container_class %}{% endblock %}">
     {% block content %}{% endblock %}
   </main>
+  <footer class="site-footer">
+    <span class="brand">PUP<b>.</b>Events</span>
+    <span>Seminar registration with QR tickets</span>
+    <a href="{{ url_for('staff.login') }}">Staff login</a>
+  </footer>
   {% block scripts %}{% endblock %}
 </body>
 </html>

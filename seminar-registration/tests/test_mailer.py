@@ -59,7 +59,7 @@ def fail_login(monkeypatch, fake_smtp):
 
 
 def test_email_sent_on_registration_marks_sent(client, app, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     sent_message(fake_smtp)
     row = get_row(app)
     assert row["email_status"] == "sent"
@@ -67,14 +67,14 @@ def test_email_sent_on_registration_marks_sent(client, app, valid_form, fake_smt
 
 
 def test_connects_to_gmail_over_ssl_with_timeout(client, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     smtp = fake_smtp.instances[0]
     assert (smtp.host, smtp.port, smtp.timeout) == ("smtp.gmail.com", 465, 15)
     assert smtp.login_args == ("organizer@gmail.com", "abcdefghijklmnop")
 
 
 def test_subject_sender_and_recipient(client, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     message = sent_message(fake_smtp)
     assert message["Subject"] == "Your ticket: Test Seminar"
     assert message["To"] == "juan@example.com"
@@ -82,7 +82,7 @@ def test_subject_sender_and_recipient(client, valid_form, fake_smtp):
 
 
 def test_html_shows_qr_inline_through_cid(client, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     message = sent_message(fake_smtp)
     html_part = message.get_body(("html",))
     html = html_part.get_content()
@@ -95,7 +95,7 @@ def test_html_shows_qr_inline_through_cid(client, valid_form, fake_smtp):
 
 
 def test_html_has_event_details_and_check_in_line(client, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     html = sent_message(fake_smtp).get_body(("html",)).get_content()
     for text in ("Hi Juan Dela Cruz", "Test Seminar", "November 30, 2026", "Main Hall",
                  "SEM-2026-0001", "Show this QR code at the check-in desk."):
@@ -103,7 +103,7 @@ def test_html_has_event_details_and_check_in_line(client, valid_form, fake_smtp)
 
 
 def test_plain_text_alternative_exists(client, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     text = sent_message(fake_smtp).get_body(("plain",)).get_content()
     assert "Hi Juan Dela Cruz" in text
     assert "SEM-2026-0001" in text
@@ -111,7 +111,7 @@ def test_plain_text_alternative_exists(client, valid_form, fake_smtp):
 
 
 def test_qr_png_is_attached(client, app, valid_form, fake_smtp):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     attachments = list(sent_message(fake_smtp).iter_attachments())
     assert len(attachments) == 1
     attachment = attachments[0]
@@ -122,7 +122,7 @@ def test_qr_png_is_attached(client, app, valid_form, fake_smtp):
 
 def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fake_smtp, monkeypatch):
     fail_login(monkeypatch, fake_smtp)
-    response = client.post("/register", data=valid_form)
+    response = client.post("/events/test-seminar/register", data=valid_form)
     assert response.status_code == 302
     row = get_row(app)
     assert row is not None
@@ -132,31 +132,31 @@ def test_smtp_error_marks_failed_and_keeps_attendee(client, app, valid_form, fak
 
 def test_smtp_error_is_logged(client, valid_form, fake_smtp, monkeypatch, caplog):
     fail_login(monkeypatch, fake_smtp)
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     assert "Ticket email failed for SEM-2026-0001" in caplog.text
 
 
 def test_missing_credentials_marks_failed(client, app, valid_form, fake_smtp):
     app.config["SMTP_APP_PASSWORD"] = ""
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     assert fake_smtp.instances == []
     assert get_row(app)["email_status"] == "failed"
 
 
 def test_registered_page_says_email_was_sent(client, valid_form, fake_smtp):
-    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    html = client.post("/events/test-seminar/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
     assert "We emailed your ticket to" in html
 
 
 def test_registered_page_says_email_failed(client, valid_form, fake_smtp, monkeypatch):
     fail_login(monkeypatch, fake_smtp)
-    html = client.post("/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
+    html = client.post("/events/test-seminar/register", data=valid_form, follow_redirects=True).get_data(as_text=True)
     assert "We couldn't email your ticket" in html
 
 
 def test_mail_disabled_logs_instead_of_sending(client, app, valid_form, fake_smtp, caplog):
     app.config["MAIL_ENABLED"] = False
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     assert fake_smtp.instances == []
     assert get_row(app)["email_status"] == "pending"
     assert "MAIL_ENABLED is off, not sending. To: juan@example.com" in caplog.text
@@ -164,7 +164,7 @@ def test_mail_disabled_logs_instead_of_sending(client, app, valid_form, fake_smt
 
 def test_resend_ticket_command_sends(client, app, valid_form, fake_smtp, monkeypatch):
     fail_login(monkeypatch, fake_smtp)
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     monkeypatch.undo()
     monkeypatch.setattr(smtplib, "SMTP_SSL", fake_smtp)
     result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
@@ -174,7 +174,7 @@ def test_resend_ticket_command_sends(client, app, valid_form, fake_smtp, monkeyp
 
 
 def test_resend_ticket_command_reports_failure(client, app, valid_form, fake_smtp, monkeypatch):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     fail_login(monkeypatch, fake_smtp)
     result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
     assert result.exit_code != 0
@@ -189,7 +189,7 @@ def test_resend_ticket_command_unknown_code(app):
 
 
 def test_resend_ticket_command_with_mail_disabled(client, app, valid_form):
-    client.post("/register", data=valid_form)
+    client.post("/events/test-seminar/register", data=valid_form)
     result = app.test_cli_runner().invoke(args=["resend-ticket", "--code", "SEM-2026-0001"])
     assert result.exit_code == 0
     assert "logged instead of sent" in result.output

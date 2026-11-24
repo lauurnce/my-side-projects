@@ -1,9 +1,9 @@
 Hi {{ attendee.full_name }},
 
-You're registered for {{ event.name }}.
+You're registered for {{ attendee.event_name }}.
 
-Date: {{ event.date }}
-Venue: {{ event.venue }}
+Date: {{ attendee.event_date|long_date }}
+Venue: {{ attendee.event_venue }}
 Attendee code: {{ attendee.attendee_code }}
 
 Your QR ticket is attached as {{ attendee.attendee_code }}.png.

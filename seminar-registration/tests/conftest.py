@@ -16,6 +16,7 @@ def app(tmp_path):
         "CSRF_ENABLED": False,
         "MAIL_ENABLED": False,
         "STAFF_PIN": "",
+        "TODAY": "2026-11-01",
         "EVENT_NAME": "Test Seminar",
         "EVENT_DATE": "November 30, 2026",
         "EVENT_VENUE": "Main Hall",

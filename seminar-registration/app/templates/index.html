@@ -1,40 +1,87 @@
 {% extends "base.html" %}
 
-{% macro field(name, label, type="text", autocomplete="", placeholder="", maxlength=None, hint="") %}
-  <div class="field{% if errors.get(name) %} has-error{% endif %}">
-    <label for="{{ name }}">{{ label }}</label>
-    <input id="{{ name }}" name="{{ name }}" type="{{ type }}"
-           value="{{ values.get(name, '') }}" required
-           {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
-           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
-           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
-           aria-describedby="{{ name }}-error"
-           {% if errors.get(name) %}aria-invalid="true"{% endif %}>
-    {% if hint %}<small class="hint">{{ hint }}</small>{% endif %}
-    <p class="error" id="{{ name }}-error" role="alert">{{ errors.get(name, '') }}</p>
-  </div>
-{% endmacro %}
+{% block container_class %} container-wide{% endblock %}
 
 {% block content %}
-<section class="card">
-  <h2>Register</h2>
-  <p class="lead">Fill in your details. Your QR ticket will be sent to your email.</p>
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">Seminars and events</p>
+    <h1>Save<br>your<em>seat<i>.</i></em></h1>
+    <p class="hero-lead">Register for seminars at the Polytechnic University of the Philippines and get your QR ticket by email.</p>
+    <div class="row">
+      <a class="btn btn-primary" href="#events">Browse events <span aria-hidden="true">&rarr;</span></a>
+      <a class="btn btn-glass" href="#how">How it works</a>
+    </div>
+  </div>
+  <div class="hero-art">
+    {% include "_pillars.html" %}
+    {% if next_open %}
+    <a class="next-card glass" href="{{ url_for('main.event_page', slug=next_open.slug) }}">
+      <span class="kicker">Next event &middot; {{ next_open.event_date|short_date }}</span>
+      <b>{{ next_open.name }}</b>
+      <span>{{ next_open.venue }}</span>
+      <span class="btn btn-primary btn-small">Register <span aria-hidden="true">&rarr;</span></span>
+    </a>
+    {% endif %}
+  </div>
+</section>
 
-  {% if errors %}
-    <div class="alert" role="alert">Please fix the highlighted fields below.</div>
+<section class="section" id="events" aria-labelledby="events-title">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Upcoming</p>
+      <h2 id="events-title">Pick a seminar, <em>claim a seat.</em></h2>
+    </div>
+    {% if events|length > 1 %}
+    <div class="chips" role="group" aria-label="Filter events">
+      <button type="button" class="pill on" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" class="pill" data-filter="open" aria-pressed="false">Open now</button>
+    </div>
+    {% endif %}
+  </div>
+  {% if events %}
+  <div class="event-grid">
+    {% for event in events %}
+    {% set state = registration_state(event) %}
+    <a class="event glass{% if next_open and event.id == next_open.id %} glass-maroon{% endif %}"
+       href="{{ url_for('main.event_page', slug=event.slug) }}" data-state="{{ state }}">
+      <span class="event-date"><span>{{ event.event_date|month_label }}</span><b>{{ event.event_date|day_label }}</b></span>
+      <h3>{{ event.name }}</h3>
+      <p>{{ event.venue }}</p>
+      <span class="event-foot">
+        {% if state == 'open' %}
+        <span>Registration open</span><span class="arrow" aria-hidden="true">&rarr;</span>
+        {% else %}
+        <span>Opens {{ event.opens_on|short_date }}</span><span class="pill pill-wait">Soon</span>
+        {% endif %}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="empty" id="no-open-events" hidden>No event is open for registration right now.</p>
+  {% else %}
+  <p class="empty glass">No upcoming events yet. Check back soon.</p>
   {% endif %}
+</section>
 
-  <form id="registration-form" method="post" action="{{ url_for('main.register') }}" novalidate>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {{ field("full_name", "Full Name", autocomplete="name", placeholder="Juan Dela Cruz", maxlength=100) }}
-    {{ field("email", "Email Address", type="email", autocomplete="email", placeholder="name@example.com", maxlength=254) }}
-    {{ field("organization", "Organization", autocomplete="organization", placeholder="School or company", maxlength=150) }}
-    {{ field("contact_number", "Contact Number", type="tel", autocomplete="tel", placeholder="09171234567", hint="09XXXXXXXXX or +639XXXXXXXXX") }}
-    <button type="submit" class="btn">Register</button>
-  </form>
+<section class="section how" id="how" aria-labelledby="how-title">
+  <div>
+    <p class="eyebrow">How it works</p>
+    <h2 id="how-title">From form to front door in <em>three steps.</em></h2>
+  </div>
+  <ol class="steps">
+    <li class="glass"><div><b>Register</b><span>Pick an event and fill in four fields.</span></div></li>
+    <li class="glass"><div><b>Get your QR ticket</b><span>It arrives by email within a minute.</span></div></li>
+    <li class="glass"><div><b>Scan at the door</b><span>Staff scan the code and you are checked in.</span></div></li>
+  </ol>
+</section>
+
+<section class="band glass glass-dark">
+  <p>Your seat is <em>one form</em> away.</p>
+  <a class="btn btn-primary" href="{% if next_open %}{{ url_for('main.event_page', slug=next_open.slug) }}{% else %}#events{% endif %}">Register now <span aria-hidden="true">&rarr;</span></a>
 </section>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/events.js') }}"></script>
 {% endblock %}
