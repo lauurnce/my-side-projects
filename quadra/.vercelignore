@@ -7,3 +7,4 @@ venv
 .env
 pytest.ini
 requirements-dev.txt
+.env.*
