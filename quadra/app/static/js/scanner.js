@@ -14,16 +14,15 @@
   var input = document.getElementById("code-input");
   var cameraNote = document.getElementById("camera-note");
 
-  var lastCode = "";
-  var lastSeenAt = 0;
+  var lastSeenAt = {};
+  var waitingForReply = false;
   var showingResult = false;
   var audio = null;
 
   function seenJustNow(code) {
     var now = Date.now();
-    var repeat = code === lastCode && now - lastSeenAt < SAME_CODE_WINDOW_MS;
-    lastCode = code;
-    lastSeenAt = now;
+    var repeat = now - (lastSeenAt[code] || 0) < SAME_CODE_WINDOW_MS;
+    lastSeenAt[code] = now;
     return repeat;
   }
 
@@ -81,7 +80,8 @@
 
   function submit(scanned) {
     var code = scanned.trim();
-    if (!code || showingResult || seenJustNow(code)) return;
+    if (!code || seenJustNow(code) || showingResult || waitingForReply) return;
+    waitingForReply = true;
     fetch(panel.dataset.checkinUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": panel.dataset.csrfToken },
@@ -89,7 +89,8 @@
     })
       .then(readReply)
       .then(showResult)
-      .catch(function (error) { showProblem(error.message); });
+      .catch(function (error) { showProblem(error.message); })
+      .finally(function () { waitingForReply = false; });
   }
 
   form.addEventListener("submit", function (event) {
