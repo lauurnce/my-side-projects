@@ -1,6 +1,15 @@
 from ..db import get_db
 from .registration import get_attendee_by_token
 
+CHECKIN_PATH = "/checkin/"
+
+
+def extract_token(scanned):
+    text = (scanned or "").strip()
+    if CHECKIN_PATH in text:
+        text = text.split(CHECKIN_PATH, 1)[1]
+    return text.split("?", 1)[0].split("#", 1)[0].strip("/")
+
 
 def check_in(token):
     db = get_db()
