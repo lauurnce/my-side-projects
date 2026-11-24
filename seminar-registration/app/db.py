@@ -23,9 +23,8 @@ def init_db():
         db.executescript(f.read().decode("utf-8"))
 
 
-@click.command("init-db")
+@click.command("init-db", help="Drop and recreate the database tables.")
 def init_db_command():
-    """Drop and recreate the database tables."""
     init_db()
     click.echo("Initialized the database.")
 
