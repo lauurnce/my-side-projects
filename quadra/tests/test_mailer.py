@@ -43,7 +43,7 @@ def fake_smtp(app, monkeypatch):
 
 def get_row(app, email="juan@example.com"):
     with app.app_context():
-        return get_db().execute("SELECT * FROM attendees WHERE email = ?", (email,)).fetchone()
+        return get_db().execute("SELECT * FROM attendees WHERE email = %s", (email,)).fetchone()
 
 
 def sent_message(fake_smtp):

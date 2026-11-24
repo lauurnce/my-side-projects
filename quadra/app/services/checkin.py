@@ -16,8 +16,8 @@ def extract_token(scanned):
 def check_in(token):
     db = get_db()
     marked = db.execute(
-        "UPDATE attendees SET checked_in = 1, checked_in_at = ?"
-        " WHERE ticket_token = ? AND checked_in = 0",
+        "UPDATE attendees SET checked_in = 1, checked_in_at = %s"
+        " WHERE ticket_token = %s AND checked_in = 0",
         (utc_timestamp(), token),
     ).rowcount
     db.commit()
@@ -32,7 +32,7 @@ def totals(event_id):
         "SELECT COUNT(*) AS registered,"
         " COALESCE(SUM(CASE WHEN email_status = 'sent' THEN 1 ELSE 0 END), 0) AS emails_sent,"
         " COALESCE(SUM(checked_in), 0) AS checked_in"
-        " FROM attendees WHERE event_id = ?",
+        " FROM attendees WHERE event_id = %s",
         (event_id,),
     ).fetchone()
 
@@ -46,12 +46,12 @@ def search_attendees(event_id, query=""):
     query = query.strip()
     if not query:
         return get_db().execute(
-            f"{ATTENDEE_QUERY} WHERE a.event_id = ? ORDER BY a.id", (event_id,)
+            f"{ATTENDEE_QUERY} WHERE a.event_id = %s ORDER BY a.id", (event_id,)
         ).fetchall()
     matches = " OR ".join(
-        f"lower(a.{column}) LIKE lower(?) ESCAPE '\\'" for column in SEARCH_COLUMNS
+        f"lower(a.{column}) LIKE lower(%s) ESCAPE '\\'" for column in SEARCH_COLUMNS
     )
     return get_db().execute(
-        f"{ATTENDEE_QUERY} WHERE a.event_id = ? AND ({matches}) ORDER BY a.id",
+        f"{ATTENDEE_QUERY} WHERE a.event_id = %s AND ({matches}) ORDER BY a.id",
         (event_id, *(containing(query),) * len(SEARCH_COLUMNS)),
     ).fetchall()

@@ -21,7 +21,7 @@ ATTENDEE_QUERY = (
 
 def email_exists(event_id, email):
     row = get_db().execute(
-        "SELECT 1 FROM attendees WHERE event_id = ? AND email = ?", (event_id, email.lower())
+        "SELECT 1 FROM attendees WHERE event_id = %s AND email = %s", (event_id, email.lower())
     ).fetchone()
     return row is not None
 
@@ -35,7 +35,7 @@ def create_attendee(event_id, full_name, email, organization, contact_number):
     inserted = db.execute(
         "INSERT INTO attendees"
         " (event_id, attendee_code, full_name, email, organization, contact_number,"
-        " ticket_token, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        " ticket_token, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
         " ON CONFLICT (event_id, email) DO NOTHING RETURNING id",
         (
             event_id,
@@ -53,7 +53,7 @@ def create_attendee(event_id, full_name, email, organization, contact_number):
         raise DuplicateEmailError(email)
     attendee_id = inserted[0]["id"]
     code = f"{prefix}-{attendee_id:04d}"
-    db.execute("UPDATE attendees SET attendee_code = ? WHERE id = ?", (code, attendee_id))
+    db.execute("UPDATE attendees SET attendee_code = %s WHERE id = %s", (code, attendee_id))
     db.commit()
 
     return deliver_ticket(get_attendee_by_code(code))
@@ -63,11 +63,11 @@ def save_email_status(attendee_id, status):
     db = get_db()
     if status == "sent":
         db.execute(
-            "UPDATE attendees SET email_status = ?, email_sent_at = ? WHERE id = ?",
+            "UPDATE attendees SET email_status = %s, email_sent_at = %s WHERE id = %s",
             (status, utc_timestamp(), attendee_id),
         )
     else:
-        db.execute("UPDATE attendees SET email_status = ? WHERE id = ?", (status, attendee_id))
+        db.execute("UPDATE attendees SET email_status = %s WHERE id = %s", (status, attendee_id))
     db.commit()
 
 
@@ -89,12 +89,12 @@ def deliver_ticket(attendee):
 
 
 def get_attendee_by_code(code):
-    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = ?", (code,)).fetchone()
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = %s", (code,)).fetchone()
 
 
 def get_attendee_by_token(token):
-    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.ticket_token = ?", (token,)).fetchone()
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.ticket_token = %s", (token,)).fetchone()
 
 
 def get_attendee_by_id(attendee_id):
-    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.id = ?", (attendee_id,)).fetchone()
+    return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.id = %s", (attendee_id,)).fetchone()

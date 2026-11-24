@@ -48,7 +48,7 @@ def register(client, form):
 
 def row(app, email="juan@example.com"):
     with app.app_context():
-        return get_db().execute("SELECT * FROM attendees WHERE email = ?", (email,)).fetchone()
+        return get_db().execute("SELECT * FROM attendees WHERE email = %s", (email,)).fetchone()
 
 
 @pytest.fixture
@@ -59,13 +59,13 @@ def token(staff_app, client, valid_form):
 
 def set_first_checkin_time(app, value):
     with app.app_context():
-        get_db().execute("UPDATE attendees SET checked_in_at = ? WHERE checked_in = 1", (value,))
+        get_db().execute("UPDATE attendees SET checked_in_at = %s WHERE checked_in = 1", (value,))
         get_db().commit()
 
 
 def set_created_time(app, value):
     with app.app_context():
-        get_db().execute("UPDATE attendees SET created_at = ?", (value,))
+        get_db().execute("UPDATE attendees SET created_at = %s", (value,))
         get_db().commit()
 
 
@@ -316,7 +316,7 @@ def test_admin_totals_count_sent_emails_and_checkins(staff_app, staff_client, va
     with staff_app.app_context():
         get_db().execute("UPDATE attendees SET email_status = 'sent'")
         get_db().commit()
-        assert dict(totals(row(staff_app)["event_id"])) == {"registered": 2, "emails_sent": 2, "checked_in": 1}
+        assert totals(row(staff_app)["event_id"]) == {"registered": 2, "emails_sent": 2, "checked_in": 1}
 
 
 def test_admin_manual_checkin(staff_app, staff_client, token):

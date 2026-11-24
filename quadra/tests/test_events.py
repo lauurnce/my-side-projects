@@ -24,7 +24,7 @@ def staff_client(app, client):
 
 def attendee_count(app):
     with app.app_context():
-        return get_db().execute("SELECT COUNT(*) FROM attendees").fetchone()[0]
+        return get_db().execute("SELECT COUNT(*) AS total FROM attendees").fetchone()["total"]
 
 
 def test_init_db_creates_the_event_from_config(app):
@@ -198,7 +198,7 @@ def test_adding_an_event_reports_what_is_wrong(app, staff_client, form, message)
     assert response.status_code == 400
     assert message in response.get_data(as_text=True)
     with app.app_context():
-        assert get_db().execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+        assert get_db().execute("SELECT COUNT(*) AS total FROM events").fetchone()["total"] == 1
 
 
 def test_adding_an_event_requires_staff(app, client):

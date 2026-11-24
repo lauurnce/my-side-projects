@@ -43,7 +43,7 @@ def create_event(name, event_date, venue, opens_on=None):
     slug = free_slug(name)
     db.execute(
         "INSERT INTO events (slug, name, event_date, venue, opens_on, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
+        " VALUES (%s, %s, %s, %s, %s, %s)",
         (
             slug,
             name,
@@ -89,7 +89,7 @@ def seed_from_config():
 
 
 def get_event_by_slug(slug):
-    return get_db().execute("SELECT * FROM events WHERE slug = ?", (slug,)).fetchone()
+    return get_db().execute("SELECT * FROM events WHERE slug = %s", (slug,)).fetchone()
 
 
 def list_events():
@@ -98,7 +98,7 @@ def list_events():
 
 def list_upcoming():
     return get_db().execute(
-        "SELECT * FROM events WHERE event_date >= ? ORDER BY event_date, id",
+        "SELECT * FROM events WHERE event_date >= %s ORDER BY event_date, id",
         (today().isoformat(),),
     ).fetchall()
 

@@ -2,7 +2,10 @@ import sqlite3
 from pathlib import Path
 
 import click
+import psycopg
 from flask import current_app, g
+from flask.cli import with_appcontext
+from psycopg.rows import dict_row
 
 from .clock import utc_timestamp
 
@@ -10,10 +13,50 @@ MIGRATIONS = Path(__file__).parent / "migrations"
 TABLES = ("attendees", "events", "schema_migrations")
 
 
+def without_nul(value):
+    return value.replace("\x00", "") if isinstance(value, str) else value
+
+
+class Database:
+    def __init__(self, connection, dialect):
+        self.connection = connection
+        self.dialect = dialect
+
+    def execute(self, sql, params=()):
+        if self.dialect == "sqlite":
+            sql = sql.replace("%s", "?")
+        return self.connection.execute(sql, [without_nul(value) for value in params])
+
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def close(self):
+        self.connection.close()
+
+
+def sqlite_dict_row(cursor, values):
+    return {column[0]: value for column, value in zip(cursor.description, values, strict=True)}
+
+
+def open_sqlite(path):
+    connection = sqlite3.connect(path)
+    connection.row_factory = sqlite_dict_row
+    connection.execute("PRAGMA foreign_keys = ON")
+    return Database(connection, "sqlite")
+
+
+def open_postgres(url):
+    connection = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
+    return Database(connection, "postgres")
+
+
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(current_app.config["DATABASE"])
-        g.db.row_factory = sqlite3.Row
+        url = current_app.config["DATABASE_URL"]
+        g.db = open_postgres(url) if url else open_sqlite(current_app.config["DATABASE"])
     return g.db
 
 
@@ -37,7 +80,7 @@ def apply_migration(db, path):
         if statement.strip():
             db.execute(statement)
     db.execute(
-        "INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+        "INSERT INTO schema_migrations (name, applied_at) VALUES (%s, %s)",
         (path.name, utc_timestamp()),
     )
     db.commit()
@@ -46,7 +89,8 @@ def apply_migration(db, path):
 def migrate():
     db = get_db()
     applied = applied_migrations(db)
-    pending = [path for path in sorted((MIGRATIONS / "sqlite").glob("*.sql")) if path.name not in applied]
+    files = sorted((MIGRATIONS / db.dialect).glob("*.sql"))
+    pending = [path for path in files if path.name not in applied]
     for path in pending:
         apply_migration(db, path)
     return [path.name for path in pending]
@@ -67,13 +111,19 @@ def drop_tables():
     db.commit()
 
 
-def init_db():
+def init_db(force=False):
+    if current_app.config["DATABASE_URL"] and not force:
+        raise click.ClickException(
+            "DATABASE_URL is set, so init-db would erase that database."
+            " Use migrate to update it, or add --force to erase it anyway."
+        )
     drop_tables()
     migrate()
     return seed_first_event()
 
 
 @click.command("migrate", help="Apply pending database migrations. Keeps existing data.")
+@with_appcontext
 def migrate_command():
     applied = migrate()
     for name in applied:
@@ -85,9 +135,11 @@ def migrate_command():
         click.echo(f"Created the event {event['name']} from .env.")
 
 
-@click.command("init-db", help="Erase the database and rebuild it from the migrations.")
-def init_db_command():
-    event = init_db()
+@click.command("init-db", help="Erase the local database and rebuild it from the migrations.")
+@click.option("--force", is_flag=True, help="Erase the database even when DATABASE_URL is set.")
+@with_appcontext
+def init_db_command(force):
+    event = init_db(force)
     click.echo("Initialized the database.")
     if event is None:
         click.echo("No event was created. Add one with: flask --app app add-event")

@@ -1,7 +1,6 @@
 import pytest
 
-from app import create_app
-from app.db import get_db, init_db
+from app.db import get_db
 from app.services import registration
 
 
@@ -128,6 +127,13 @@ def test_duplicate_that_slips_past_the_form_check_is_refused(app, valid_form):
     assert len(fetch_all(app)) == 2
 
 
+def test_nul_characters_in_the_form_do_not_break_registration(client, app, valid_form):
+    valid_form["organization"] = "PU\x00P"
+    assert client.post("/events/test-seminar/register", data=valid_form).status_code == 302
+    assert fetch_all(app)[0]["organization"] == "PUP"
+    assert client.get("/events/test\x00-seminar").status_code == 200
+
+
 def test_typed_values_are_kept_on_error(client, valid_form):
     valid_form["contact_number"] = "123"
     html = client.post("/events/test-seminar/register", data=valid_form).get_data(as_text=True)
@@ -154,31 +160,21 @@ def test_ticket_token_is_unique(client, app, valid_form):
     assert all(len(token) >= 32 for token in tokens)
 
 
-def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
-    app = create_app({
-        "TESTING": True,
-        "DATABASE": str(tmp_path / "csrf.db"),
-        "MAIL_ENABLED": False,
-    })
-    with app.app_context():
-        init_db()
+def test_post_without_csrf_token_is_rejected(make_app, valid_form):
+    app = make_app({"MAIL_ENABLED": False})
     response = app.test_client().post("/events/test-seminar/register", data=valid_form)
     assert response.status_code == 400
     assert fetch_all(app) == []
 
 
-def test_post_with_csrf_token_is_accepted(tmp_path, valid_form):
-    app = create_app({
-        "TESTING": True,
-        "DATABASE": str(tmp_path / "csrf.db"),
+def test_post_with_csrf_token_is_accepted(make_app, valid_form):
+    app = make_app({
         "MAIL_ENABLED": False,
         "EVENT_NAME": "Test Seminar",
         "EVENT_DATE": "November 30, 2026",
         "EVENT_VENUE": "Main Hall",
         "TODAY": "2026-11-01",
     })
-    with app.app_context():
-        init_db()
     client = app.test_client()
     client.get("/events/test-seminar")
     with client.session_transaction() as session:
