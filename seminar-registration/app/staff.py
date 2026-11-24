@@ -1,3 +1,5 @@
+import csv
+import io
 import math
 import secrets
 from functools import wraps
@@ -5,6 +7,7 @@ from time import monotonic
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     current_app,
     flash,
@@ -30,6 +33,20 @@ bp = Blueprint("staff", __name__)
 SESSION_KEY = "staff"
 MAX_WRONG_PINS = 5
 LOCK_SECONDS = 60
+FORMULA_STARTERS = ("=", "+", "-", "@", "\t", "\r")
+CSV_COLUMNS = (
+    "attendee_code",
+    "full_name",
+    "email",
+    "organization",
+    "contact_number",
+    "email_status",
+    "email_sent_at",
+    "checked_in",
+    "checked_in_at",
+    "created_at",
+)
+USER_TYPED_COLUMNS = ("full_name", "email", "organization")
 
 
 def staff_required(view):
@@ -188,3 +205,25 @@ def admin_resend(attendee_id):
     else:
         flash(f"Sending the ticket for {attendee['attendee_code']} failed. Check the log.", "error")
     return back_to_admin()
+
+
+def csv_cell(column, value):
+    text = "" if value is None else str(value)
+    if column in USER_TYPED_COLUMNS and text.startswith(FORMULA_STARTERS):
+        return "'" + text
+    return text
+
+
+@bp.get("/admin/export.csv")
+@staff_required
+def export_csv():
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(CSV_COLUMNS)
+    for attendee in search_attendees():
+        writer.writerow(csv_cell(column, attendee[column]) for column in CSV_COLUMNS)
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=attendees.csv"},
+    )
