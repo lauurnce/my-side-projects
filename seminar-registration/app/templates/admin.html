@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Admin dashboard{% endblock %}
+
+{% block container_class %} container-wide{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>Admin dashboard</h2>
+  <p class="lead">Ticket QR codes point to <strong>{{ public_base_url }}</strong>.</p>
+
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="notice notice-{{ category }}" role="status">{{ message }}</p>
+  {% endfor %}
+
+  <dl class="totals">
+    <div><dt>Registered</dt><dd id="total-registered">{{ totals.registered }}</dd></div>
+    <div><dt>Emails sent</dt><dd id="total-emails-sent">{{ totals.emails_sent }}</dd></div>
+    <div><dt>Checked in</dt><dd id="total-checked-in">{{ totals.checked_in }}</dd></div>
+  </dl>
+
+  <div class="toolbar">
+    <form method="get" action="{{ url_for('staff.admin') }}" class="search" role="search">
+      <label for="q" class="visually-hidden">Search attendees</label>
+      <input id="q" name="q" type="search" value="{{ query }}" placeholder="Search name, email, code, organization">
+      <button type="submit" class="btn btn-small">Search</button>
+      {% if query %}<a class="btn btn-small btn-secondary" href="{{ url_for('staff.admin') }}">Clear</a>{% endif %}
+    </form>
+    <a class="btn btn-small btn-secondary" href="{{ url_for('staff.export_csv') }}">Export CSV</a>
+  </div>
+
+  {% if attendees %}
+  <div class="table-scroll">
+    <table class="attendees">
+      <thead>
+        <tr>
+          <th scope="col">Code</th>
+          <th scope="col">Name</th>
+          <th scope="col">Email</th>
+          <th scope="col">Organization</th>
+          <th scope="col">Contact</th>
+          <th scope="col">Email</th>
+          <th scope="col">Check-in</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for attendee in attendees %}
+        <tr>
+          <td class="mono">{{ attendee.attendee_code }}</td>
+          <td>{{ attendee.full_name }}</td>
+          <td>{{ attendee.email }}</td>
+          <td>{{ attendee.organization }}</td>
+          <td class="mono">{{ attendee.contact_number }}</td>
+          <td><span class="pill pill-{{ attendee.email_status }}">{{ attendee.email_status }}</span></td>
+          <td>
+            {% if attendee.checked_in %}
+              <span class="pill pill-sent">{{ attendee.checked_in_at }}</span>
+            {% else %}
+              <span class="pill">Not yet</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="row-actions">
+            {% if not attendee.checked_in %}
+            <form method="post" action="{{ url_for('staff.admin_checkin', attendee_id=attendee.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="q" value="{{ query }}">
+              <button type="submit" class="btn btn-small">Check in</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('staff.admin_resend', attendee_id=attendee.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="q" value="{{ query }}">
+              <button type="submit" class="btn btn-small btn-secondary">Resend email</button>
+            </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif query %}
+    <p class="empty">No attendee matches "{{ query }}".</p>
+  {% else %}
+    <p class="empty">Nobody has registered yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
