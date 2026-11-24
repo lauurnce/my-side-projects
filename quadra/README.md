@@ -1,6 +1,6 @@
-# Seminar Registration with QR Tickets
+# Quadra
 
-A Flask web app for seminars: the landing page lists the upcoming events, attendees register
+Quadra is a Flask web app for seminars and events: the landing page lists the upcoming events, attendees register
 for one on a form, each gets a QR code ticket by email, and staff scan the tickets at the door
 to mark people as checked in.
 
@@ -83,7 +83,7 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `MAIL_ENABLED` | `true` sends real email. `false` writes the email to the log. | `true` |
 | `SMTP_USER` | The Gmail address that sends the tickets. | `organizer@gmail.com` |
 | `SMTP_APP_PASSWORD` | The 16-character Gmail App Password for that account. Spaces are fine. | `abcd efgh ijkl mnop` |
-| `MAIL_FROM_NAME` | The sender name attendees see. | `Seminar Registration` |
+| `MAIL_FROM_NAME` | The sender name attendees see. | `Quadra` |
 | `STAFF_PIN` | The PIN staff type at `/staff/login`. Staff pages stay locked while it is empty. | `482913` |
 | `EVENT_NAME` | Name of the first event, created by `init-db`. | `Tech Innovators Seminar 2026` |
 | `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
@@ -176,7 +176,7 @@ There are 155 tests. They use a temporary database and never send real email.
 ## Project structure
 
 ```
-seminar-registration/
+quadra/
 ├── app/
 │   ├── __init__.py          app factory
 │   ├── config.py            settings read from .env

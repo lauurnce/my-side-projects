@@ -1,6 +1,6 @@
 # Test Report
 
-Seminar Registration with QR Tickets, tested on November 24, 2026 on a MacBook (macOS, Python
+Quadra, tested on November 24, 2026 on a MacBook (macOS, Python
 3.12, Chrome) and an iPhone on the same Wi-Fi.
 
 ## Summary
