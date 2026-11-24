@@ -86,6 +86,41 @@ def test_logout_ends_the_staff_session(staff_client):
     assert staff_client.get("/admin").status_code == 302
 
 
+@pytest.mark.parametrize("path", ["/scanner", "/admin", "/admin/export.csv", "/checkin/some-token"])
+def test_staff_pages_send_visitors_to_login(staff_app, client, path):
+    response = client.get(path)
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/staff/login?next=")
+
+
+def test_api_checkin_requires_login(staff_app, client, token):
+    response = client.post("/api/checkin", json={"code": token})
+    assert response.status_code == 401
+    assert response.get_json() == {"status": "login_required"}
+    assert row(staff_app)["checked_in"] == 0
+
+
+def test_admin_actions_require_login(staff_app, client, token):
+    attendee_id = row(staff_app)["id"]
+    assert client.post(f"/admin/checkin/{attendee_id}").status_code == 302
+    assert row(staff_app)["checked_in"] == 0
+
+
+def test_scanned_ticket_comes_back_after_login(staff_app, client, token):
+    redirect = client.get(f"/checkin/{token}")
+    login_url = redirect.headers["Location"]
+    assert row(staff_app)["checked_in"] == 0
+
+    form_html = client.get(login_url).get_data(as_text=True)
+    assert f'value="/checkin/{token}"' in form_html
+
+    response = login(client, next=f"/checkin/{token}")
+    assert response.headers["Location"] == f"/checkin/{token}"
+    assert "CHECKED IN: Juan Dela Cruz (SEM-2026-0001)" in client.get(
+        response.headers["Location"]
+    ).get_data(as_text=True)
+
+
 @pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example/", "/\\evil.example"])
 def test_login_never_redirects_off_site(staff_app, client, target):
     assert login(client, next=target).headers["Location"] == "/scanner"
