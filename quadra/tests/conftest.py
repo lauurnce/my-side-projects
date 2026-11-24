@@ -11,7 +11,6 @@ def app(tmp_path):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "test.db"),
-        "QR_DIR": str(tmp_path / "qrcodes"),
         "PUBLIC_BASE_URL": "http://localhost:5000",
         "CSRF_ENABLED": False,
         "MAIL_ENABLED": False,

@@ -12,4 +12,3 @@ venv/
 .env
 instance/
 *.db
-qrcodes/

@@ -21,4 +21,3 @@ class Config:
     EVENT_VENUE = os.environ.get("EVENT_VENUE", "TBA")
     ATTENDEE_CODE_PREFIX = "SEM-2026"
     DATABASE = None
-    QR_DIR = None

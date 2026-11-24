@@ -137,7 +137,6 @@ def test_post_without_csrf_token_is_rejected(tmp_path, valid_form):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "csrf.db"),
-        "QR_DIR": str(tmp_path / "qrcodes"),
         "MAIL_ENABLED": False,
     })
     with app.app_context():
@@ -151,7 +150,6 @@ def test_post_with_csrf_token_is_accepted(tmp_path, valid_form):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "csrf.db"),
-        "QR_DIR": str(tmp_path / "qrcodes"),
         "MAIL_ENABLED": False,
         "EVENT_NAME": "Test Seminar",
         "EVENT_DATE": "November 30, 2026",
