@@ -6,14 +6,13 @@ from PIL import Image, ImageDraw, ImageFont
 from qrcode.constants import ERROR_CORRECT_Q
 
 BOX_SIZE = 10
-BORDER = 4  # quiet zone in modules, the minimum the QR spec asks for
+BORDER = 4
 LABEL_FONT_SIZE = 32
 LABEL_PADDING = 16
 FONT_NAMES = ("DejaVuSans-Bold.ttf", "arialbd.ttf", "Arial Bold.ttf")
 
 
 def checkin_url(ticket_token):
-    """Return the URL encoded in an attendee's ticket QR code."""
     base = current_app.config["PUBLIC_BASE_URL"].rstrip("/")
     return f"{base}/checkin/{ticket_token}"
 
@@ -33,12 +32,11 @@ def load_font(size=LABEL_FONT_SIZE):
             continue
     try:
         return ImageFont.load_default(size=size)
-    except TypeError:  # Pillow older than 10.1
+    except TypeError:
         return ImageFont.load_default()
 
 
 def add_label(image, text):
-    """Return a new image with the text centered under the QR code."""
     font = load_font()
     left, top, right, bottom = ImageDraw.Draw(image).textbbox((0, 0), text, font=font)
     text_width, text_height = right - left, bottom - top
@@ -57,7 +55,6 @@ def qr_folder():
 
 
 def generate_qr(attendee):
-    """Create the ticket PNG for an attendee and return its file path."""
     image = build_qr_image(checkin_url(attendee["ticket_token"]))
     image = add_label(image, attendee["attendee_code"])
     path = qr_folder() / f"{attendee['attendee_code']}.png"

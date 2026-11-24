@@ -11,7 +11,7 @@ from .qr import generate_qr
 
 
 class DuplicateEmailError(Exception):
-    """Raised when the email address is already registered."""
+    pass
 
 
 def email_exists(email):
@@ -22,11 +22,6 @@ def email_exists(email):
 
 
 def create_attendee(full_name, email, organization, contact_number):
-    """Insert a new attendee and return the saved row.
-
-    Expects data that already passed validation. The attendee code is built
-    from the row id (SEM-2026-0001, SEM-2026-0002, ...).
-    """
     db = get_db()
     email = email.lower()
     token = secrets.token_urlsafe(32)
@@ -50,7 +45,6 @@ def create_attendee(full_name, email, organization, contact_number):
             raise DuplicateEmailError(email) from exc
         raise
 
-    # On new entry: build the ticket QR right after the insert, then email it.
     return deliver_ticket(attach_qr(get_attendee_by_code(code)))
 
 
@@ -61,10 +55,6 @@ def save_qr_path(attendee_id, path):
 
 
 def attach_qr(attendee):
-    """Generate the ticket QR for a saved attendee and store its path.
-
-    If generation fails the error is logged and the registration is kept.
-    """
     try:
         path = generate_qr(attendee)
     except Exception:
@@ -88,11 +78,6 @@ def save_email_status(attendee_id, status):
 
 
 def deliver_ticket(attendee):
-    """Email the ticket and record email_status and email_sent_at.
-
-    A failed email is logged and marked 'failed'; the registration is kept.
-    With MAIL_ENABLED off the email is only logged and the status stays as it was.
-    """
     if not attendee["qr_path"] or not os.path.isfile(attendee["qr_path"]):
         attendee = attach_qr(attendee)
     code = attendee["attendee_code"]
@@ -112,10 +97,6 @@ def deliver_ticket(attendee):
 
 
 def regenerate_qr_codes(code=None):
-    """Rebuild ticket QR images for every attendee, or one attendee code.
-
-    Returns the list of attendee codes that were rebuilt.
-    """
     if code:
         rows = get_db().execute(
             "SELECT * FROM attendees WHERE attendee_code = ?", (code,)
