@@ -16,4 +16,3 @@ instance/
 .env.*
 !.env.example
 .vercel
-.env*
