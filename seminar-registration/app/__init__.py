@@ -27,11 +27,12 @@ def create_app(test_config=None):
             }
         }
 
-    from . import commands, csrf, db, routes
+    from . import commands, csrf, db, routes, staff
 
     db.init_app(app)
     csrf.init_app(app)
     commands.init_app(app)
     app.register_blueprint(routes.bp)
+    app.register_blueprint(staff.bp)
 
     return app
