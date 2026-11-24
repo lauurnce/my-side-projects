@@ -1,5 +1,7 @@
+import math
 import secrets
 from functools import wraps
+from time import monotonic
 
 from flask import (
     Blueprint,
@@ -15,6 +17,8 @@ from flask import (
 bp = Blueprint("staff", __name__)
 
 SESSION_KEY = "staff"
+MAX_WRONG_PINS = 5
+LOCK_SECONDS = 60
 
 
 def staff_required(view):
@@ -37,12 +41,33 @@ def safe_next(target):
     return url_for("staff.scanner")
 
 
+def pin_attempts():
+    by_address = current_app.extensions.setdefault("pin_attempts", {})
+    return by_address.setdefault(request.remote_addr, {"wrong": 0, "locked_until": 0})
+
+
+def seconds_locked(attempts):
+    return max(0, math.ceil(attempts["locked_until"] - monotonic()))
+
+
+def record_wrong_pin(attempts):
+    attempts["wrong"] += 1
+    if attempts["wrong"] < MAX_WRONG_PINS:
+        return
+    attempts["wrong"] = 0
+    attempts["locked_until"] = monotonic() + LOCK_SECONDS
+
+
 def pin_matches(pin):
     return secrets.compare_digest(pin.encode(), current_app.config["STAFF_PIN"].encode())
 
 
 def login_page(next_url, error=None, status=200):
     return render_template("staff_login.html", next_url=next_url, error=error), status
+
+
+def locked_message(seconds):
+    return f"Too many wrong PINs. Try again in {seconds} seconds."
 
 
 @bp.route("/staff/login", methods=["GET", "POST"])
@@ -53,9 +78,17 @@ def login():
     if not current_app.config["STAFF_PIN"]:
         return login_page(next_url, "Staff login is off. Set STAFF_PIN in .env and restart.", 503)
 
+    attempts = pin_attempts()
+    if seconds_locked(attempts):
+        return login_page(next_url, locked_message(seconds_locked(attempts)), 429)
     if pin_matches(request.form.get("pin", "")):
+        attempts["wrong"] = 0
         session[SESSION_KEY] = True
         return redirect(next_url)
+
+    record_wrong_pin(attempts)
+    if seconds_locked(attempts):
+        return login_page(next_url, locked_message(seconds_locked(attempts)), 429)
     return login_page(next_url, "Wrong PIN.", 401)
 
 
