@@ -1,0 +1,9 @@
+tests
+docs
+screenshots
+instance
+venv
+.venv
+.env
+pytest.ini
+requirements-dev.txt
