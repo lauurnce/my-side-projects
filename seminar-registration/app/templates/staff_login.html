@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Staff login{% endblock %}
+
+{% block content %}
+<section class="card">
+  <p class="success-badge">Staff only</p>
+  <h2>Enter the staff PIN</h2>
+  <p class="lead">Check-in and the attendee list are for event staff.</p>
+
+  {% if error %}
+    <div class="alert" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('staff.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="field">
+      <label for="pin">PIN</label>
+      <input id="pin" name="pin" type="password" inputmode="numeric" autocomplete="off" required autofocus>
+    </div>
+    <button type="submit" class="btn">Log in</button>
+  </form>
+</section>
+{% endblock %}
