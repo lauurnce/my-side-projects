@@ -4,16 +4,16 @@ Quadra is a Flask web app for seminars and events: the landing page lists the up
 for one on a form, each gets a QR code ticket by email, and staff scan the tickets at the door
 to mark people as checked in.
 
-It runs on one laptop with SQLite, so it needs no server or paid service.
+It runs on a laptop with a SQLite file, and in production on Vercel with a Postgres database.
 
 ## Features by assignment part
 
 | Part | What the app does | How it was verified |
 | --- | --- | --- |
-| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 75 automated tests. Three attendees registered through the form in Chrome. |
-| 2. Database and QR Script | Each registration is saved to SQLite with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 20 automated tests, including decoding each served QR back to its check-in URL. |
+| 1. Registration Form | Landing page with every upcoming event, and a form per event. Browser and server validation, one registration per email per event, PH mobile numbers normalized to `+639XXXXXXXXX`, CSRF protection. | 78 automated tests. Three attendees registered through the form in Chrome. |
+| 2. Database and QR Script | Each registration is saved to the database with an attendee code (`SEM-2026-0001`) and a random ticket token. A labeled QR ticket PNG is built in memory whenever it is shown, downloaded or emailed, so no ticket file is written to disk. | 57 automated tests (QR, database, migrations, time), including decoding each served QR back to its check-in URL. |
 | 3. Automated Email | The ticket is emailed through Gmail SMTP right after the registration is saved: QR shown in the body and attached as a PNG. Failures are recorded and never lose the registration. | 19 automated tests with a fake SMTP server. Real emails sent and received in a second Gmail account. |
-| 4. Check-in Scanner | Staff PIN login. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export. | 45 automated tests. A ticket scanned with a phone camera, a webcam feed, and typed input. |
+| 4. Check-in Scanner | Staff PIN login. Tickets are checked in by phone camera, laptop webcam, or USB barcode scanner. Admin dashboard with totals, search, manual check-in, resend email, and CSV export. | 94 automated tests (check-in, security headers, error pages). A ticket scanned with a phone camera, a webcam feed, and typed input. |
 
 The full results are in [docs/TEST-REPORT.md](docs/TEST-REPORT.md).
 
@@ -26,7 +26,7 @@ flowchart LR
     events --> db
     routes --> validation[validation.py]
     routes --> registration[services/registration.py]
-    registration -->|insert row| db[(SQLite<br>instance/seminar.db)]
+    registration -->|insert row| db[(SQLite locally<br>Postgres in production)]
     registration --> mailer[services/mailer.py]
     mailer --> qr[services/qr.py<br>PNG built in memory]
     routes -->|GET /ticket/token.png| qr
@@ -85,6 +85,9 @@ On Windows, activate with `venv\Scripts\activate` and copy with `copy .env.examp
 | `SMTP_APP_PASSWORD` | The 16-character Gmail App Password for that account. Spaces are fine. | `abcd efgh ijkl mnop` |
 | `MAIL_FROM_NAME` | The sender name attendees see. | `Quadra` |
 | `STAFF_PIN` | The PIN staff type at `/staff/login`. Staff pages stay locked while it is empty. | `482913` |
+| `DATABASE_URL` | Postgres address for production. Leave empty to use the local SQLite file. | `postgresql://...` |
+| `QUADRA_ENV` | Set to `production` on the live site. | `production` |
+| `TRUSTED_PROXY_HOPS` | `1` on Vercel, otherwise leave empty. | `1` |
 | `EVENT_NAME` | Name of the first event, created by `init-db`. | `Tech Innovators Seminar 2026` |
 | `EVENT_DATE` | Date of the first event, as `November 30, 2026` or `2026-11-30`. | `November 30, 2026` |
 | `EVENT_VENUE` | Venue of the first event. | `PUP Main Campus, Manila` |
@@ -272,7 +275,7 @@ pytest
 ruff check .
 ```
 
-There are 159 tests. They use a temporary database and never send real email.
+There are 248 tests. They use a temporary database and never send real email.
 
 ## Project structure
 
@@ -281,8 +284,11 @@ quadra/
 ├── app/
 │   ├── __init__.py          app factory
 │   ├── config.py            settings read from .env
-│   ├── db.py                SQLite connection and init-db
-│   ├── schema.sql           attendees table
+│   ├── db.py                SQLite or Postgres connection, migrate, init-db
+│   ├── migrations/          numbered schema changes for each database
+│   ├── clock.py             UTC timestamps shown in Manila time
+│   ├── security.py          production mode, cookies, security headers
+│   ├── errors.py            error pages
 │   ├── csrf.py              CSRF token check
 │   ├── validation.py        form validation and phone normalization
 │   ├── routes.py            landing page, event pages, confirmation, ticket image
@@ -306,8 +312,8 @@ quadra/
 
 ## Known limitations
 
-- It runs on Flask's development server, which suits one laptop at a small event and not the
-  public internet.
+- `flask run` is Flask's development server and is for a laptop only. The public site runs on
+  Vercel, which has not been deployed yet.
 - Email is sent while the attendee waits, so registering takes about 4 seconds. A slow network
   can make it take up to 15.
 - A free Gmail account can send about 500 emails a day.
@@ -320,4 +326,3 @@ quadra/
 - A check-in cannot be undone from the dashboard.
 - Events cannot be edited or deleted from the dashboard once added.
 - The pages load their fonts from Google Fonts and fall back to system fonts offline.
-- Times are saved in the laptop's local time.
