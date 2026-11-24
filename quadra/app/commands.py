@@ -5,23 +5,7 @@ from flask import current_app
 from flask.cli import with_appcontext
 
 from .services.events import create_event, parse_date
-from .services.registration import (
-    deliver_ticket,
-    get_attendee_by_code,
-    regenerate_qr_codes,
-)
-
-
-@click.command("regenerate-qr", help="Rebuild ticket QR images after changing PUBLIC_BASE_URL.")
-@click.option("--code", help="Only rebuild the QR for this attendee code, e.g. SEM-2026-0001.")
-@with_appcontext
-def regenerate_qr_command(code):
-    rebuilt = regenerate_qr_codes(code)
-    if code and not rebuilt:
-        raise click.ClickException(f"No attendee with code {code}.")
-    for item in rebuilt:
-        click.echo(f"Rebuilt {item}")
-    click.echo(f"Done. {len(rebuilt)} QR code(s) rebuilt.")
+from .services.registration import deliver_ticket, get_attendee_by_code
 
 
 @click.command("resend-ticket", help="Email the ticket to one attendee again.")
@@ -71,11 +55,10 @@ def lan_url_command(port):
     url = f"http://{lan_ip()}:{port}"
     click.echo(f"LAN address: {url}")
     click.echo(f"Run the app with: flask --app app run --host 0.0.0.0 --port {port}")
-    click.echo(f"Set PUBLIC_BASE_URL={url} in .env, then run: flask --app app regenerate-qr")
+    click.echo(f"Set PUBLIC_BASE_URL={url} in .env, then restart the app.")
 
 
 def init_app(app):
-    app.cli.add_command(regenerate_qr_command)
     app.cli.add_command(resend_ticket_command)
     app.cli.add_command(lan_url_command)
     app.cli.add_command(add_event_command)

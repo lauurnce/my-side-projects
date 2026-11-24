@@ -103,16 +103,6 @@ def deliver_ticket(attendee):
     return get_attendee_by_code(code)
 
 
-def regenerate_qr_codes(code=None):
-    if code:
-        rows = get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = ?", (code,)).fetchall()
-    else:
-        rows = get_db().execute(f"{ATTENDEE_QUERY} ORDER BY a.id").fetchall()
-    for row in rows:
-        save_qr_path(row["id"], generate_qr(row))
-    return [row["attendee_code"] for row in rows]
-
-
 def get_attendee_by_code(code):
     return get_db().execute(f"{ATTENDEE_QUERY} WHERE a.attendee_code = ?", (code,)).fetchone()
 
