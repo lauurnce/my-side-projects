@@ -17,7 +17,6 @@ def build_app(tmp_path, **overrides):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "security.db"),
-        "QR_DIR": str(tmp_path / "qrcodes"),
         "CSRF_ENABLED": False,
         "MAIL_ENABLED": False,
         "STAFF_PIN": "246810",

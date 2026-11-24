@@ -82,7 +82,6 @@ def test_expired_form_session_message_is_shown(tmp_path, valid_form):
     app = create_app({
         "TESTING": True,
         "DATABASE": str(tmp_path / "errors.db"),
-        "QR_DIR": str(tmp_path / "qrcodes"),
         "MAIL_ENABLED": False,
     })
     with app.app_context():

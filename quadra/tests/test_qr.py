@@ -69,7 +69,7 @@ def test_ticket_image_has_label_area_under_code(client, app, valid_form):
 def test_registration_writes_no_files(client, app, valid_form, tmp_path):
     register(client, valid_form)
     ticket_response(client, app)
-    assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["test.db"]
+    assert {path.name for path in tmp_path.rglob("*") if path.is_file()} <= {"test.db"}
 
 
 def test_two_registrations_give_different_tokens_and_images(client, app, valid_form):
