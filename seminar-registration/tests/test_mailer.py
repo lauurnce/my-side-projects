@@ -7,7 +7,6 @@ from app.db import get_db
 
 
 class FakeSMTP:
-    """Stands in for smtplib.SMTP_SSL and records what would have been sent."""
 
     def __init__(self, host, port, timeout=None, context=None):
         self.host, self.port, self.timeout = host, port, timeout

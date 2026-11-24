@@ -21,7 +21,7 @@ def decode_qr(path):
     cv2 = pytest.importorskip("cv2")
     image = cv2.imread(path)
     data, _points, _straight = cv2.QRCodeDetector().detectAndDecode(image)
-    if not data:  # the classic detector misses some valid codes; the Aruco one reads them
+    if not data:
         data, _points, _straight = cv2.QRCodeDetectorAruco().detectAndDecode(image)
     return data
 

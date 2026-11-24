@@ -27,7 +27,6 @@ def app(tmp_path):
 
 @pytest.fixture(autouse=True)
 def block_real_smtp(monkeypatch):
-    """Make sure no test ever opens a real SMTP connection."""
 
     def refuse(*_args, **_kwargs):
         raise RuntimeError("Tests must not send real email. Use the fake_smtp fixture.")
