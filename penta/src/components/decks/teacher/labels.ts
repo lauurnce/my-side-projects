@@ -45,7 +45,7 @@ export function slidesLabel(count: number): string {
 
 export function deckMeta(deck: DeckSummary): string {
   const file = `${deckFormat(deck.kind)} · ${formatBytes(deck.sizeBytes)}`;
-  return deck.ready ? `${slidesLabel(deck.slideCount)} · ${file}` : file;
+  return deck.ready || deck.kind === "native" ? `${slidesLabel(deck.slideCount)} · ${file}` : file;
 }
 
 export function deckCountLabel(count: number): string {
@@ -54,6 +54,18 @@ export function deckCountLabel(count: number): string {
 
 export function deckPath(deckId: string): string {
   return `/decks/${deckId}`;
+}
+
+export function deckEditPath(deckId: string): string {
+  return `${deckPath(deckId)}/edit`;
+}
+
+export function unreadyLabel(deck: DeckSummary): string {
+  return deck.kind === "native" ? "Draft" : "Not finished";
+}
+
+export function downloadLabel(deck: DeckSummary): string {
+  return deck.kind === "native" ? "Export PDF" : "Download";
 }
 
 export function deckDownloadPath(deckId: string): string {

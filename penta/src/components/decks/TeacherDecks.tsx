@@ -1,3 +1,4 @@
+import { createNativeDeck } from "@/app/decks/editor-actions";
 import { runDeckAction } from "@/app/decks/upload-actions";
 import teacherStyles from "@/components/classes/teacher/teacher.module.css";
 import { BracketLabel } from "@/components/ui/BracketLabel";
@@ -9,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DeckBoard } from "./teacher/DeckBoard";
 import { DeckUploadForm } from "./teacher/DeckUploadForm";
 import { deckCountLabel, lessonGroups } from "./teacher/labels";
+import { NewDeckForm } from "./teacher/NewDeckForm";
 import { StorageMeter } from "./teacher/StorageMeter";
 
 export type TeacherDecksProps = {
@@ -37,6 +39,7 @@ export async function TeacherDecks({ user, classId }: TeacherDecksProps) {
       </div>
       <StorageMeter usage={usage} />
       <DeckUploadForm classId={classId} lessons={lessons} storageFull={storageFull} />
+      <NewDeckForm classId={classId} lessons={lessons} action={createNativeDeck} />
       <DeckBoard
         decks={decks}
         lessons={lessons}

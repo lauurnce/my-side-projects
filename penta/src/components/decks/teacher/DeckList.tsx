@@ -6,11 +6,14 @@ import type { DeckSummary } from "@/lib/decks";
 import styles from "./decks.module.css";
 import {
   deckDownloadPath,
+  deckEditPath,
   deckMeta,
   deckPath,
   draftLessonNote,
   emptyDecksMessage,
+  downloadLabel,
   isLinkedToDraft,
+  unreadyLabel,
   type LessonGroup,
 } from "./labels";
 import { LessonSelect } from "./LessonSelect";
@@ -57,7 +60,7 @@ function DeckRow({ deck, lessons, live, formAction, pending }: DeckRowProps) {
           {live && <StatusChip status="live">Live</StatusChip>}
         </div>
         <div className={styles.metaRow}>
-          {!deck.ready && <StatusChip status="due">Not finished</StatusChip>}
+          {!deck.ready && <StatusChip status="due">{unreadyLabel(deck)}</StatusChip>}
           <p className={styles.meta}>{deckMeta(deck)}</p>
         </div>
         {isLinkedToDraft(deck, lessons) && <p className={styles.draftNote}>{draftLessonNote}</p>}
@@ -83,9 +86,14 @@ function DeckRow({ deck, lessons, live, formAction, pending }: DeckRowProps) {
           </button>
         </form>
         <div className={styles.actions}>
+          {deck.kind === "native" && (
+            <Link className={styles.button} href={deckEditPath(deck.id)} aria-label={`Edit ${deck.title}`}>
+              Edit
+            </Link>
+          )}
           {deck.ready && (
-            <a className={styles.button} href={deckDownloadPath(deck.id)} aria-label={`Download ${deck.title}`}>
-              Download
+            <a className={styles.button} href={deckDownloadPath(deck.id)} aria-label={`${downloadLabel(deck)} ${deck.title}`}>
+              {downloadLabel(deck)}
             </a>
           )}
           <form action={formAction}>
