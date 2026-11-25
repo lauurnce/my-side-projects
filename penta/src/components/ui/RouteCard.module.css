@@ -5,6 +5,11 @@
 }
 
 .link:focus-visible {
+  outline: none;
+}
+
+.link:focus-visible .card {
+  outline: 2px solid var(--ink);
   outline-offset: -6px;
 }
 
