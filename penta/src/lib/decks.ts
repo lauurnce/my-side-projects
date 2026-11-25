@@ -8,7 +8,7 @@ type DeckRow = Pick<
   "id" | "class_id" | "lesson_id" | "title" | "kind" | "slide_count" | "size_bytes" | "ready_at" | "created_at"
 >;
 
-export type DeckKind = "pdf" | "pptx";
+export type DeckKind = "pdf" | "pptx" | "native";
 
 export type DeckSummary = {
   id: string;
@@ -32,9 +32,9 @@ export type UsageLevel = "ok" | "nearly_full" | "full";
 
 const deckColumns = "id, class_id, lesson_id, title, kind, slide_count, size_bytes, ready_at, created_at";
 
-const deckKinds: readonly DeckKind[] = ["pdf", "pptx"];
-const formatByKind = { pdf: "PDF", pptx: "PPTX" } as const satisfies Record<DeckKind, string>;
-const extensionByKind = { pdf: "pdf", pptx: "pptx" } as const satisfies Record<DeckKind, string>;
+const deckKinds: readonly DeckKind[] = ["pdf", "pptx", "native"];
+const formatByKind = { pdf: "PDF", pptx: "PPTX", native: "SLIDES" } as const satisfies Record<DeckKind, string>;
+const extensionByKind = { pdf: "pdf", pptx: "pptx", native: "pdf" } as const satisfies Record<DeckKind, string>;
 
 export function isUploadedDeck(deck: DeckDetail): deck is UploadedDeck {
   return deck.pdfPath !== null;
@@ -143,4 +143,16 @@ export async function loadViewedSlides(supabase: Supabase, deckId: string, userI
 export async function loadStorageUsage(supabase: Supabase): Promise<StorageUsage | null> {
   const { data } = await supabase.rpc("storage_usage");
   return toStorageUsage(data);
+}
+
+export type StoredContent = { content: unknown; version: number };
+
+export async function loadDeckContent(supabase: Supabase, deckId: string): Promise<StoredContent | null> {
+  const { data } = await supabase.from("deck_contents").select("content, version").eq("deck_id", deckId).maybeSingle();
+  return data ? { content: data.content, version: data.version } : null;
+}
+
+export async function deckHasViews(supabase: Supabase, deckId: string): Promise<boolean> {
+  const { count } = await supabase.from("deck_views").select("slide_no", { count: "exact", head: true }).eq("deck_id", deckId);
+  return (count ?? 0) > 0;
 }

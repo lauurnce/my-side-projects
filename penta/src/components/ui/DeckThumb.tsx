@@ -1,6 +1,6 @@
 import styles from "./DeckThumb.module.css";
 
-export type DeckFormat = "PDF" | "PPTX";
+export type DeckFormat = "PDF" | "PPTX" | "SLIDES";
 
 export type DeckThumbProps = {
   href?: string;
