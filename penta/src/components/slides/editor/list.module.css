@@ -105,11 +105,9 @@
 }
 
 .number {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
+  display: block;
   padding: 3px 6px;
+  text-align: left;
   background: var(--bg);
   color: var(--fg);
 }
@@ -149,5 +147,12 @@
   .addButton:hover:not(:disabled) {
     background: var(--fg-muted);
     border-color: var(--fg-muted);
+  }
+}
+
+@media (max-width: 899px) {
+  .list {
+    max-height: none;
+    overflow-y: visible;
   }
 }
