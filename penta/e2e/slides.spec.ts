@@ -163,6 +163,8 @@ test("a teacher builds a deck, reorders it, presents it live, and a student foll
   await expect(student.getByText("Producer", { exact: true })).toHaveCount(0);
 
   await teacher.getByRole("button", { name: "End session" }).click();
+  await expect(teacher.getByRole("button", { name: "Present" })).toBeVisible();
+  await expect(student.getByRole("button", { name: "Join live" })).toHaveCount(0, { timeout: 20000 });
   await teacher.goto(`/decks/${deckId}/print`);
   await expect(teacher.getByRole("listitem")).toHaveCount(4);
   await expect(teacher.getByRole("button", { name: "Print or save as PDF" })).toBeEnabled();
