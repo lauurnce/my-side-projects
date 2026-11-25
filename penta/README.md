@@ -10,6 +10,8 @@ altitude in meters, and a full term is 3,000 m.
 It runs on a laptop against a local Supabase stack, and in production on Vercel with a Supabase
 cloud project.
 
+The live site is at https://pentakill-lms.vercel.app.
+
 It is a course project for INTE 301, Systems Integration and Architecture 1.
 
 ## Features by layer
