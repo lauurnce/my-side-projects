@@ -14,6 +14,7 @@ export const routeMessages = {
   lessonHasQuestions: "Students have asked questions on this lesson, so it cannot be deleted. Unpublish it instead.",
   saveConflict: "This lesson was changed in another tab, or it no longer exists. Copy your text, then reload.",
   checkFields: "Check the marked fields, then save again.",
+  sessionEnded: "Your session ended. Log in again in another tab, then save again. Your text is still here.",
   saved: "Saved",
   moduleAdded: "Module added",
   moduleRenamed: "Module renamed",

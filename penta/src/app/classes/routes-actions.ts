@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser, requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   addLessonSchema,
@@ -214,12 +214,17 @@ export async function runOutlineAction(_previousState: OutlineState, formData: F
 }
 
 export async function saveLesson(_previousState: SaveLessonState, formData: FormData): Promise<SaveLessonState> {
-  await requireRole("teacher");
   const values = {
     title: textValue(formData, "title"),
     minutes: textValue(formData, "minutes"),
     body: textValue(formData, "body").replace(/\r\n?/g, "\n"),
   };
+  const seenRevision = Number(formData.get("revision"));
+  if (!(await getCurrentUser())) {
+    const revision = Number.isInteger(seenRevision) ? seenRevision : undefined;
+    return { tone: "alert", message: routeMessages.sessionEnded, values, revision };
+  }
+  await requireRole("teacher");
   const target = saveLessonTargetSchema.safeParse({
     lessonId: formData.get("lessonId"),
     revision: formData.get("revision"),
