@@ -17,7 +17,7 @@ export function outlineCountLabel(outline: ClassOutline): string {
 }
 
 export function moveLabel(title: string, direction: MoveDirection): string {
-  return `Move ${title} ${direction}`;
+  return `Move ${direction}: ${title}`;
 }
 
 export function publishWord(published: boolean): string {

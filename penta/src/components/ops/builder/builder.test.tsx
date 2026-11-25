@@ -203,9 +203,9 @@ describe("QuestionBoard as a draft", () => {
       expect(screen.getByRole("button", { name: `Edit item ${number}` }).textContent).toBe("Edit");
       expect(screen.getByRole("button", { name: `Delete item ${number}` }).textContent).toBe("Delete");
     }
-    const up = (number: number) => screen.getByRole("button", { name: `Move item ${number} up` }) as HTMLButtonElement;
+    const up = (number: number) => screen.getByRole("button", { name: `Move up: item ${number}` }) as HTMLButtonElement;
     const down = (number: number) =>
-      screen.getByRole("button", { name: `Move item ${number} down` }) as HTMLButtonElement;
+      screen.getByRole("button", { name: `Move down: item ${number}` }) as HTMLButtonElement;
     expect([up(1).disabled, up(2).disabled, down(2).disabled, down(3).disabled]).toEqual([true, false, false, true]);
     expect(screen.queryByText("This quiz is published. Unpublish it to change questions.")).toBeNull();
     expect(screen.queryByRole("button", { name: /Change the key/ })).toBeNull();
@@ -213,7 +213,7 @@ describe("QuestionBoard as a draft", () => {
 
   it("sends the move and delete forms with their intent", () => {
     renderBoard([mcq, tf], false);
-    const down = screen.getByRole("button", { name: "Move item 1 down" }).closest("form")!;
+    const down = screen.getByRole("button", { name: "Move down: item 1" }).closest("form")!;
     const remove = screen.getByRole("button", { name: "Delete item 2" }).closest("form")!;
     expect(hiddenValues(down)).toEqual({ intent: "moveQuestion", questionId: mcq.id, direction: "down" });
     expect(hiddenValues(remove)).toEqual({ intent: "deleteQuestion", questionId: tf.id });

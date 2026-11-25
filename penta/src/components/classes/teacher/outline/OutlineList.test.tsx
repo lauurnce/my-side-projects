@@ -49,8 +49,8 @@ describe("outline labels", () => {
   });
 
   it("names what each button acts on", () => {
-    expect(moveLabel("Week 1", "up")).toBe("Move Week 1 up");
-    expect(moveLabel("Week 1", "down")).toBe("Move Week 1 down");
+    expect(moveLabel("Week 1", "up")).toBe("Move up: Week 1");
+    expect(moveLabel("Week 1", "down")).toBe("Move down: Week 1");
     expect(publishLabel("Message brokers", false)).toBe("Publish Message brokers");
     expect(publishLabel("Message brokers", true)).toBe("Unpublish Message brokers");
   });
@@ -117,20 +117,20 @@ describe("OutlineList", () => {
 
   it("disables the move buttons at the edges only", () => {
     renderOutline();
-    expect(button("Move Week 1 up").disabled).toBe(true);
-    expect(button("Move Week 1 down").disabled).toBe(false);
-    expect(button("Move Week 2 up").disabled).toBe(false);
-    expect(button("Move Week 2 down").disabled).toBe(true);
-    expect(button("Move Message brokers up").disabled).toBe(true);
-    expect(button("Move Message brokers down").disabled).toBe(false);
-    expect(button("Move Queues up").disabled).toBe(false);
-    expect(button("Move Queues down").disabled).toBe(true);
+    expect(button("Move up: Week 1").disabled).toBe(true);
+    expect(button("Move down: Week 1").disabled).toBe(false);
+    expect(button("Move up: Week 2").disabled).toBe(false);
+    expect(button("Move down: Week 2").disabled).toBe(true);
+    expect(button("Move up: Message brokers").disabled).toBe(true);
+    expect(button("Move down: Message brokers").disabled).toBe(false);
+    expect(button("Move up: Queues").disabled).toBe(false);
+    expect(button("Move down: Queues").disabled).toBe(true);
   });
 
   it("posts each control with its intent and the id it acts on", () => {
     renderOutline();
-    expect(hiddenValues(button("Move Week 2 up"))).toEqual({ intent: "moveModule", moduleId: weekTwo, direction: "up" });
-    expect(hiddenValues(button("Move Queues up"))).toEqual({ intent: "moveLesson", lessonId: queues, direction: "up" });
+    expect(hiddenValues(button("Move up: Week 2"))).toEqual({ intent: "moveModule", moduleId: weekTwo, direction: "up" });
+    expect(hiddenValues(button("Move up: Queues"))).toEqual({ intent: "moveLesson", lessonId: queues, direction: "up" });
     expect(hiddenValues(button("Delete module Week 2"))).toEqual({ intent: "deleteModule", moduleId: weekTwo });
     expect(hiddenValues(button("Delete lesson Message brokers"))).toEqual({ intent: "deleteLesson", lessonId: brokers });
     expect(hiddenValues(button("Save title of Week 1"))).toEqual({ intent: "renameModule", moduleId: weekOne });

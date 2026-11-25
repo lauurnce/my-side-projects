@@ -136,7 +136,7 @@ export function QuestionBoard({
                       formAction={listFormAction}
                       intent="moveQuestion"
                       fields={{ ...target, direction: "up" }}
-                      name={`Move item ${number} up`}
+                      name={`Move up: item ${number}`}
                       disabled={listPending || index === 0}
                     >
                       Move up
@@ -145,7 +145,7 @@ export function QuestionBoard({
                       formAction={listFormAction}
                       intent="moveQuestion"
                       fields={{ ...target, direction: "down" }}
-                      name={`Move item ${number} down`}
+                      name={`Move down: item ${number}`}
                       disabled={listPending || index === questions.length - 1}
                     >
                       Move down
