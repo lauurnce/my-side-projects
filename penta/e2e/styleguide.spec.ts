@@ -131,17 +131,19 @@ for (const theme of themes) {
       expect(family).toMatch(/^["']?(__)?Big[ _]Shoulders/i);
     });
 
-    test("tabbing to a RouteCard link shows an ink outline and the link is not clipped", async ({
+    test("tabbing to a RouteCard link draws an ink outline on the card, inside its clipped corners", async ({
       page,
       baseURL,
     }) => {
       await openStyleguide(page, theme, baseURL);
       const link = page.getByTestId("demo-route-card").getByRole("link");
+      const card = link.locator("> *").first();
       await tabTo(page, link);
-      await expect(link).toHaveCSS("outline-style", "solid");
-      await expect(link).toHaveCSS("outline-width", "2px");
-      await expect(link).toHaveCSS("outline-color", ink);
-      await expect(link).toHaveCSS("clip-path", "none");
+      await expect(card).toHaveCSS("outline-style", "solid");
+      await expect(card).toHaveCSS("outline-width", "2px");
+      await expect(card).toHaveCSS("outline-color", ink);
+      await expect(card).toHaveCSS("outline-offset", "-6px");
+      await expect(link).toHaveCSS("outline-style", "none");
     });
   });
 }
