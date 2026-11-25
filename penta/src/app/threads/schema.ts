@@ -7,6 +7,7 @@ const bodyMaxText = threadLimits.bodyLength.toLocaleString("en-US");
 export const threadMessages = {
   failed: "Something went wrong. Try again.",
   notFound: "This is not available.",
+  sessionEnded: "Your session ended. Log in again in another tab, then send this again. Your text is still here.",
   badTitle: `Give your question a title of ${threadLimits.titleLength} characters or fewer.`,
   badBody: `Your text was not accepted. Keep it under ${bodyMaxText} characters and ${threadLimits.bodyLines} lines, and remove hidden characters or deeply nested lists.`,
   badName: "Your display name matches your teacher's name. Change your name before posting.",
@@ -85,6 +86,10 @@ export const editPostSchema = z.object({ postId: z.uuid(), body: bodySchema });
 
 function alertState(message: string, values: ThreadFormValues, field?: ThreadField): ThreadFormState {
   return { tone: "alert", message, field, values };
+}
+
+export function sessionEndedState(values: ThreadFormValues): ThreadFormState {
+  return alertState(threadMessages.sessionEnded, values);
 }
 
 export function invalidState(error: z.ZodError, values: ThreadFormValues): ThreadFormState {

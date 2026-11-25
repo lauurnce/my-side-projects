@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadThreadView, threadTargetHref } from "@/lib/threads";
 import {
@@ -15,6 +15,7 @@ import {
   editPostState,
   idOf,
   invalidState,
+  sessionEndedState,
   textOf,
   unixLines,
   type ThreadFormState,
@@ -31,8 +32,8 @@ async function revalidateThread(supabase: Supabase, threadId: string) {
 }
 
 export async function askQuestion(_previousState: ThreadFormState, formData: FormData): Promise<ThreadFormState> {
-  await requireUser();
   const values = { title: textOf(formData, "title"), body: unixLines(textOf(formData, "body")) };
+  if (!(await getCurrentUser())) return sessionEndedState(values);
   const parsed = askQuestionSchema.safeParse({
     ...values,
     classId: formData.get("classId"),
@@ -56,8 +57,8 @@ export async function askQuestion(_previousState: ThreadFormState, formData: For
 }
 
 export async function addPost(_previousState: ThreadFormState, formData: FormData): Promise<ThreadFormState> {
-  await requireUser();
   const values = { body: unixLines(textOf(formData, "body")) };
+  if (!(await getCurrentUser())) return sessionEndedState(values);
   const parsed = addPostSchema.safeParse({
     ...values,
     threadId: formData.get("threadId"),
@@ -77,8 +78,8 @@ export async function addPost(_previousState: ThreadFormState, formData: FormDat
 }
 
 export async function editPost(_previousState: ThreadFormState, formData: FormData): Promise<ThreadFormState> {
-  await requireUser();
   const values = { body: unixLines(textOf(formData, "body")) };
+  if (!(await getCurrentUser())) return sessionEndedState(values);
   const parsed = editPostSchema.safeParse({ ...values, postId: formData.get("postId") });
   if (!parsed.success) return invalidState(parsed.error, values);
 
