@@ -1,5 +1,153 @@
-.list {
+.panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  color: var(--fg);
+}
+
+.add {
+  display: grid;
+  gap: 8px;
+}
+
+.label,
+.count,
+.addButton,
+.number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.label,
+.count {
+  color: var(--fg-muted);
+}
+
+.count {
   margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--fg-muted);
+}
+
+.select {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--fg-muted);
+  border-radius: 0;
+  background: var(--field);
+  color: var(--fg);
+  font: 15px var(--font-body);
+  text-overflow: ellipsis;
+}
+
+.select option {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.addButton {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--fg);
+  border-radius: var(--radius-pill);
+  background: var(--fg);
+  color: var(--fg-inv);
+  cursor: pointer;
+}
+
+.addButton:disabled,
+.icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.list {
+  display: grid;
+  gap: 4px;
+  max-height: calc(100dvh - 120px);
+  margin: 0 -8px;
   padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   list-style: none;
+}
+
+.item {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 192px auto 165px;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: 0 0 0 1px var(--fg-muted);
+  cursor: pointer;
+}
+
+.thumb[aria-current="true"] {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px var(--fg);
+}
+
+.thumb:focus-visible {
+  outline-offset: 6px;
+}
+
+.number {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  padding: 3px 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.thumb[aria-current="true"] .number {
+  background: var(--fg);
+  color: var(--fg-inv);
+}
+
+.actions {
+  display: flex;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.icon:focus-visible {
+  outline-offset: -4px;
+}
+
+@media (hover: hover) {
+  .icon:hover:not(:disabled) {
+    background: var(--pill-idle);
+  }
+
+  .addButton:hover:not(:disabled) {
+    background: var(--fg-muted);
+    border-color: var(--fg-muted);
+  }
 }

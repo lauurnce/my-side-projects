@@ -18,6 +18,6 @@ describe("Editor", () => {
     expect(screen.getByRole("link", { name: "Back to the class" }).getAttribute("href")).toBe("/classes/class-1");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByRole("toolbar", { name: "Slide tools" })).toBeTruthy();
-    expect(screen.getByText("Message queues")).toBeTruthy();
+    expect(screen.getAllByText("Message queues").length).toBeGreaterThan(0);
   });
 });
