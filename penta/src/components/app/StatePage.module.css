@@ -1,0 +1,97 @@
+.page {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  max-width: 720px;
+  min-height: 50vh;
+  align-content: center;
+  padding: 64px var(--gutter);
+  color: var(--fg);
+}
+
+.label {
+  margin: 0;
+}
+
+.title,
+.loading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--display-l);
+  line-height: 0.86;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.loading {
+  font-size: var(--display-m);
+  color: var(--fg-soft);
+}
+
+.text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--fg-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--fg);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus-visible {
+  background: var(--fg);
+  color: var(--fg-inv);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent-mark);
+  outline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 40px 20px;
+  }
+
+  .title {
+    font-size: var(--display-m);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .loading {
+    animation: wait 1.2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes wait {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

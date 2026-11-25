@@ -1,14 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { SectionError } from "@/components/app/StatePage";
 
-export default function LessonError() {
-  return (
-    <div role="alert">
-      <h1>This lesson could not be shown</h1>
-      <p>
-        <Link href="/classes">Back to your classes</Link>
-      </p>
-    </div>
-  );
+export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
+  return <SectionError reset={reset} />;
 }
