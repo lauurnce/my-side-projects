@@ -28,6 +28,7 @@ export const handInMessages = {
   incomplete: "The upload did not finish. Try again.",
   grew: "The uploaded file is larger than the file you chose. Upload it again.",
   failed: "The file could not be handed in. Try again.",
+  gone: "This activity is no longer open to you, so the file was not handed in.",
 } as const;
 
 export const startHandInSchema = z.object({
@@ -84,6 +85,7 @@ export function completionStep(reply: unknown): CompletionStep {
   if (status === "completed") return { step: "done", oldPath: oldPath ?? null };
   if (status === "too_large") return { step: "remove", path: filePath ?? null, message: handInMessages.grew };
   if (status === "graded") return { step: "remove", path: filePath ?? null, message: handInMessages.graded };
+  if (status === "gone") return { step: "remove", path: filePath ?? null, message: handInMessages.gone };
   if (status === "not_pending") return { step: "keep", message: handInMessages.replaced };
   return { step: "keep", message: handInMessages.failed };
 }

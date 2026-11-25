@@ -124,6 +124,14 @@ describe("completion reply", () => {
     expect(completionStep({ status: "completed" })).toEqual({ step: "done", oldPath: null });
   });
 
+  it("removes the file when the activity is no longer open to the student", () => {
+    expect(completionStep({ status: "gone", file_path: path })).toEqual({
+      step: "remove",
+      path,
+      message: "This activity is no longer open to you, so the file was not handed in.",
+    });
+  });
+
   it("removes a file that grew past the declared size", () => {
     expect(completionStep({ status: "too_large", file_path: path })).toEqual({
       step: "remove",
