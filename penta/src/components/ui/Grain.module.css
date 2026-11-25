@@ -7,3 +7,9 @@
   mix-blend-mode: var(--grain-blend);
   pointer-events: none;
 }
+
+@media print {
+  .grain {
+    display: none;
+  }
+}

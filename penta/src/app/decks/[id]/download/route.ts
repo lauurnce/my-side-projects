@@ -12,13 +12,14 @@ function notFound(): NextResponse {
   return new NextResponse("Not found", { status: 404, headers: noStore });
 }
 
-export async function GET(_request: Request, { params }: RouteContext<"/decks/[id]/download">) {
+export async function GET(request: Request, { params }: RouteContext<"/decks/[id]/download">) {
   const user = await getCurrentUser();
   const deckId = deckIdSchema.safeParse((await params).id);
   if (!user || !deckId.success) return notFound();
 
   const deck = await loadDeck(await createClient(), deckId.data);
-  if (!deck || !deck.ready || !isUploadedDeck(deck)) return notFound();
+  if (!deck || !deck.ready) return notFound();
+  if (!isUploadedDeck(deck)) return NextResponse.redirect(new URL(`/decks/${deck.id}/print`, request.url), { status: 302, headers: noStore });
 
   const url = await signDeckDownload(deck.originalPath ?? deck.pdfPath, downloadFileName(deck.title, deck.kind));
   if (!url) return new NextResponse("The file is not available right now. Try again.", { status: 503, headers: noStore });

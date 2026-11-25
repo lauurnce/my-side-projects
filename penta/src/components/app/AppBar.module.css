@@ -111,3 +111,9 @@
     justify-content: flex-start;
   }
 }
+
+@media print {
+  .bar {
+    display: none;
+  }
+}
