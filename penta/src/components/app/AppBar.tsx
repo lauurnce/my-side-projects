@@ -11,14 +11,14 @@ export function AppBar({ user }: { user: CurrentUser }) {
       <a href="#main" className="skip-link">
         Skip to the page
       </a>
-      <Link href="/hub" aria-label="Penta, hub" className={`spray-tag ${styles.brand}`}>
+      <Link prefetch={false} href="/hub" aria-label="Penta, hub" className={`spray-tag ${styles.brand}`}>
         Penta
       </Link>
-      <Link href="/classes" className={styles.link}>
+      <Link prefetch={false} href="/classes" className={styles.link}>
         Classes
       </Link>
       {user.role === "student" ? (
-        <Link href="/grades" className={styles.link}>
+        <Link prefetch={false} href="/grades" className={styles.link}>
           Grades
         </Link>
       ) : null}

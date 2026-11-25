@@ -28,7 +28,7 @@ export function StatePage({ label, title, children, href, linkText, onRetry, ale
           </button>
         )}
         {href && linkText && (
-          <Link className={styles.button} href={href}>
+          <Link prefetch={false} className={styles.button} href={href}>
             {linkText}
           </Link>
         )}
