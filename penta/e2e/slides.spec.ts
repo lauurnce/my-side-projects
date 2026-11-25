@@ -53,6 +53,10 @@ async function retype(page: Page, blockName: string, fieldName: string, text: st
   await page.keyboard.press("Enter");
 }
 
+function isRequestCancelledByLeaving(error: Error): boolean {
+  return /\/rest\/v1\/rpc\/live_state due to access control checks\.$/.test(error.message);
+}
+
 function saved(page: Page) {
   return expect(page.getByRole("status").filter({ hasText: /^Saved$/ })).toBeVisible({ timeout: 15000 });
 }
@@ -90,8 +94,11 @@ test("a teacher builds a deck, reorders it, presents it live, and a student foll
   const teacher = await teacherContext.newPage();
   const student = await studentContext.newPage();
   const pageErrors: string[] = [];
-  teacher.on("pageerror", (error) => pageErrors.push(`teacher: ${error.message}`));
-  student.on("pageerror", (error) => pageErrors.push(`student: ${error.message}`));
+  const keep = (who: string) => (error: Error) => {
+    if (!isRequestCancelledByLeaving(error)) pageErrors.push(`${who}: ${error.message}`);
+  };
+  teacher.on("pageerror", keep("teacher"));
+  student.on("pageerror", keep("student"));
   await logIn(teacher, teacherUser.email);
   await logIn(student, studentUser.email);
 
