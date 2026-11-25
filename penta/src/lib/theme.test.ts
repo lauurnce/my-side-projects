@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { oppositeTheme, parseTheme, switchTheme, themeBootScript, themeCookie } from "@/lib/theme";
+import { applyStoredTheme, oppositeTheme, parseTheme, storedTheme, switchTheme, themeBootScript, themeCookie } from "@/lib/theme";
 
 function rootWithTheme(theme?: string) {
   const root = document.createElement("html");
@@ -102,5 +102,23 @@ describe("themeBootScript", () => {
     document.documentElement.dataset.theme = "light";
     new Function(themeBootScript)();
     expect(document.documentElement.dataset.theme).toBe("light");
+  });
+});
+
+describe("applyStoredTheme", () => {
+  it("puts the stored theme back on a page that rendered without it", () => {
+    const root = document.createElement("html");
+    root.dataset.theme = "light";
+    applyStoredTheme(root, "other=1; penta-theme=dark; sb-token=abc");
+    expect(root.dataset.theme).toBe("dark");
+    applyStoredTheme(root, "penta-theme=light");
+    expect(root.dataset.theme).toBe("light");
+  });
+
+  it("falls back to light with no cookie, an unknown value or a cookie that only looks alike", () => {
+    for (const cookies of ["", "penta-theme=sepia", "not-penta-theme=dark", "penta-theme-old=dark"]) {
+      expect(storedTheme(cookies)).toBe("light");
+    }
+    expect(storedTheme("penta-theme=dark")).toBe("dark");
   });
 });

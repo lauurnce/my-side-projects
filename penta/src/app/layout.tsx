@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { fontVariables } from "@/app/fonts";
+import { ThemeSync } from "@/components/app/ThemeSync";
 import { themeBootScript } from "@/lib/theme";
 import "@/styles/tokens.css";
 import "@/styles/globals.css";
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeSync />
+        {children}
+      </body>
     </html>
   );
 }

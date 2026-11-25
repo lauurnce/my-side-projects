@@ -18,6 +18,16 @@ export function themeCookie(theme: Theme): string {
   return `${themeCookieName}=${theme}; Path=/; Max-Age=${oneYearInSeconds}; SameSite=Lax`;
 }
 
+export function storedTheme(cookieText: string): Theme {
+  const found = cookieText.split("; ").find((part) => part.startsWith(`${themeCookieName}=`));
+  return parseTheme(found?.slice(themeCookieName.length + 1));
+}
+
+export function applyStoredTheme(root: HTMLElement, cookieText: string): void {
+  const theme = storedTheme(cookieText);
+  if (root.dataset.theme !== theme) root.dataset.theme = theme;
+}
+
 export function switchTheme(root: HTMLElement, cookieJar: { cookie: string }): Theme {
   const next = oppositeTheme(parseTheme(root.dataset.theme));
   root.dataset.theme = next;
