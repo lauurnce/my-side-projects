@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ClassesError from "@/app/classes/error";
-import ClassesLoading from "@/app/classes/loading";
+import GradesLoading from "@/app/grades/loading";
 import ClassesNotFound from "@/app/classes/not-found";
 import RootError from "@/app/error";
 import LessonError from "@/app/classes/[id]/lessons/[lessonId]/error";
@@ -43,7 +43,7 @@ describe("not-found pages", () => {
 
 describe("loading pages", () => {
   it("announce that the page is loading", () => {
-    render(<ClassesLoading />);
+    render(<GradesLoading />);
     expect(screen.getByRole("status").textContent).toContain("Loading");
     cleanup();
     render(<LoadingPage />);
