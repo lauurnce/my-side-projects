@@ -51,7 +51,7 @@ function DeckRow({ deck, lessons, live, formAction, pending }: DeckRowProps) {
       <div className={styles.deckInfo}>
         <div className={styles.titleRow}>
           {deck.ready ? (
-            <Link className={styles.deckTitle} href={deckPath(deck.id)}>
+            <Link prefetch={false} className={styles.deckTitle} href={deckPath(deck.id)}>
               {deck.title}
             </Link>
           ) : (
@@ -87,7 +87,7 @@ function DeckRow({ deck, lessons, live, formAction, pending }: DeckRowProps) {
         </form>
         <div className={styles.actions}>
           {deck.kind === "native" && (
-            <Link className={styles.button} href={deckEditPath(deck.id)} aria-label={`Edit ${deck.title}`}>
+            <Link prefetch={false} className={styles.button} href={deckEditPath(deck.id)} aria-label={`Edit ${deck.title}`}>
               Edit
             </Link>
           )}

@@ -73,7 +73,7 @@ export function OutlineList({ classId, outline }: { classId: string; outline: Cl
           <ol className={styles.lessons}>
             {moduleItem.lessons.map((lesson) => (
               <li key={lesson.id}>
-                <Link className={styles.lesson} href={lessonHref(classId, lesson.id)}>
+                <Link prefetch={false} className={styles.lesson} href={lessonHref(classId, lesson.id)}>
                   <span className={styles.lessonMeta}>
                     <StatusChip status={lesson.done ? "graded" : "due"}>{lesson.done ? "Done" : "To do"}</StatusChip>
                     <span className={styles.minutes}>{lesson.estMinutes} min</span>

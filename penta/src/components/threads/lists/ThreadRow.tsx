@@ -12,7 +12,7 @@ export function ThreadRow({ thread, showTarget = false }: ThreadRowProps) {
 
   return (
     <li className={styles.row}>
-      <Link href={`/threads/${thread.id}`} className={styles.rowTitle}>
+      <Link prefetch={false} href={`/threads/${thread.id}`} className={styles.rowTitle}>
         <bdi>{thread.title}</bdi>
       </Link>
       <p className={styles.rowMeta}>

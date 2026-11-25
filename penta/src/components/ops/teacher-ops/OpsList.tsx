@@ -27,7 +27,7 @@ export function OpsList({ rows }: { rows: OpsRow[] }) {
       {rows.map((row) => (
         <li key={row.id} className={outlineStyles.lesson}>
           <div className={outlineStyles.lessonInfo}>
-            <Link className={outlineStyles.lessonTitle} href={`/ops/${row.id}`} dir="auto">
+            <Link prefetch={false} className={outlineStyles.lessonTitle} href={`/ops/${row.id}`} dir="auto">
               {row.title}
             </Link>
             <div className={outlineStyles.meta}>
@@ -41,7 +41,7 @@ export function OpsList({ rows }: { rows: OpsRow[] }) {
           </div>
           {row.kind === "Quiz" && (
             <div className={outlineStyles.actions}>
-              <Link
+              <Link prefetch={false}
                 className={outlineStyles.button}
                 href={`/ops/${row.id}/results`}
                 aria-label={`Results of ${row.title}`}

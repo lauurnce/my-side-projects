@@ -71,7 +71,7 @@ function LessonRow({
   return (
     <li className={styles.lesson}>
       <div className={styles.lessonInfo}>
-        <Link className={styles.lessonTitle} href={lessonPath(classId, lesson.id)}>
+        <Link prefetch={false} className={styles.lessonTitle} href={lessonPath(classId, lesson.id)}>
           {lesson.title}
         </Link>
         <div className={styles.meta}>
@@ -80,7 +80,7 @@ function LessonRow({
         </div>
       </div>
       <div className={styles.actions}>
-        <Link className={styles.button} href={lessonEditPath(classId, lesson.id)} aria-label={`Edit ${lesson.title}`}>
+        <Link prefetch={false} className={styles.button} href={lessonEditPath(classId, lesson.id)} aria-label={`Edit ${lesson.title}`}>
           Edit
         </Link>
         <ActionButton
