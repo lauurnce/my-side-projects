@@ -23,7 +23,7 @@ function ThreadGone() {
   return (
     <div className={styles.page}>
       <h1 className={styles.gone}>This question is no longer available.</h1>
-      <Link href="/classes" className={styles.back}>
+      <Link prefetch={false} href="/classes" className={styles.back}>
         Back to your classes
       </Link>
     </div>
@@ -62,7 +62,7 @@ export function ThreadScreen({ initial }: ThreadScreenProps) {
 
   return (
     <div className={styles.page}>
-      <Link href={threadTargetHref(thread)} className={styles.back}>
+      <Link prefetch={false} href={threadTargetHref(thread)} className={styles.back}>
         <span>
           Back to <bdi>{thread.targetTitle || "the class"}</bdi>
         </span>
