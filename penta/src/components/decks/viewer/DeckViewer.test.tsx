@@ -181,7 +181,7 @@ describe("DeckViewer", () => {
     expect(options).toMatchObject({
       disableAutoFetch: true,
       disableStream: true,
-      rangeChunkSize: 262144,
+      rangeChunkSize: 1048576,
       isEvalSupported: false,
       enableXfa: false,
       stopAtErrors: true,

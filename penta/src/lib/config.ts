@@ -44,6 +44,7 @@ export const deckLimits = {
   viewUrlSeconds: 60 * 60,
   downloadUrlSeconds: 60,
   seenAfterMilliseconds: 1000,
+  rangeChunkBytes: megabyte,
 } as const;
 
 export const liveLimits = {

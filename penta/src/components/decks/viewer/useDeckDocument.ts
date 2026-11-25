@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { refreshDeckSource } from "@/app/decks/view-actions";
+import { deckLimits } from "@/lib/config";
 import type { DeckSource } from "@/components/decks/DeckViewer";
 import { documentOptions, loadPdfjs } from "@/lib/pdf-client";
 import { createRangeReader, type RangeReader } from "./range-fetch";
@@ -18,8 +19,6 @@ export type DeckDocument = {
 };
 
 type Opened = { key: string; doc: PdfDocument; annotationMode: number };
-
-const rangeChunkSize = 262144;
 
 function createTransport(pdfjs: Pdfjs, length: number, readRange: RangeReader, onFailure: () => void) {
   class DeckRangeTransport extends pdfjs.PDFDataRangeTransport {
@@ -77,7 +76,7 @@ export function useDeckDocument(deckId: string, source: DeckSource | null): Deck
         range: transport,
         disableAutoFetch: true,
         disableStream: true,
-        rangeChunkSize,
+        rangeChunkSize: deckLimits.rangeChunkBytes,
         ...documentOptions,
       });
       const doc = await task.promise;
