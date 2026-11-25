@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { liveLimits } from "@/lib/config";
 import { noLive, type LiveState } from "@/lib/live";
-import { usePresenter, type PresenterOptions } from "./usePresenter";
+import { presenterProblems, usePresenter, type PresenterOptions } from "./usePresenter";
 
-type Answer = { data: unknown; error: unknown };
+type Answer = { data: unknown; error: unknown; status?: number };
 type Call = { name: string; args: Record<string, unknown>; settle: (answer: Answer) => void };
 
 const calls: Call[] = [];
@@ -315,5 +315,29 @@ describe("usePresenter heartbeat", () => {
     unmount();
     await advance(2 * liveLimits.heartbeatMilliseconds);
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("usePresenter after the teacher is signed out", () => {
+  it("stops retrying a slide move and says the teacher is signed out", async () => {
+    const { result } = mount(options());
+    act(() => result.current.move(5));
+    await advance(liveLimits.moveGapMilliseconds);
+    const sent = calls.filter((call) => call.name === "move_live");
+    expect(sent).toHaveLength(1);
+    sent[0].settle({ data: null, error: { message: "JWT expired" }, status: 401 });
+    await advance(liveLimits.moveRetryMilliseconds * 5);
+    expect(calls.filter((call) => call.name === "move_live")).toHaveLength(1);
+    expect(result.current.problem).toBe(presenterProblems.signedOut);
+  });
+
+  it("says so when the session could not be ended, and clears it once it ends", async () => {
+    const { result } = mount(options());
+    act(() => result.current.end());
+    await answer(calls[0], null, { message: "JWT expired" });
+    expect(result.current.problem).toBe(presenterProblems.endFailed);
+    act(() => result.current.end());
+    await answer(calls[1], "ended");
+    expect(result.current.problem).toBeNull();
   });
 });

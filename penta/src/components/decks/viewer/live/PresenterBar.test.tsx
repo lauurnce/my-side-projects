@@ -178,3 +178,18 @@ describe("PresenterBar when presenting", () => {
     expect(button("End session").disabled).toBe(false);
   });
 });
+
+describe("PresenterBar problems", () => {
+  it("shows a problem as an alert and drops the retry line", () => {
+    render(<PresenterBar {...props({ presenting: true, unsent: true, problem: "You are signed out." })} />);
+    expect(screen.getByRole("alert").textContent).toBe("You are signed out.");
+    expect(screen.queryByText("Slide not sent, retrying")).toBeNull();
+  });
+
+  it("shows no alert without a problem", () => {
+    render(<PresenterBar {...props({ presenting: true, unsent: true })} />);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Slide not sent, retrying")).toBeTruthy();
+  });
+});
+

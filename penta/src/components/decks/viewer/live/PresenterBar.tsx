@@ -11,12 +11,13 @@ export type PresenterBarProps = {
   link: LiveLink;
   unsent: boolean;
   lastReadAt: number;
+  problem?: string | null;
   onPresent: () => void;
   onEnd: () => void;
 };
 
 export function PresenterBar(props: PresenterBarProps) {
-  const { presenting, busy, ready, followers, link, unsent, lastReadAt, onPresent, onEnd } = props;
+  const { presenting, busy, ready, followers, link, unsent, lastReadAt, problem, onPresent, onEnd } = props;
 
   if (!presenting) {
     return (
@@ -37,8 +38,13 @@ export function PresenterBar(props: PresenterBarProps) {
       <div role="status" className={styles.status}>
         <p className={styles.followers}>{followerSentence(followers)}</p>
         {connection && <p className={styles.notice}>{connection}</p>}
-        {unsent && <p className={styles.notice}>Slide not sent, retrying</p>}
+        {unsent && !problem && <p className={styles.notice}>Slide not sent, retrying</p>}
       </div>
+      {problem && (
+        <p role="alert" className={styles.notice}>
+          {problem}
+        </p>
+      )}
       <button type="button" className={styles.end} disabled={busy} onClick={onEnd}>
         End session
       </button>

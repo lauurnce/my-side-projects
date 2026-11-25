@@ -17,10 +17,16 @@ export type Presenter = {
   presenting: boolean;
   busy: boolean;
   unsent: boolean;
+  problem: string | null;
   present: () => void;
   end: () => void;
   move: (slide: number) => void;
 };
+
+export const presenterProblems = {
+  signedOut: "You are signed out. Log in again in another tab to keep presenting.",
+  endFailed: "The session could not be ended. Check that you are still logged in, then try again.",
+} as const;
 
 function toMoveResult(data: unknown, fallbackRevision: number): MoveResult {
   const { status, revision } = (data ?? {}) as { status?: unknown; revision?: unknown };
@@ -35,6 +41,7 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
   const [busy, setBusy] = useState(false);
   const [unsent, setUnsent] = useState(false);
   const [settled, setSettled] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
   const session = useRef(live.sessionId);
   const ownRevision = useRef(0);
   const queue = useRef<MoveQueue | null>(null);
@@ -49,9 +56,13 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
       send: async (target) => {
         const id = session.current;
         if (!id) return { status: "ended" };
-        const { data, error } = await supabase
+        const { data, error, status } = await supabase
           .rpc("move_live", { target_session: id, slide: target })
           .abortSignal(AbortSignal.timeout(liveLimits.moveTimeoutMilliseconds));
+        if (error && status === 401) {
+          setProblem(presenterProblems.signedOut);
+          return { status: "ended" };
+        }
         return error ? { status: "failed" } : toMoveResult(data, ownRevision.current);
       },
       onSent: (_slide, revision) => {
@@ -99,7 +110,10 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
     if (!id || busy) return;
     setBusy(true);
     void Promise.resolve(supabase.rpc("end_live", { target_session: id }))
-      .then(() => read())
+      .then(({ error }) => {
+        setProblem(error ? presenterProblems.endFailed : null);
+        return read();
+      })
       .finally(() => setBusy(false));
   }, [supabase, busy, read]);
 
@@ -110,5 +124,5 @@ export function usePresenter({ deckId, enabled, live, slide, read, adopt }: Pres
     [presenting],
   );
 
-  return { presenting, busy, unsent: presenting && unsent, present, end, move };
+  return { presenting, busy, unsent: presenting && unsent, problem, present, end, move };
 }

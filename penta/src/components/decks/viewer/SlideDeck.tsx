@@ -172,6 +172,7 @@ export function SlideDeck({
           link={link}
           unsent={presenter.unsent}
           lastReadAt={lastReadAt}
+          problem={presenter.problem}
           onPresent={presenter.present}
           onEnd={presenter.end}
         />
