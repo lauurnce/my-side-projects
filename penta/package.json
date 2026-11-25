@@ -16,7 +16,8 @@
     "e2e": "playwright test",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "types:db": "npx supabase@3.4.0 gen types typescript --local > src/lib/database.types.ts",
-    "seed": "node scripts/seed.ts"
+    "seed": "node scripts/seed.ts",
+    "demo:reset": "npx supabase@3.4.0 db reset --local && node scripts/seed.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
