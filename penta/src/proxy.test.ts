@@ -73,6 +73,28 @@ describe("proxy matcher", () => {
 });
 
 describe("proxy without a user", () => {
+  it("lets a server action request through so the action can answer for itself", async () => {
+    sessionIs(signedOut);
+    const request = new NextRequest("http://localhost:3000/threads/abc", { method: "POST", headers: { "next-action": "4f0e" } });
+    const response = await proxy(request);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("still redirects a plain POST and a GET that carries the action header", async () => {
+    sessionIs(signedOut);
+    const post = await proxy(new NextRequest("http://localhost:3000/threads/abc", { method: "POST" }));
+    const get = await proxy(new NextRequest("http://localhost:3000/threads/abc", { headers: { "next-action": "4f0e" } }));
+    expect(post.status).toBe(307);
+    expect(get.status).toBe(307);
+  });
+
+  it("still answers 503 to a server action when the session cannot be checked", async () => {
+    sessionCheckThrows();
+    const request = new NextRequest("http://localhost:3000/threads/abc", { method: "POST", headers: { "next-action": "4f0e" } });
+    expect((await proxy(request)).status).toBe(503);
+  });
+
   it("redirects a guarded path to the login page with the path and the query as next", async () => {
     sessionIs(signedOut);
     const response = await proxy(requestFor("/classes/abc?tab=people&sort=name"));

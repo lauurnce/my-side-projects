@@ -69,6 +69,8 @@ export async function proxy(request: NextRequest) {
 
   if (isGuarded(pathname) && session === "unavailable") return unavailable();
 
+  if (request.method === "POST" && request.headers.has("next-action")) return response;
+
   if (isGuarded(pathname) && session === "guest") {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", `${pathname}${search}`);
