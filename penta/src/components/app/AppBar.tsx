@@ -8,6 +8,9 @@ import { SignOutButton } from "./SignOutButton";
 export function AppBar({ user }: { user: CurrentUser }) {
   return (
     <header className={styles.bar}>
+      <a href="#main" className="skip-link">
+        Skip to the page
+      </a>
       <Link href="/hub" aria-label="Penta, hub" className={`spray-tag ${styles.brand}`}>
         Penta
       </Link>

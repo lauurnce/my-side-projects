@@ -32,6 +32,13 @@ describe("AppBar", () => {
     expect(document.querySelector("img")).toBeNull();
   });
 
+  it("starts with a skip link to the page", () => {
+    render(<AppBar user={teacher} />);
+    const first = screen.getAllByRole("link")[0];
+    expect(first.textContent).toBe("Skip to the page");
+    expect(first.getAttribute("href")).toBe("#main");
+  });
+
   it("links the brand to the hub and has a link to the classes", () => {
     render(<AppBar user={teacher} />);
     expect(screen.getByRole("link", { name: "Penta, hub" }).getAttribute("href")).toBe("/hub");
