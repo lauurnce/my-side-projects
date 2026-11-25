@@ -99,8 +99,25 @@
   color: var(--ink);
 }
 
-:where(.field) {
+.fieldFrame {
   position: absolute;
+  display: flex;
+  align-items: flex-start;
+}
+
+.fieldFrame[data-type="box"] {
+  align-items: center;
+}
+
+.fieldFrame[data-type="box"] .field {
+  height: auto;
+  max-height: 100%;
+  field-sizing: content;
+}
+
+:where(.field) {
+  width: 100%;
+  height: 100%;
   display: block;
   box-sizing: border-box;
   margin: 0;

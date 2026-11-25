@@ -288,21 +288,26 @@ export function Canvas({ slide, selectedBlock, imageBase, dispatch }: CanvasProp
       </div>
       {edited ? (
         <div className={styles.editLayer} style={{ transform: `scale(${scale})` }}>
-          <textarea
-            ref={fieldRef}
-            className={`${blockTextClass(edited)} ${styles.field}`}
+          <div
+            className={styles.fieldFrame}
+            data-type={edited.type}
             style={{ left: edited.x, top: edited.y, width: edited.w, height: edited.h }}
-            aria-label={`${typeNames[edited.type]} text`}
-            data-tone={"tone" in edited ? edited.tone : undefined}
-            data-fill={"fill" in edited ? edited.fill : undefined}
-            value={edited.text}
-            maxLength={textLimits[edited.type]}
-            rows={1}
-            spellCheck={false}
-            onChange={(event) => changeText(event, edited)}
-            onKeyDown={(event) => pressFieldKey(event, edited)}
-            onBlur={() => setEditing(null)}
-          />
+          >
+            <textarea
+              ref={fieldRef}
+              className={`${blockTextClass(edited)} ${styles.field}`}
+              aria-label={`${typeNames[edited.type]} text`}
+              data-tone={"tone" in edited ? edited.tone : undefined}
+              data-fill={"fill" in edited ? edited.fill : undefined}
+              value={edited.text}
+              maxLength={textLimits[edited.type]}
+              rows={1}
+              spellCheck={false}
+              onChange={(event) => changeText(event, edited)}
+              onKeyDown={(event) => pressFieldKey(event, edited)}
+              onBlur={() => setEditing(null)}
+            />
+          </div>
         </div>
       ) : null}
     </div>
