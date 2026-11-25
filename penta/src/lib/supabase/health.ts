@@ -9,7 +9,7 @@ export async function isDatabaseReachable(): Promise<boolean> {
       signal: AbortSignal.timeout(2000),
       cache: "no-store",
     });
-    return response.ok;
+    return response.status < 500;
   } catch {
     return false;
   }

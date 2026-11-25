@@ -29,7 +29,14 @@ describe("isDatabaseReachable", () => {
     expect(await isDatabaseReachable()).toBe(true);
   });
 
-  it("is false when the data api answers with an error", async () => {
+  it("is true when the data api answers but refuses the public key at its root", async () => {
+    configureDatabase();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 401 })));
+
+    expect(await isDatabaseReachable()).toBe(true);
+  });
+
+  it("is false when the data api answers with a server error", async () => {
     configureDatabase();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
 
