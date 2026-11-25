@@ -2,7 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { liveLimits } from "@/lib/config";
 import type { Database } from "@/lib/database.types";
 
-export type LiveState = { sessionId: string | null; slide: number; revision: number; running: boolean };
+export type LiveState = {
+  sessionId: string | null;
+  slide: number;
+  revision: number;
+  running: boolean;
+  contentVersion?: number | null;
+};
 
 export type LiveSync = { state: LiveState; appliedRequest: number };
 
@@ -26,11 +32,12 @@ export function liveTopic(deckId: string): string {
 
 export function toLiveState(value: unknown): LiveState | null {
   if (typeof value !== "object" || value === null) return null;
-  const { session_id, current_slide, revision, running } = value as Record<string, unknown>;
+  const { session_id, current_slide, revision, running, content_version } = value as Record<string, unknown>;
   if (typeof revision !== "number" || typeof running !== "boolean") return null;
-  if (session_id === null) return { ...noLive, revision };
+  const content = typeof content_version === "number" ? { contentVersion: content_version } : {};
+  if (session_id === null) return { ...noLive, revision, ...content };
   if (typeof session_id !== "string" || typeof current_slide !== "number") return null;
-  return { sessionId: session_id, slide: current_slide, revision, running };
+  return { sessionId: session_id, slide: current_slide, revision, running, ...content };
 }
 
 export function applyAnswer(sync: LiveSync, requestNo: number, answer: LiveState): LiveSync {

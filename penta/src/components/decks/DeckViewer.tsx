@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BracketLabel } from "@/components/ui/BracketLabel";
 import { deckFormat, type DeckDetail } from "@/lib/decks";
 import type { LiveState } from "@/lib/live";
+import type { DeckContent } from "@/lib/slides/schema";
 import { SlideDeck } from "./viewer/SlideDeck";
 import styles from "./viewer/viewer.module.css";
 
@@ -14,13 +15,24 @@ export type DeckViewerIdentity = { id: string; isOwner: boolean };
 export type DeckViewerProps = {
   deck: DeckDetail;
   source: DeckSource | null;
+  content?: DeckContent | null;
+  contentVersion?: number | null;
   viewedSlides: number[];
   recordsViews: boolean;
   viewer: DeckViewerIdentity;
   initialLive: LiveState;
 };
 
-export function DeckViewer({ deck, source, viewedSlides, recordsViews, viewer, initialLive }: DeckViewerProps) {
+export function DeckViewer({
+  deck,
+  source,
+  content = null,
+  contentVersion = null,
+  viewedSlides,
+  recordsViews,
+  viewer,
+  initialLive,
+}: DeckViewerProps) {
   const format = deckFormat(deck.kind);
 
   return (
@@ -37,10 +49,12 @@ export function DeckViewer({ deck, source, viewedSlides, recordsViews, viewer, i
           <h1 className={styles.title}>{deck.title}</h1>
         </header>
 
-        {source ? (
+        {source || content ? (
           <SlideDeck
             deck={deck}
             source={source}
+            content={content}
+            contentVersion={contentVersion}
             viewedSlides={viewedSlides}
             recordsViews={recordsViews}
             viewer={viewer}
@@ -51,8 +65,13 @@ export function DeckViewer({ deck, source, viewedSlides, recordsViews, viewer, i
         )}
 
         <a className={styles.download} href={`/decks/${deck.id}/download`}>
-          Download {format}
+          {deck.kind === "native" ? "Export PDF" : `Download ${format}`}
         </a>
+        {deck.kind === "native" && viewer.isOwner && (
+          <Link className={styles.download} href={`/decks/${deck.id}/edit`}>
+            Edit slides
+          </Link>
+        )}
       </div>
     </div>
   );

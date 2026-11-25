@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { DeckSource, DeckViewerIdentity } from "@/components/decks/DeckViewer";
+import { SlideRenderer } from "@/components/slides/SlideRenderer";
 import { liveLimits } from "@/lib/config";
 import type { DeckDetail } from "@/lib/decks";
 import { followReducer, type LiveState } from "@/lib/live";
+import { slideSpeech, type DeckContent } from "@/lib/slides/schema";
 import { createClient } from "@/lib/supabase/client";
 import { FollowBar } from "./live/FollowBar";
 import { PresenterBar } from "./live/PresenterBar";
@@ -17,7 +20,9 @@ import styles from "./viewer.module.css";
 
 export type SlideDeckProps = {
   deck: DeckDetail;
-  source: DeckSource;
+  source: DeckSource | null;
+  content?: DeckContent | null;
+  contentVersion?: number | null;
   viewedSlides: number[];
   recordsViews: boolean;
   viewer: DeckViewerIdentity;
@@ -32,7 +37,26 @@ function ArrowIcon({ path }: { path: string }) {
   );
 }
 
-export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, initialLive }: SlideDeckProps) {
+function ContentWatch({ shown, latest }: { shown: number; latest: number | null | undefined }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (typeof latest === "number" && latest !== shown) router.refresh();
+  }, [router, shown, latest]);
+
+  return null;
+}
+
+export function SlideDeck({
+  deck,
+  source,
+  content = null,
+  contentVersion = null,
+  viewedSlides,
+  recordsViews,
+  viewer,
+  initialLive,
+}: SlideDeckProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -53,10 +77,14 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, in
   });
 
   const { status, doc, annotationMode, fail, retry } = useDeckDocument(deck.id, source);
-  const total = doc?.numPages ?? Math.max(deck.slideCount, 1);
+  const total = content ? content.slides.length : (doc?.numPages ?? Math.max(deck.slideCount, 1));
   const slide = clampSlide(wanted, total);
   const box = useBoxSize(boxRef);
-  const { painted, text } = useSlideCanvas({ doc, annotationMode, slide, box, canvasRef, onError: fail });
+  const pdf = useSlideCanvas({ doc, annotationMode, slide, box, canvasRef, onError: fail });
+  const built = content ? content.slides[slide - 1] : null;
+  const painted = built ? true : pdf.painted;
+  const text = built ? slideSpeech(built) : pdf.text;
+  const ready = content !== null || doc !== null;
 
   const deckId = deck.id;
   const viewerId = viewer.id;
@@ -123,7 +151,7 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, in
     if (step !== 0) goTo(slide + step);
   };
 
-  const failed = status === "failed";
+  const failed = !content && status === "failed";
   const viewedCount = Math.min(seen.size, deck.slideCount);
 
   return (
@@ -139,7 +167,7 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, in
         <PresenterBar
           presenting={presenter.presenting}
           busy={presenter.busy}
-          ready={doc !== null}
+          ready={ready}
           followers={followers}
           link={link}
           unsent={presenter.unsent}
@@ -179,7 +207,11 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, in
         }}
       >
         <div ref={boxRef} className={styles.slide}>
-          <canvas ref={canvasRef} className={styles.canvas} data-painted={painted} aria-hidden="true" />
+          {built ? (
+            box && <SlideRenderer slide={built} imageBase={`/decks/${deck.id}/images/`} width={box.width} />
+          ) : (
+            <canvas ref={canvasRef} className={styles.canvas} data-painted={painted} aria-hidden="true" />
+          )}
           {!painted && !failed && <p className={styles.loading}>Loading slide {slide}</p>}
           {failed && (
             <div className={styles.failure} role="alert">
@@ -214,6 +246,7 @@ export function SlideDeck({ deck, source, viewedSlides, recordsViews, viewer, in
         </button>
       </div>
 
+      {content && contentVersion !== null && <ContentWatch shown={contentVersion} latest={live.contentVersion} />}
       <p className="visually-hidden" aria-live="polite" aria-atomic="true">
         {text === null ? "" : slideAnnouncement(slide, total, text)}
       </p>

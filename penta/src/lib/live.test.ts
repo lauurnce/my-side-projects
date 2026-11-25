@@ -26,6 +26,17 @@ describe("liveTopic", () => {
 });
 
 describe("toLiveState", () => {
+  it("carries the content version of a deck made in the editor", () => {
+    expect(toLiveState({ session_id: null, current_slide: null, revision: 0, running: false, content_version: 4 })).toMatchObject({
+      sessionId: null,
+      contentVersion: 4,
+    });
+    expect(
+      toLiveState({ session_id: "session-1", current_slide: 2, revision: 9, running: true, content_version: 5 }),
+    ).toEqual({ sessionId: "session-1", slide: 2, revision: 9, running: true, contentVersion: 5 });
+    expect(toLiveState({ session_id: null, current_slide: null, revision: 0, running: false, content_version: null })).not.toHaveProperty("contentVersion");
+  });
+
   it("reads a session row", () => {
     expect(toLiveState({ session_id: "session-1", current_slide: 4, revision: 9, running: true })).toEqual({
       sessionId: "session-1",
