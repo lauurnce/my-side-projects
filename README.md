@@ -9,6 +9,7 @@ This is where my side projects and school projects live when they do not need a 
 ## What's inside
 
 - 📂 **web-development**: coursework for my Web Development subject, one folder per task
+- 📂 **data-science**: coursework for my Introduction to Data Science subject, one folder per task
 - 📂 **quadra**: event registration site with emailed QR tickets and an on-site check-in scanner
 - 📂 **stage0-reveal**: offline broadcast-style team reveal show and presentation timer for Stage 0, built as OBS browser sources
 - 📂 **penta**: school platform in three layers, with Routes for learning, Decks for presentations and Ops for activities
